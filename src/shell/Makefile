@@ -4,9 +4,9 @@ OBJS = mysh.o
 
 SRC = mysh.c y.tab.c lex.yy.c
 
-LEXNAME = example.l
+LEXNAME = parser.l
 
-YACCNAME = example.y
+YACCNAME = parser.y
 
 all: mysh
 

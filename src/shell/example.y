@@ -1,9 +1,9 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include "mysh.h"
 int yylex(); /* Included to get rid of a warning */
 int yyerror(); /* Included to get rid of a warning */
-/*#include "parser.h"*/
 %}
 
 %union {
@@ -14,6 +14,7 @@ int yyerror(); /* Included to get rid of a warning */
 %token END
 %token<str> EXIT
 %token<str> REDIRECT
+%parse-param { struct command *cmnd_struct }
 %%
 
 commands: /* empty */
@@ -35,7 +36,21 @@ command:
 command_name:
         COMMAND
         {
-            printf("COMMAND:%s\n", $1);
+            printf("ARG:%s\n", $1);
+            cmnd_struct->type = 'N';
+            token *token_value = (token *) malloc(sizeof(token));
+            /*token token_value;*/
+            token_value->value = $1;
+            token_value->next = NULL;
+            if (cmnd_struct->first_token == NULL) {
+                cmnd_struct->first_token = token_value;
+                cmnd_struct->last_token = token_value;
+            }
+            else {
+                cmnd_struct->last_token->next = token_value;
+                cmnd_struct->last_token = token_value;
+            }
+            cmnd_struct->len++;
         }
         ;
 
