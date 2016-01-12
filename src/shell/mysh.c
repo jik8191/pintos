@@ -5,6 +5,9 @@
 #include "mysh.h"
 #include "y.tab.h"
 
+#define MAX_BUFSIZE 1024
+// TODO: reallocate memory to support arbitrary length buffer/filepath
+
 extern int yyparse(command *cmnd_struct);
 int loop();
 
@@ -20,12 +23,14 @@ int main() {
 
 int loop() {
     char *username;
-    char *directory;
+    char *dir_curr;
     char prompt[500] = "\0";
     int exit;
+    char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
     command *cmnd_struct = (command *) malloc(sizeof(command));
     token *root = (token *) malloc(sizeof(token));
-
+    // TODO: null check
+    
     root = NULL;
     cmnd_struct->first_token = root;
 
@@ -33,10 +38,12 @@ int loop() {
 
     // Username of the session
     username = getlogin();
+    // Home directory of the user
+    dir_home = getenv("HOME");
     // Current directory
-    directory = getcwd(NULL, 100); // Arbitrary buff size. Need to free this?
+    dir_curr = getcwd(NULL, MAX_BUFSIZE); // Need to free this?
     // Getting the current prompt
-    strcat(strcat(strcat(strcat(prompt, username), ":"), directory), ">");
+    strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), ">");
     // Displaying the prompt
     printf("%s ", prompt);
 
@@ -51,7 +58,13 @@ int loop() {
 
     // cd command
     if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
-        chdir(cmnd_struct->first_token->next->value); 
+      if (cmnd_struct->first_token->next == NULL ||
+	  !strcmp("~", cmnd_struct->first_token->next->value)){
+	chdir(dir_home); 
+      }
+      else {
+	chdir(cmnd_struct->first_token->next->value);
+      }
     }
     else if ((strcmp("ls", cmnd_struct->first_token->value) == 0)) {
         pid_t pid;
