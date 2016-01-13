@@ -13,7 +13,6 @@ typedef struct command {
 } command;
 
 typedef struct parsed {
-    int new;
     command *frst;
     command *curr;
 } parsed;

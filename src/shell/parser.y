@@ -42,10 +42,7 @@ commands:
     command PIPE commands;
 
 command:
-    arglist redirects
-    {
-        line->new = 1;
-    };
+    basecommand arglist redirects;
 
 redirects:
     |
@@ -69,6 +66,31 @@ redirects:
         printf("OUTPUT_REDIRECT to %s\n",$2);
     };
 
+basecommand:
+    ARG
+    {
+        token *token_value = (token *) malloc(sizeof(token));
+        token_value->value = $1;
+        token_value->next = NULL;
+
+        command *cmd = (command *) malloc(sizeof(command));
+        cmd->next = NULL;
+
+        if (line->curr != NULL) {
+            line->curr->next = cmd;
+        }
+
+        line->curr = cmd;
+
+        if (line->frst == NULL) {
+            line->frst = cmd;
+        }
+
+        line->curr->len = 1;
+        line->curr->first_token = token_value;
+        line->curr->last_token = token_value;
+    };
+
 arglist:
     |
     arglist ARG
@@ -80,30 +102,9 @@ arglist:
         token_value->value = $2;
         token_value->next = NULL;
 
-        if (line->new) {
-            line->new = 0;
-
-            command *cmd = (command *) malloc(sizeof(command));
-            cmd->next = NULL;
-
-            if (line->curr != NULL) {
-                line->curr->next = cmd;
-            }
-
-            line->curr = cmd;
-
-            if (line->frst == NULL) {
-                line->frst = cmd;
-            }
-
-            line->curr->len = 1;
-            line->curr->first_token = token_value;
-            line->curr->last_token = token_value;
-        } else {
-            line->curr->len++;
-            line->curr->last_token->next = token_value;
-            line->curr->last_token = token_value;
-        }
+        line->curr->len++;
+        line->curr->last_token->next = token_value;
+        line->curr->last_token = token_value;
     };
 
 %%

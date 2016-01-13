@@ -8,7 +8,7 @@
 %option nounput
 
 whitesp     [\t ]
-validchars  [^&:;<>`"'#~=%/\|\(\)\$\*\?\[\]\\\t\r\n ]
+validchars  [^&:;<>`"'#~=%\|\(\)\$\*\?\[\]\\\t\r\n ]
 
 %%
 

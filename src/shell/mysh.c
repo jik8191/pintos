@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include "mysh.h"
 #include "y.tab.h"
 
@@ -13,12 +14,12 @@ extern int yyparse(parsed *line);
 int loop();
 
 int main() {
-    int exit;
+    int exitcode;
 
-    exit = 0;
+    exitcode = 0;
 
-    while(exit == 0) {
-	exit = loop();
+    while(exitcode == 0) {
+        exitcode = loop();
     }
 
     return 0;
@@ -29,16 +30,19 @@ char **tokenize(command *cmnd_struct){
     char **tokens = malloc(MAX_TOK_BUFSIZE*sizeof(char*)); // array of tokens
     token *tok_temp = cmnd_struct->first_token;
     int index = 0;
+
     if (!tokens){
-	fprintf(stderr, "memory allocation error\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "memory allocation error\n");
+        exit(EXIT_FAILURE);
     }
+
     while (tok_temp != NULL){
-	tokens[index] = tok_temp->value;
-	index+= 1;
-	tok_temp = tok_temp->next;
-	// TODO: reallocate if we run out of space
+        tokens[index] = tok_temp->value;
+        index+= 1;
+        tok_temp = tok_temp->next;
+        // TODO: reallocate if we run out of space
     }
+
     tokens[index] = NULL;
 
     return tokens;
@@ -48,11 +52,10 @@ int loop() {
     char *username;
     char *dir_curr;
     char prompt[500] = "\0";
-    int exit;
+    int exitcode;
     char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
 
     parsed *line = (parsed *) malloc(sizeof(parsed));
-    line->new = 1;
     line->frst = NULL;
     line->curr = NULL;
     // TODO: null check
@@ -60,7 +63,7 @@ int loop() {
     /* root = NULL; */
     /* cmd->first_token = root; */
 
-    exit = 0;
+    exitcode = 0;
 
     // Username of the session
     username = getlogin();
@@ -73,9 +76,9 @@ int loop() {
     // Displaying the prompt
     printf("%s ", prompt);
 
-    exit = yyparse(line);
-    if (exit == 1) {
-        return exit;
+    exitcode = yyparse(line);
+    if (exitcode == 1) {
+        return exitcode;
     }
     /* printf("Command type: %c\n", cmnd_struct->type); */
     /* printf("Command String: "); */
@@ -86,16 +89,16 @@ int loop() {
 
 
     command *cmd = line->frst;
-    char **tokens = tokenize(cmd);
-
     if (cmd == NULL) {
         return 0;
     }
 
+    char **tokens = tokenize(cmd);
+
     // cd command. TODO: recognize chdir
     if ((strcmp("cd", cmd->first_token->value) == 0)) {
         if (cmd->first_token->next == NULL ||
-            !strcmp("~", cmd->first_token->next->value)){
+                !strcmp("~", cmd->first_token->next->value)){
             chdir(dir_home);
         }
         else {
@@ -109,6 +112,9 @@ int loop() {
         if (pid == 0) {
             // first argument is file to
             execvp(tokens[0], tokens);
+
+            printf("That command could not be found.\n");
+            exit(errno);
         }
         else {
             wait(NULL);
@@ -128,6 +134,6 @@ int loop() {
 
     free(line);
 
-    return exit;
+    return exitcode;
 }
 
