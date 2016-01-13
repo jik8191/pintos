@@ -17,7 +17,7 @@ int main() {
     exit = 0;
 
     while(exit == 0) {
-	exit = loop();
+        exit = loop();
     }
 }
 
@@ -27,14 +27,14 @@ char **tokenize(command *cmnd_struct){
     token *tok_temp = cmnd_struct->first_token;
     int index = 0;
     if (!tokens){
-	fprintf(stderr, "memory allocation error\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "memory allocation error\n");
+        exit(EXIT_FAILURE);
     }
     while (tok_temp != NULL){
-	tokens[index] = tok_temp->value;
-	index+= 1;
-	tok_temp = tok_temp->next;
-	// TODO: reallocate if we run out of space
+        tokens[index] = tok_temp->value;
+        index+= 1;
+        tok_temp = tok_temp->next;
+        // TODO: reallocate if we run out of space
     }
     tokens[index] = NULL;
 
@@ -73,37 +73,37 @@ int loop() {
     printf("Command String: ");
     token *temp;
     for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-	printf("%s ", temp->value);
+        printf("%s ", temp->value);
     }
     printf("\n");
     tokens = tokenize(cmnd_struct);
     
     // TODO: recognize chdir
     if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
-	if (cmnd_struct->first_token->next == NULL ||
-	    !strcmp("~", cmnd_struct->first_token->next->value)){
-	    chdir(dir_home); 
-	}
-	else {
-	    chdir(cmnd_struct->first_token->next->value);
-	}
+        if (cmnd_struct->first_token->next == NULL ||
+            !strcmp("~", cmnd_struct->first_token->next->value)){
+            chdir(dir_home); 
+        }
+        else {
+            chdir(cmnd_struct->first_token->next->value);
+        }
     }
     else {
-	pid_t pid;
-	pid = fork();
-	// TODO: check if pid = -1 (failed to fork)
-	if (pid == 0) {
-	    // first argument is file to 
-	    execvp(tokens[0], tokens);
-	}
-	else {
-	    wait(NULL);
-	}
+        pid_t pid;
+        pid = fork();
+        // TODO: check if pid = -1 (failed to fork)
+        if (pid == 0) {
+            // first argument is file to 
+            execvp(tokens[0], tokens);
+        }
+        else {
+            wait(NULL);
+        }
     }
 
     // Freeing the memory
     for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-	free(temp);
+        free(temp);
     }
     free(cmnd_struct);
    
