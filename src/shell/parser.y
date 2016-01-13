@@ -53,24 +53,14 @@ command:
 
 redirects:
     |
-    IN ARG
+    IN ARG redirects
     {
         line->curr->input_redirection = $2;
-        printf("INPUT_REDIRECT to %s\n", $2);
     }
     |
-    OUT ARG
+    OUT ARG redirects
     {
         line->curr->output_redirection = $2;
-        printf("OUTPUT_REDIRECT to %s\n",$2);
-    }
-    |
-    IN ARG OUT ARG
-    {
-        line->curr->input_redirection = $2;
-        line->curr->output_redirection = $2;
-        printf("INPUT_REDIRECT to %s\n", $2);
-        printf("OUTPUT_REDIRECT to %s\n",$2);
     };
 
 basecommand:
