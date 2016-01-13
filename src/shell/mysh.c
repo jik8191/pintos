@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <pwd.h>
 #include "mysh.h"
 #include "y.tab.h"
 
@@ -67,7 +68,8 @@ int loop() {
     exitcode = 0;
 
     // Username of the session
-    username = getlogin();
+    /* username = getlogin(); */
+    username = getpwuid(getuid())->pw_name;
     // Home directory of the user
     dir_home = getenv("HOME");
     // Current directory
@@ -110,20 +112,122 @@ int loop() {
             chdir(cmd->first_token->next->value);
         }
     } else {
+
+        int pipefd[2];
         pid_t pid;
+        int has_prev, has_next;
+        int prev_fd;
+
+        has_prev = 0;
+
+        /*
+        for (cmd = line->frst; cmd->next != NULL; cmd = cmd->next) {
+            tokens = tokenize(cmd);
+
+            if (pipe(pipefd) == -1) {
+                printf("failed to open pipe in command\n");
+                return 1;
+            }
+
+            pid = fork();
+
+            if (pid == -1) {
+                printf("failed to fork\n");
+                return 1;
+            }
+
+            if (pid == 0) {
+                close(pipefd[0]);
+                dup2(pipefd[1], STDOUT_FILENO);
+                close(pipefd[1]);
+
+                execvp(tokens[0], tokens);
+
+                // If we return here, then exec failed.
+                printf("That command could not be found.\n");
+                exit(errno);
+            } else {
+                close(pipefd[1]);
+                dup2(pipefd[0], STDIN_FILENO);
+                close(pipefd[0]);
+
+                wait(NULL);
+            }
+        }
+        */
+
+        for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
+            tokens = tokenize(cmd);
+
+            /* if (has_prev) { */
+            /*     close(pipefd[1]); // Close write end, we are reading from it. */
+            /*     dup2(pipefd[0], STDIN_FILENO); */
+            /*     close(pipefd[0]); */
+            /* } */
+
+            if (cmd->next != NULL) {
+                printf("does have next");
+                has_next = 1;
+            } else {
+                has_next = 0;
+            }
+
+            if (has_next && pipe(pipefd) == -1) {
+                printf("failed to open pipe in command\n");
+                return 0;
+            }
+
+            pid = fork();
+
+            if (pid == -1) {
+                printf("failed to fork process\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (pid == 0) {
+                dup2(prev_fd, STDIN_FILENO);
+                close(prev_fd);
+
+                if (has_next) {
+                    close(pipefd[0]); // Close read end, we are writing to it.
+                    dup2(pipefd[1], STDOUT_FILENO);
+                    close(pipefd[1]);
+                }
+
+                execvp(tokens[0], tokens);
+
+                // If we return here, then exec failed.
+                printf("That command could not be found.\n");
+                exit(errno);
+            } else {
+                close(pipefd[1]); // Close write end, we are reading from it.
+
+                has_prev = 1;
+                prev_fd = pipefd[0];
+
+                wait(NULL);
+            }
+
+        }
+
+        /*
+        tokens = tokenize(cmd);
         pid = fork();
 
-        // TODO: check if pid = -1 (failed to fork)
         if (pid == 0) {
-            // first argument is file to
             execvp(tokens[0], tokens);
 
+            // If we return here, then exec failed.
             printf("That command could not be found.\n");
             exit(errno);
-        }
-        else {
+        } else {
+
+            close(pipefd[0]);
+            close(pipefd[1]);
+
             wait(NULL);
         }
+        */
     }
 
     // Freeing the memory
@@ -141,4 +245,7 @@ int loop() {
 
     return exitcode;
 }
+
+/* void run(command *cmd) { */
+/* } */
 
