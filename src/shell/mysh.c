@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 #include "mysh.h"
 #include "y.tab.h"
 
@@ -19,6 +20,8 @@ int main() {
     while(exit == 0) {
         exit = loop();
     }
+
+    return 0;
 }
 
 int loop() {
@@ -30,7 +33,7 @@ int loop() {
     command *cmnd_struct = (command *) malloc(sizeof(command));
     token *root = (token *) malloc(sizeof(token));
     // TODO: null check
-    
+
     root = NULL;
     cmnd_struct->first_token = root;
 
@@ -48,23 +51,26 @@ int loop() {
     printf("%s ", prompt);
 
     exit = yyparse(cmnd_struct);
-    printf("Command type: %c\n", cmnd_struct->type);
-    printf("Command String: ");
-    token *temp;
-    for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-        printf("%s ", temp->value);
+    if (exit == 1) {
+        return exit;
     }
-    printf("\n");
+    /* printf("Command type: %c\n", cmnd_struct->type); */
+    /* printf("Command String: "); */
+    token *temp;
+    /* for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) { */
+    /*     printf("%s ", temp->value); */
+    /* } */
+    /* printf("\n"); */
 
     // cd command
     if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
-      if (cmnd_struct->first_token->next == NULL ||
-	  !strcmp("~", cmnd_struct->first_token->next->value)){
-	chdir(dir_home); 
-      }
-      else {
-	chdir(cmnd_struct->first_token->next->value);
-      }
+        if (cmnd_struct->first_token->next == NULL ||
+                !strcmp("~", cmnd_struct->first_token->next->value)){
+            chdir(dir_home);
+        }
+        else {
+            chdir(cmnd_struct->first_token->next->value);
+        }
     }
     else if ((strcmp("ls", cmnd_struct->first_token->value) == 0)) {
         pid_t pid;
@@ -82,12 +88,12 @@ int loop() {
         free(temp);
     }
     free(cmnd_struct);
-   
+
     return exit;
 }
 
 /*
-char *get_args(command *cmnd_struct) {
-    
-}
-*/
+   char *get_args(command *cmnd_struct) {
+
+   }
+   */

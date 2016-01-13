@@ -1,22 +1,15 @@
 CFLAGS = -Wall -g
 
-OBJS = mysh.o
-
 SRC = mysh.c y.tab.c lex.yy.c
 
 LEXNAME = parser.l
 
 YACCNAME = parser.y
 
-all: mysh
+all: clean mysh
 
-lexyacc: compile_parser
-
-mysh: $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-testing: $(SRC)
-	cc -o testing $(SRC)
+mysh: $(SRC)
+	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
 y.tab.c: $(YACCNAME)
 	yacc -d $(YACCNAME)
@@ -24,16 +17,11 @@ y.tab.c: $(YACCNAME)
 lex.yy.c: $(LEXNAME)
 	lex $(LEXNAME)
 
-compile_parser:
-	lex $(LEXNAME)
-	yacc -d $(YACCNAME)
-	cc lex.yy.c y.tab.c -o example
-
-clean: 
-	rm -f *.o *~ mysh mylex example testing
-	rm lex.yy.c
-	rm y.tab.c
-	rm y.tab.h
+clean:
+	rm -f *.o *~ mysh
+	rm -f lex.yy.c
+	rm -f y.tab.c
+	rm -f y.tab.h
 
 .PHONY: all clean
 
