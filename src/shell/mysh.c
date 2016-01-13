@@ -18,10 +18,30 @@ int main() {
     exit = 0;
 
     while(exit == 0) {
-        exit = loop();
+	exit = loop();
     }
 
     return 0;
+}
+
+#define MAX_TOK_BUFSIZE 64
+char **tokenize(command *cmnd_struct){
+    char **tokens = malloc(MAX_TOK_BUFSIZE*sizeof(char*)); // array of tokens
+    token *tok_temp = cmnd_struct->first_token;
+    int index = 0;
+    if (!tokens){
+	fprintf(stderr, "memory allocation error\n");
+	exit(EXIT_FAILURE);
+    }
+    while (tok_temp != NULL){
+	tokens[index] = tok_temp->value;
+	index+= 1;
+	tok_temp = tok_temp->next;
+	// TODO: reallocate if we run out of space
+    }
+    tokens[index] = NULL;
+
+    return tokens;
 }
 
 int loop() {
@@ -35,9 +55,6 @@ int loop() {
     line->new = 1;
     line->frst = NULL;
     line->curr = NULL;
-    /* command *cmd = (command *) malloc(sizeof(command)); */
-    /* cmd->curr = cmd; */
-    /* token *root = (token *) malloc(sizeof(token)); */
     // TODO: null check
 
     /* root = NULL; */
@@ -69,26 +86,29 @@ int loop() {
 
 
     command *cmd = line->frst;
+    char **tokens = tokenize(cmd);
 
     if (cmd == NULL) {
         return 0;
     }
 
-    // cd command
+    // cd command. TODO: recognize chdir
     if ((strcmp("cd", cmd->first_token->value) == 0)) {
         if (cmd->first_token->next == NULL ||
-                !strcmp("~", cmd->first_token->next->value)){
+            !strcmp("~", cmd->first_token->next->value)){
             chdir(dir_home);
         }
         else {
             chdir(cmd->first_token->next->value);
         }
-    }
-    else if ((strcmp("ls", cmd->first_token->value) == 0)) {
+    } else {
         pid_t pid;
         pid = fork();
+
+        // TODO: check if pid = -1 (failed to fork)
         if (pid == 0) {
-            execlp("ls", "ls", NULL);
+            // first argument is file to
+            execvp(tokens[0], tokens);
         }
         else {
             wait(NULL);
@@ -111,8 +131,3 @@ int loop() {
     return exit;
 }
 
-/*
-   char *get_args(command *cmnd_struct) {
-
-   }
-   */
