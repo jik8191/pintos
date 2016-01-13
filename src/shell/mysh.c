@@ -2,40 +2,47 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <errno.h>
 #include "mysh.h"
 #include "y.tab.h"
 
 #define MAX_BUFSIZE 1024
 // TODO: reallocate memory to support arbitrary length buffer/filepath
 
-extern int yyparse(command *cmnd_struct);
+extern int yyparse(parsed *line);
 int loop();
 
 int main() {
-    int exit;
+    int exitcode;
 
-    exit = 0;
+    exitcode = 0;
 
-    while(exit == 0) {
-        exit = loop();
+    while(exitcode == 0) {
+        exitcode = loop();
     }
+
+    return 0;
 }
 
-#define MAX_TOK_BUFSIZE 64 
+#define MAX_TOK_BUFSIZE 64
 char **tokenize(command *cmnd_struct){
     char **tokens = malloc(MAX_TOK_BUFSIZE*sizeof(char*)); // array of tokens
     token *tok_temp = cmnd_struct->first_token;
     int index = 0;
+
     if (!tokens){
         fprintf(stderr, "memory allocation error\n");
         exit(EXIT_FAILURE);
     }
+
     while (tok_temp != NULL){
         tokens[index] = tok_temp->value;
         index+= 1;
         tok_temp = tok_temp->next;
         // TODO: reallocate if we run out of space
     }
+
     tokens[index] = NULL;
 
     return tokens;
@@ -45,17 +52,19 @@ int loop() {
     char *username;
     char *dir_curr;
     char prompt[500] = "\0";
-    int exit;
+    int exitcode;
     char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
-    command *cmnd_struct = (command *) malloc(sizeof(command));
-    token *root = (token *) malloc(sizeof(token));
-    char **tokens;
-    // TODO: null check
-    
-    root = NULL;
-    cmnd_struct->first_token = root;
 
-    exit = 0;
+    parsed *line = (parsed *) malloc(sizeof(parsed));
+    line->frst = NULL;
+    line->curr = NULL;
+    line->error = 0;
+    // TODO: null check
+
+    /* root = NULL; */
+    /* cmd->first_token = root; */
+
+    exitcode = 0;
 
     // Username of the session
     username = getlogin();
@@ -68,33 +77,49 @@ int loop() {
     // Displaying the prompt
     printf("%s ", prompt);
 
-    exit = yyparse(cmnd_struct);
-    printf("Command type: %c\n", cmnd_struct->type);
-    printf("Command String: ");
-    token *temp;
-    for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-        printf("%s ", temp->value);
+    exitcode = yyparse(line);
+    if (exitcode != 0) {
+        return 1; // User asked to exit
     }
-    printf("\n");
-    tokens = tokenize(cmnd_struct);
-    
-    // TODO: recognize chdir
-    if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
-        if (cmnd_struct->first_token->next == NULL ||
-            !strcmp("~", cmnd_struct->first_token->next->value)){
-            chdir(dir_home); 
+    if (line->error != 0) {
+        return 0; // Parse error, so skip this loop
+    }
+
+    /* printf("Command type: %c\n", cmnd_struct->type); */
+    /* printf("Command String: "); */
+    /* for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) { */
+    /*     printf("%s ", temp->value); */
+    /* } */
+    /* printf("\n"); */
+
+
+    command *cmd = line->frst;
+    if (cmd == NULL) {
+        return 0;
+    }
+
+    char **tokens = tokenize(cmd);
+
+    // cd command. TODO: recognize chdir
+    if ((strcmp("cd", cmd->first_token->value) == 0)) {
+        if (cmd->first_token->next == NULL ||
+                !strcmp("~", cmd->first_token->next->value)){
+            chdir(dir_home);
         }
         else {
-            chdir(cmnd_struct->first_token->next->value);
+            chdir(cmd->first_token->next->value);
         }
-    }
-    else {
+    } else {
         pid_t pid;
         pid = fork();
+
         // TODO: check if pid = -1 (failed to fork)
         if (pid == 0) {
-            // first argument is file to 
+            // first argument is file to
             execvp(tokens[0], tokens);
+
+            printf("That command could not be found.\n");
+            exit(errno);
         }
         else {
             wait(NULL);
@@ -102,16 +127,18 @@ int loop() {
     }
 
     // Freeing the memory
-    for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-        free(temp);
+    for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
+        token *temp;
+
+        for (temp = cmd->first_token; temp != NULL; temp = temp->next) {
+            free(temp);
+        }
+
+        free(cmd);
     }
-    free(cmnd_struct);
-   
-    return exit;
+
+    free(line);
+
+    return exitcode;
 }
 
-/*
-  char *get_args(command *cmnd_struct) {
-    
-  }
-*/

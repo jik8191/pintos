@@ -4,12 +4,21 @@
 #include "y.tab.h"
 %}
 
+%option noinput
+%option nounput
+
+whitesp     [\t ]
+validchars  [^&:;<>`"'#~=%\|\(\)\$\*\?\[\]\\\t\r\n ]
+
 %%
-^exit$                                     yylval.str = "exit"; return EXIT;
->|<                                        yylval.str=strdup(yytext); return REDIRECT;
-^[A-Za-z][A-Za-z0-9]*                      yylval.str=strdup(yytext); return COMMAND;
-[A-Za-z0-9\.\-_~]*                         yylval.str=strdup(yytext); return ARG;
-\".*\"                                     yylval.str=strdup(yytext); return ARG;
-\n                                         return END;
-[ \t]+                                     /* Ignore whitespace */
+
+^exit$          return EXIT;
+\|              return PIPE;
+\<              return IN;
+\>              return OUT;
+\".*\"          yylval.str=strdup(yytext); return ARG;
+{validchars}+   yylval.str=strdup(yytext); return ARG;
+\n              return END;
+{whitesp}+      /* Ignore Whitespace */
+
 %%
