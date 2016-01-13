@@ -16,7 +16,7 @@ int yyerror(); /* Included to get rid of a warning */
 %token OUT
 %token<str> ARG
 %token<str> EXIT
-%parse-param { struct command *cmnd_struct }
+%parse-param { struct parsed *line }
 
 %%
 
@@ -42,26 +42,29 @@ commands:
     command PIPE commands;
 
 command:
-    arglist redirects;
+    arglist redirects
+    {
+        line->new = 1;
+    };
 
 redirects:
     |
     IN ARG
     {
-        cmnd_struct->input_redirection = $2;
+        line->curr->input_redirection = $2;
         printf("INPUT_REDIRECT to %s\n", $2);
     }
     |
     OUT ARG
     {
-        cmnd_struct->output_redirection = $2;
+        line->curr->output_redirection = $2;
         printf("OUTPUT_REDIRECT to %s\n",$2);
     }
     |
     IN ARG OUT ARG
     {
-        cmnd_struct->input_redirection = $2;
-        cmnd_struct->output_redirection = $2;
+        line->curr->input_redirection = $2;
+        line->curr->output_redirection = $2;
         printf("INPUT_REDIRECT to %s\n", $2);
         printf("OUTPUT_REDIRECT to %s\n",$2);
     };
@@ -70,21 +73,36 @@ arglist:
     |
     arglist ARG
     {
-        printf("ARG: %s\n", $2);
+        /* printf("ARG: %s\n", $2); */
 
         // Putting the token in the command struct
         token *token_value = (token *) malloc(sizeof(token));
         token_value->value = $2;
         token_value->next = NULL;
 
-        if (cmnd_struct->first_token == NULL) {
-            cmnd_struct->len = 1;
-            cmnd_struct->first_token = token_value;
-            cmnd_struct->last_token = token_value;
+        if (line->new) {
+            line->new = 0;
+
+            command *cmd = (command *) malloc(sizeof(command));
+            cmd->next = NULL;
+
+            if (line->curr != NULL) {
+                line->curr->next = cmd;
+            }
+
+            line->curr = cmd;
+
+            if (line->frst == NULL) {
+                line->frst = cmd;
+            }
+
+            line->curr->len = 1;
+            line->curr->first_token = token_value;
+            line->curr->last_token = token_value;
         } else {
-            cmnd_struct->len++;
-            cmnd_struct->last_token->next = token_value;
-            cmnd_struct->last_token = token_value;
+            line->curr->len++;
+            line->curr->last_token->next = token_value;
+            line->curr->last_token = token_value;
         }
     };
 

@@ -9,7 +9,7 @@
 #define MAX_BUFSIZE 1024
 // TODO: reallocate memory to support arbitrary length buffer/filepath
 
-extern int yyparse(command *cmnd_struct);
+extern int yyparse(parsed *line);
 int loop();
 
 int main() {
@@ -30,12 +30,18 @@ int loop() {
     char prompt[500] = "\0";
     int exit;
     char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
-    command *cmnd_struct = (command *) malloc(sizeof(command));
-    token *root = (token *) malloc(sizeof(token));
+
+    parsed *line = (parsed *) malloc(sizeof(parsed));
+    line->new = 1;
+    line->frst = NULL;
+    line->curr = NULL;
+    /* command *cmd = (command *) malloc(sizeof(command)); */
+    /* cmd->curr = cmd; */
+    /* token *root = (token *) malloc(sizeof(token)); */
     // TODO: null check
 
-    root = NULL;
-    cmnd_struct->first_token = root;
+    /* root = NULL; */
+    /* cmd->first_token = root; */
 
     exit = 0;
 
@@ -50,29 +56,35 @@ int loop() {
     // Displaying the prompt
     printf("%s ", prompt);
 
-    exit = yyparse(cmnd_struct);
+    exit = yyparse(line);
     if (exit == 1) {
         return exit;
     }
     /* printf("Command type: %c\n", cmnd_struct->type); */
     /* printf("Command String: "); */
-    token *temp;
     /* for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) { */
     /*     printf("%s ", temp->value); */
     /* } */
     /* printf("\n"); */
 
+
+    command *cmd = line->frst;
+
+    if (cmd == NULL) {
+        return 0;
+    }
+
     // cd command
-    if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
-        if (cmnd_struct->first_token->next == NULL ||
-                !strcmp("~", cmnd_struct->first_token->next->value)){
+    if ((strcmp("cd", cmd->first_token->value) == 0)) {
+        if (cmd->first_token->next == NULL ||
+                !strcmp("~", cmd->first_token->next->value)){
             chdir(dir_home);
         }
         else {
-            chdir(cmnd_struct->first_token->next->value);
+            chdir(cmd->first_token->next->value);
         }
     }
-    else if ((strcmp("ls", cmnd_struct->first_token->value) == 0)) {
+    else if ((strcmp("ls", cmd->first_token->value) == 0)) {
         pid_t pid;
         pid = fork();
         if (pid == 0) {
@@ -84,10 +96,17 @@ int loop() {
     }
 
     // Freeing the memory
-    for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) {
-        free(temp);
+    for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
+        token *temp;
+
+        for (temp = cmd->first_token; temp != NULL; temp = temp->next) {
+            free(temp);
+        }
+
+        free(cmd);
     }
-    free(cmnd_struct);
+
+    free(line);
 
     return exit;
 }

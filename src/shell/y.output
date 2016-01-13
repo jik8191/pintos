@@ -1,0 +1,212 @@
+State 0 conflicts: 1 shift/reduce
+
+
+Grammar
+
+    0 $accept: line $end
+
+    1 line: EXIT
+    2     | END
+    3     | commands END
+
+    4 commands: command
+    5         | command PIPE commands
+
+    6 command: arglist
+    7        | arglist redirects
+
+    8 redirects: IN ARG
+    9          | OUT ARG
+   10          | IN ARG OUT ARG
+
+   11 arglist: %empty
+   12        | arglist ARG
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256)
+END (258) 2 3
+PIPE (259) 5
+IN (260) 8 10
+OUT (261) 9 10
+ARG (262) 8 9 10 12
+EXIT (263) 1
+
+
+Nonterminals, with rules where they appear
+
+$accept (9)
+    on left: 0
+line (10)
+    on left: 1 2 3, on right: 0
+commands (11)
+    on left: 4 5, on right: 3 5
+command (12)
+    on left: 6 7, on right: 4 5
+redirects (13)
+    on left: 8 9 10, on right: 7
+arglist (14)
+    on left: 11 12, on right: 6 7 12
+
+
+State 0
+
+    0 $accept: . line $end
+
+    END   shift, and go to state 1
+    EXIT  shift, and go to state 2
+
+    END       [reduce using rule 11 (arglist)]
+    $default  reduce using rule 11 (arglist)
+
+    line      go to state 3
+    commands  go to state 4
+    command   go to state 5
+    arglist   go to state 6
+
+
+State 1
+
+    2 line: END .
+
+    $default  reduce using rule 2 (line)
+
+
+State 2
+
+    1 line: EXIT .
+
+    $default  reduce using rule 1 (line)
+
+
+State 3
+
+    0 $accept: line . $end
+
+    $end  shift, and go to state 7
+
+
+State 4
+
+    3 line: commands . END
+
+    END  shift, and go to state 8
+
+
+State 5
+
+    4 commands: command .
+    5         | command . PIPE commands
+
+    PIPE  shift, and go to state 9
+
+    $default  reduce using rule 4 (commands)
+
+
+State 6
+
+    6 command: arglist .
+    7        | arglist . redirects
+   12 arglist: arglist . ARG
+
+    IN   shift, and go to state 10
+    OUT  shift, and go to state 11
+    ARG  shift, and go to state 12
+
+    $default  reduce using rule 6 (command)
+
+    redirects  go to state 13
+
+
+State 7
+
+    0 $accept: line $end .
+
+    $default  accept
+
+
+State 8
+
+    3 line: commands END .
+
+    $default  reduce using rule 3 (line)
+
+
+State 9
+
+    5 commands: command PIPE . commands
+
+    $default  reduce using rule 11 (arglist)
+
+    commands  go to state 14
+    command   go to state 5
+    arglist   go to state 6
+
+
+State 10
+
+    8 redirects: IN . ARG
+   10          | IN . ARG OUT ARG
+
+    ARG  shift, and go to state 15
+
+
+State 11
+
+    9 redirects: OUT . ARG
+
+    ARG  shift, and go to state 16
+
+
+State 12
+
+   12 arglist: arglist ARG .
+
+    $default  reduce using rule 12 (arglist)
+
+
+State 13
+
+    7 command: arglist redirects .
+
+    $default  reduce using rule 7 (command)
+
+
+State 14
+
+    5 commands: command PIPE commands .
+
+    $default  reduce using rule 5 (commands)
+
+
+State 15
+
+    8 redirects: IN ARG .
+   10          | IN ARG . OUT ARG
+
+    OUT  shift, and go to state 17
+
+    $default  reduce using rule 8 (redirects)
+
+
+State 16
+
+    9 redirects: OUT ARG .
+
+    $default  reduce using rule 9 (redirects)
+
+
+State 17
+
+   10 redirects: IN ARG OUT . ARG
+
+    ARG  shift, and go to state 18
+
+
+State 18
+
+   10 redirects: IN ARG OUT ARG .
+
+    $default  reduce using rule 10 (redirects)
