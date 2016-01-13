@@ -78,7 +78,7 @@ int loop() {
     printf("\n");
     tokens = tokenize(cmnd_struct);
     
-
+    // TODO: recognize chdir
     if ((strcmp("cd", cmnd_struct->first_token->value) == 0)) {
 	if (cmnd_struct->first_token->next == NULL ||
 	    !strcmp("~", cmnd_struct->first_token->next->value)){
@@ -91,6 +91,7 @@ int loop() {
     else {
 	pid_t pid;
 	pid = fork();
+	// TODO: check if pid = -1 (failed to fork)
 	if (pid == 0) {
 	    // first argument is file to 
 	    execvp(tokens[0], tokens);
