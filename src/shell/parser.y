@@ -3,7 +3,7 @@
 #include <string.h>
 #include "mysh.h"
 int yylex(); /* Included to get rid of a warning */
-int yyerror(); /* Included to get rid of a warning */
+void yyerror(); /* Included to get rid of a warning */
 %}
 
 %union {
@@ -33,6 +33,13 @@ line:
     |
     commands END
     {
+        YYACCEPT;
+    }
+    |
+    error END
+    {
+        line->error = 1;
+        yyerrok;
         YYACCEPT;
     };
 
@@ -109,10 +116,9 @@ arglist:
 
 %%
 
-int yyerror(const char *str)
+void yyerror(const char *str)
 {
-    fprintf(stderr,"error: %s\n", str);
-    return 1;
+    fprintf(stderr, "error while parsing\n");
 }
 
 int yywrap()

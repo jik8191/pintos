@@ -58,7 +58,6 @@ int loop() {
     parsed *line = (parsed *) malloc(sizeof(parsed));
     line->frst = NULL;
     line->curr = NULL;
-    line->error = 0;
     // TODO: null check
 
     /* root = NULL; */
@@ -79,12 +78,8 @@ int loop() {
 
     exitcode = yyparse(line);
     if (exitcode != 0) {
-        return 1; // User asked to exit
+        return 1; // We just skip this loop
     }
-    if (line->error != 0) {
-        return 0; // Parse error, so skip this loop
-    }
-
     /* printf("Command type: %c\n", cmnd_struct->type); */
     /* printf("Command String: "); */
     /* for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) { */
