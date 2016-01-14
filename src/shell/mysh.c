@@ -24,7 +24,7 @@ int main() {
     int exitcode;
 
     exitcode = 0;
-
+    using_history();
     while(exitcode == 0) {
         exitcode = loop();
     }
@@ -65,6 +65,7 @@ int loop() {
     line->frst = NULL;
     line->curr = NULL;
     line->error = 0;
+    line->history = 0;
 
     exitcode = 0;
 
@@ -168,6 +169,17 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
         } else {
             chdir(cmd->first_token->next->value);
         }
+
+    } else if (strcmp("history", cmd->first_token->value) == 0){
+        /*
+        HIST_ENTRY **my_history = history_list();
+        HIST_ENTRY *first = my_history[0];
+        printf("Line: %s\n", first->line);
+        printf("Data: %s\n", first->data);
+        */
+        HIST_ENTRY *curr_hist = current_history();
+        printf("Line: %s\n", curr_hist->line);
+        printf("Data: %s\n", curr_hist->data);
 
     } else {
 
