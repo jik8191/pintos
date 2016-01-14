@@ -78,9 +78,9 @@ redirects:
 basecommand:
     ARG
     {
-        token *token_value = (token *) malloc(sizeof(token));
-        token_value->value = $1;
-        token_value->next = NULL;
+        token *tok = (token *) malloc(sizeof(token));
+        tok->value = $1;
+        tok->next = NULL;
 
         command *cmd = init_command();
 
@@ -94,39 +94,48 @@ basecommand:
             line->first = cmd;
         }
 
-        line->curr->first_token = token_value;
-        line->curr->last_token = token_value;
+        line->curr->first_token = tok;
+        line->curr->last_token = tok;
     };
 
 arglist:
     |
     arglist ARG
     {
-        token *token_value = (token *) malloc(sizeof(token));
-        token_value->value = $2;
-        token_value->next = NULL;
+        token *tok = (token *) malloc(sizeof(token));
+        tok->value = $2;
+        tok->next = NULL;
 
-        line->curr->last_token->next = token_value;
-        line->curr->last_token = token_value;
+        line->curr->last_token->next = tok;
+        line->curr->last_token = tok;
     }
     |
     arglist QUOTE_ARG
     {
-        token *token_value = (token *) malloc(sizeof(token));
-        token_value->value = $2;
-        token_value->value++;
-        token_value->value[strlen($2) - 2] = 0;
-        token_value->next = NULL;
+        int len = strlen($2) - 2;
+        char *quoted = malloc(len * sizeof(char));
 
-        line->curr->last_token->next = token_value;
-        line->curr->last_token = token_value;
+        // Copy over everything but the two quotes.
+        int i;
+        for (i = 0; i < len; i++) {
+            quoted[i] = $2[i+1];
+        }
+
+        token *tok = (token *) malloc(sizeof(token));
+        tok->value = quoted;
+        tok->next = NULL;
+
+        line->curr->last_token->next = tok;
+        line->curr->last_token = tok;
+
+        free($2);
     }
     ;
 
 %%
 
 void yyerror(const char *str) {
-    fprintf(stderr, "error while parsing\n");
+    fprintf(stderr, "error: couldn't parse that command\n");
 }
 
 int yywrap() {
