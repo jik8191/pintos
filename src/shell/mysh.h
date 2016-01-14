@@ -10,6 +10,7 @@ typedef struct command {
     struct command *next;       // Next command in sequence
     char *input_redirection;
     char *output_redirection;
+    int output_append;
 } command;
 
 typedef struct parsed {

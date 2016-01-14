@@ -8,7 +8,7 @@
 %option nounput
 
 whitesp     [\t ]
-validchars  [^&:;<>`"'#~=%\|\(\)\$\*\?\[\]\\\t\r\n ]
+validchars  [^&:;<>`"'#~=%\|\(\)\$\?\[\]\\\t\r\n ]
 
 %%
 
@@ -16,6 +16,7 @@ validchars  [^&:;<>`"'#~=%\|\(\)\$\*\?\[\]\\\t\r\n ]
 \|              return PIPE;
 \<              return IN;
 \>              return OUT;
+\>\>            return APP;
 \".*\"          yylval.str=strdup(yytext); return QUOTE_ARG;
 {validchars}+   yylval.str=strdup(yytext); return ARG;
 \\\n     

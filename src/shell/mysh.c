@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <pwd.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include "mysh.h"
 #include "y.tab.h"
@@ -19,6 +20,7 @@ extern void set_input(char *str);
 extern void clear();
 int loop();
 int exec_cmd(command *cmd, int *prevfds, int *currfds);
+void free_line(parsed *line);
 
 int main() {
     int exitcode;
@@ -78,6 +80,8 @@ int loop() {
     // Getting the current prompt
     strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), "> ");
 
+    free(dir_curr);
+
     // Displaying the prompt
     /*printf("%s ", prompt);*/
 
@@ -96,13 +100,17 @@ int loop() {
     clear();
     free(user_input);
     if (exitcode != 0) {
+        free_line(line);
         return 1; // User asked to exit
     }
+
     if (line->error != 0) {
+        free_line(line);
         return 0; // Parse error, so skip this loop
     }
 
     if (line->frst == NULL) {
+        free_line(line);
         return 0;
     }
 
@@ -114,6 +122,7 @@ int loop() {
     for (; cmd->next != NULL; cmd = cmd->next) {
         if (pipe(currfds) == -1) {
             printf("error: failed to open pipe\n");
+            free_line(line);
             return 0;
         }
 
@@ -127,21 +136,30 @@ int loop() {
 
     /* Memory freeing */
 
-    for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
-        token *temp;
-
-        for (temp = cmd->first_token; temp != NULL; temp = temp->next) {
-            free(temp);
-        }
-
-        free(cmd);
-    }
-
-    free(line);
 
     /******************/
 
+    free_line(line);
     return exitcode;
+}
+
+void free_line(parsed *line) {
+    command *ccmd, *ncmd;
+    token *ctok, *ntok;
+
+    for (ccmd = line->frst; ccmd != NULL; ccmd = ncmd) {
+        ncmd = ccmd->next;
+
+        for (ctok = ccmd->first_token; ctok != NULL; ctok = ntok) {
+            ntok = ctok->next;
+            free(ctok->value);
+            free(ctok);
+        }
+
+        free(ccmd);
+    }
+
+    free(line);
 }
 
 
@@ -160,11 +178,9 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             !strcmp("~", cmd->first_token->next->value)){
 
             // Home directory of the user
-            char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
-            dir_home = getenv("HOME");
+            char *dir_home = getenv("HOME");
 
             chdir(dir_home);
-
         } else {
             chdir(cmd->first_token->next->value);
         }
@@ -180,7 +196,6 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
     } else {
 
         pid_t pid;
-        char **tokens = tokenize(cmd);
 
         pid = fork();
 
@@ -190,6 +205,7 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
         }
 
         if (pid == 0) {
+            char **tokens = tokenize(cmd);
 
             // If we are given the file descriptors of the previous process in
             // the pipe chain, then use that pipe as our STDIN.
@@ -216,6 +232,7 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
 
                 if (in_fd < 0) {
                     printf("error: could not read from file: %s\n", fname);
+                    free(tokens);
                     exit(EXIT_FAILURE);
                 }
 
@@ -228,10 +245,19 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             // function if any, which is consistent with bash's behavior.
             if (cmd->output_redirection != NULL) {
                 char *fname = cmd->output_redirection;
-                int out_fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC);
+
+                int options = O_WRONLY | O_CREAT;
+                if (cmd->output_append) {
+                    options = options | O_APPEND;
+                } else {
+                    options = options | O_TRUNC;
+                }
+
+                int out_fd = open(fname, options, S_IRUSR | S_IRWXG | S_IRWXO);
 
                 if (out_fd < 0) {
                     printf("error: could not write to file: %s\n", fname);
+                    free(tokens);
                     exit(EXIT_FAILURE);
                 }
 
@@ -243,6 +269,7 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
 
             // If the above function returned, then the command doesn't exist.
             printf("error: that command could not be found\n");
+            free(tokens);
             exit(errno); // we exit here because we need the child to quit
         } else {
             if (currfds != NULL) {

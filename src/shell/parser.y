@@ -14,6 +14,7 @@ void yyerror(); /* Included to get rid of a warning */
 %token PIPE
 %token IN
 %token OUT
+%token APP
 %token<str> ARG
 %token<str> EXIT
 %token<str> QUOTE_ARG
@@ -62,6 +63,12 @@ redirects:
     OUT ARG redirects
     {
         line->curr->output_redirection = $2;
+    }
+    |
+    APP ARG redirects
+    {
+        line->curr->output_redirection = $2;
+        line->curr->output_append = 1;
     };
 
 basecommand:
@@ -75,6 +82,7 @@ basecommand:
         cmd->next = NULL;
         cmd->input_redirection = NULL;
         cmd->output_redirection = NULL;
+        cmd->output_append = 0;
 
         if (line->curr != NULL) {
             line->curr->next = cmd;
