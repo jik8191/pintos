@@ -20,14 +20,15 @@ Austin      Liu         yliu@caltech.edu
    on Moodle.)
 
    Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
-   commit 12134d453c6a7740e1ed632a11b1eef71833cbff
+   commit e9a84e4dd52b9288d8cb0fa7e00025fcd1be4d04
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please include them here.
-For extra credit we did the appending instead of truncating with '>>, and
-we used readline and implemented the history command.
+    For extra credit we did the appending instead of truncating with
+    '>>, we used readline and implemented the history command, and
+    standard error redirection.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -56,8 +57,8 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
    Austin Liu: 7
-   Darius Simmons: 21
-   Nick Cho: 16
+   Darius Simmons: 22
+   Nick Cho: 17
 
 
 >> L2: What did each team member focus on for this assignment?  Keep
@@ -65,7 +66,7 @@ which parts.
    Darius: Started the parsing via lex and yacc and the interface to C. Did
    the readline extra credit.
    Nick: Improved the parsing, did pipes, and redirecting. Appending extra
-   credit.
+   credit. Standard error redirection extra credit.
    Austin: Refactored code in mysh.c, tokenizing the input from a linked list
 
 ---- DATA STRUCTURES ----
