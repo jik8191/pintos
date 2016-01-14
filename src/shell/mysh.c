@@ -324,4 +324,3 @@ void free_line(parsed *line) {
     free(line);
 }
 
-
