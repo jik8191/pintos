@@ -88,15 +88,12 @@ int loop() {
         return 0;
     }
 
-    char **tokens;
     int prevfds[2] = {-1};
     int currfds[2] = {-1};
 
     command *cmd = line->frst;
 
     for (; cmd->next != NULL; cmd = cmd->next) {
-        tokens = tokenize(cmd);
-
         if (pipe(currfds) == -1) {
             printf("failed to open pipe in command\n");
             return 0;
@@ -157,9 +154,7 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
     } else {
 
         pid_t pid;
-        char **tokens;
-
-        tokens = tokenize(cmd);
+        char **tokens = tokenize(cmd);
 
         pid = fork();
 
