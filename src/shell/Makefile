@@ -9,7 +9,7 @@ YACCNAME = parser.y
 all: clean mysh
 
 mysh: $(SRC)
-	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
+	$(CC) $(CFLAGS) -lreadline -o $@ $(SRC) $(LDFLAGS)
 
 y.tab.c: $(YACCNAME)
 	yacc -d $(YACCNAME)

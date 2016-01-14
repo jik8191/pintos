@@ -17,3 +17,5 @@ typedef struct parsed {
     command *frst;
     command *curr;
 } parsed;
+
+int read_input(char* buffer, unsigned long *numBytesRead, int maxBytesToRead);

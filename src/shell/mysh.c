@@ -7,11 +7,15 @@
 #include <pwd.h>
 #include "mysh.h"
 #include "y.tab.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #define MAX_BUFSIZE 1024
 // TODO: reallocate memory to support arbitrary length buffer/filepath
 
 extern int yyparse(parsed *line);
+extern void set_input(char *str);
+extern void clear();
 int loop();
 int exec_cmd(command *cmd, int *prevfds, int *currfds);
 
@@ -71,12 +75,25 @@ int loop() {
     dir_curr = getcwd(NULL, MAX_BUFSIZE); // Need to free this?
 
     // Getting the current prompt
-    strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), ">");
+    strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), "> ");
 
     // Displaying the prompt
-    printf("%s ", prompt);
+    /*printf("%s ", prompt);*/
 
+    // Getting user input via readline
+    static char *user_input = (char *) NULL;
+
+    user_input = readline(prompt);
+
+    if(user_input && *user_input) {
+        add_history(user_input);
+    }
+
+    strcat(user_input, "\n");
+    set_input(user_input);
     exitcode = yyparse(line);
+    clear();
+    free(user_input);
     if (exitcode != 0) {
         return 1; // User asked to exit
     }
@@ -197,3 +214,5 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
 
     return 0;
 }
+
+
