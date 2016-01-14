@@ -135,6 +135,7 @@ void free_line(parsed *line) {
 
         for (ctok = ccmd->first_token; ctok != NULL; ctok = ntok) {
             ntok = ctok->next;
+            free(ctok->value);
             free(ctok);
         }
 
