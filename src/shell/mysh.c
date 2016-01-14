@@ -310,6 +310,14 @@ void free_line(parsed *line) {
             free(ctok);
         }
 
+        if (ccmd->inredir != NULL) {
+            free(ccmd->inredir);
+        }
+
+        if (ccmd->outredir != NULL) {
+            free(ccmd->outredir);
+        }
+
         free(ccmd);
     }
 
