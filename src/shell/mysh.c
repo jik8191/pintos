@@ -123,7 +123,8 @@ void exec_cmd(command *cmd){
 	    }
 	    if (cmd->output_redirection != NULL){
 		// obtain file descriptor for output file, which might fail.
-		fd_op = open(cmd->output_redirection, O_WRONLY | O_APPEND);
+		// TODO: include O_APPEND later
+		fd_op = open(cmd->output_redirection, O_WRONLY);
 		// modify input file descriptor of child process
 		dup2(fd_op, STDOUT_FILENO);
 		// close file descriptor
