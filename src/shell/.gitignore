@@ -5,3 +5,4 @@ mysh
 tests/cattysleep
 tests/sleepycat
 tests/outerr
+*.dSYM

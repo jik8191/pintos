@@ -170,16 +170,13 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
         }
 
     } else if (strcmp("history", cmd->first_token->value) == 0){
-        /*
-        HIST_ENTRY **my_history = history_list();
-        HIST_ENTRY *first = my_history[0];
-        printf("Line: %s\n", first->line);
-        printf("Data: %s\n", first->data);
-        */
         HIST_ENTRY **curr_hist = history_list();
-        /*printf("Line: %s\n", curr_hist->line);*/
-        /*printf("Data: %s\n", curr_hist->data);*/
-
+        HIST_ENTRY *temp_hist;
+        int i;
+        for (i = 0; curr_hist[i] != NULL; i++) {
+            temp_hist = curr_hist[i];
+            printf("%d: %s\n", i, temp_hist->line);
+        }
     } else {
 
         pid_t pid;
