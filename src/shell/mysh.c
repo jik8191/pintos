@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <pwd.h>
+#include <fcntl.h>
 #include "mysh.h"
 #include "y.tab.h"
 #include <readline/readline.h>
@@ -38,7 +39,7 @@ char **tokenize(command *cmnd_struct){
     int index = 0;
 
     if (!tokens){
-        fprintf(stderr, "memory allocation error\n");
+        fprintf(stderr, "error: memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 
@@ -112,7 +113,7 @@ int loop() {
 
     for (; cmd->next != NULL; cmd = cmd->next) {
         if (pipe(currfds) == -1) {
-            printf("failed to open pipe in command\n");
+            printf("error: failed to open pipe\n");
             return 0;
         }
 
@@ -176,7 +177,7 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
         pid = fork();
 
         if (pid == -1) {
-            printf("failed to fork process\n");
+            printf("error: failed to fork process\n");
             return 0;
         }
 
@@ -198,10 +199,42 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
                 close(currfds[1]);
             }
 
+            // If we have an input redirect, we set the specified file to the
+            // STDIN. This will overwrite any piped input, which is consistent
+            // with bash's behavior.
+            if (cmd->input_redirection != NULL) {
+                char *fname = cmd->input_redirection;
+                int in_fd = open(fname, O_RDONLY);
+
+                if (in_fd < 0) {
+                    printf("error: could not read from file: %s\n", fname);
+                    exit(EXIT_FAILURE);
+                }
+
+                dup2(in_fd, STDIN_FILENO);
+                close(in_fd);
+            }
+
+            // If we have an output redirect, we set the specified file to the
+            // STDOUT. This means that nothing will be piped to the next
+            // function if any, which is consistent with bash's behavior.
+            if (cmd->output_redirection != NULL) {
+                char *fname = cmd->output_redirection;
+                int out_fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC);
+
+                if (out_fd < 0) {
+                    printf("error: could not write to file: %s\n", fname);
+                    exit(EXIT_FAILURE);
+                }
+
+                dup2(out_fd, STDOUT_FILENO);
+                close(out_fd);
+            }
+
             execvp(tokens[0], tokens);
 
             // If the above function returned, then the command doesn't exist.
-            printf("That command could not be found.\n");
+            printf("error: that command could not be found\n");
             exit(errno); // we exit here because we need the child to quit
         } else {
             if (currfds != NULL) {
