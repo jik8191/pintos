@@ -2,8 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "mysh.h"
-int yylex(); /* Included to get rid of a warning */
-void yyerror(); /* Included to get rid of a warning */
+
+// Function declarations, defined at the end.
+int yylex();
+void yyerror();
+command *init_command();
+
 %}
 
 %union {
@@ -57,18 +61,18 @@ redirects:
     |
     IN ARG redirects
     {
-        line->curr->input_redirection = $2;
+        line->curr->inredir = $2;
     }
     |
     OUT ARG redirects
     {
-        line->curr->output_redirection = $2;
+        line->curr->outredir = $2;
     }
     |
     APP ARG redirects
     {
-        line->curr->output_redirection = $2;
-        line->curr->output_append = 1;
+        line->curr->outredir = $2;
+        line->curr->outappend = 1;
     };
 
 basecommand:
@@ -78,11 +82,7 @@ basecommand:
         token_value->value = $1;
         token_value->next = NULL;
 
-        command *cmd = (command *) malloc(sizeof(command));
-        cmd->next = NULL;
-        cmd->input_redirection = NULL;
-        cmd->output_redirection = NULL;
-        cmd->output_append = 0;
+        command *cmd = init_command();
 
         if (line->curr != NULL) {
             line->curr->next = cmd;
@@ -90,11 +90,10 @@ basecommand:
 
         line->curr = cmd;
 
-        if (line->frst == NULL) {
-            line->frst = cmd;
+        if (line->first == NULL) {
+            line->first = cmd;
         }
 
-        line->curr->len = 1;
         line->curr->first_token = token_value;
         line->curr->last_token = token_value;
     };
@@ -103,28 +102,22 @@ arglist:
     |
     arglist ARG
     {
-        /* printf("ARG: %s\n", $2); */
-
-        // Putting the token in the command struct
         token *token_value = (token *) malloc(sizeof(token));
         token_value->value = $2;
         token_value->next = NULL;
 
-        line->curr->len++;
         line->curr->last_token->next = token_value;
         line->curr->last_token = token_value;
     }
     |
     arglist QUOTE_ARG
     {
-        // TODO can't handle newlines in string
         token *token_value = (token *) malloc(sizeof(token));
         token_value->value = $2;
         token_value->value++;
-        token_value->value[strlen($2) - 2] = 0; // 2 because of newline?
+        token_value->value[strlen($2) - 2] = 0;
         token_value->next = NULL;
 
-        line->curr->len++;
         line->curr->last_token->next = token_value;
         line->curr->last_token = token_value;
     }
@@ -132,14 +125,25 @@ arglist:
 
 %%
 
-void yyerror(const char *str)
-{
+void yyerror(const char *str) {
     fprintf(stderr, "error while parsing\n");
 }
 
-int yywrap()
-{
+int yywrap() {
     return 1;
 }
 
+/**
+ * @brief Initializes a command struct with default values.
+ *
+ * @return The initialized command struct.
+ */
+command *init_command() {
+    command *cmd = (command *) malloc(sizeof(command));
+    cmd->next = NULL;
+    cmd->inredir = NULL;
+    cmd->outredir = NULL;
+    cmd->outappend = 0;
 
+    return cmd;
+}
