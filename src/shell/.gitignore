@@ -2,3 +2,6 @@ y.tab.*
 lex.yy.c
 y.output
 mysh
+tests/cattysleep
+tests/sleepycat
+tests/outerr
