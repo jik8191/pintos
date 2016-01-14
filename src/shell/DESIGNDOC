@@ -8,11 +8,12 @@
 
 >> Fill in the names and email addresses of your group members.
 
-Nicholas	Cho		ncho2@caltech.edu
+Nicholas	Cho		    ncho2@caltech.edu
 Darius		Simmons		darius.simmons05@gmail.com
 Austin 		Liu 		yliu@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:  
+0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -25,6 +26,8 @@ Austin 		Liu 		yliu@caltech.edu
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please include them here.
+For extra credit we did the appending instead of truncating, and we used 
+readline and implemented the history command. 
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -33,6 +36,9 @@ Austin 		Liu 		yliu@caltech.edu
 http://www.cs.cornell.edu/Courses/cs414/2004su/homework/shell/shell.html
 http://stackoverflow.com/questions/4788374/writing-a-basic-shell
 http://stephen-brennan.com/2015/01/16/write-a-shell-in-c/
+http://www.tldp.org/HOWTO/Lex-YACC-HOWTO.html#toc4
+http://web.mit.edu/gnu/doc/html/rlman_2.html
+https://ftp.gnu.org/old-gnu/Manuals/flex-2.5.4/html_node/flex_12.html
 
 			   COMMAND SHELL
 			   =============
@@ -45,9 +51,18 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+   Austin Liu:
+   Darius Simmons: 20
+   Nick Cho: 15
+    
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+   Darius: Started the parsing via lex and yacc and the interface to C. Did
+   the readline extra credit. 
+   Nick: Improved the parsing, did pipes, and redirecting. Appending extra
+   credit. 
+   Austin: Refactored code in mysh.c, tokenizing the input from a linked list
 
 ---- DATA STRUCTURES ----
 
@@ -55,14 +70,20 @@ which parts.
 >> commands that contain arguments and pipes, using the example
 >> command "a arg1 arg2 | b arg1 | c arg1 arg2 arg3".  How does your
 >> shell internally represent such a command?
+    Our command shell has a parsed struct. WHich holds pointers to the 
+    first command and the last command. So the command would then be broken
+    into 3 different command structs that the parsed struct is keeping track
+    of. We then loop over these commands, if its an external command we fork.
+    TODO NICK
 
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
 >> Briefly explain specifically how the redirections are parsed and
 >> represented, and by what processes.
+    TODO NICK
 
 ---- ALGORITHMS ----
-
+TODO NICK
 >> A3: Illustrate how you solved the problem of setting up
 >> redirection in a simple command like "a < inp.txt > out.txt", by
 >> describing what process takes care of the redirection and when.
@@ -87,9 +108,16 @@ which parts.
 
 >> A7: Why must the chdir and exit commands be implemented as built-in
 >> functions, rather than external programs?
+    We want to change directories for the current process such that after
+    the command we will be in another directory. If we were to fork then 
+    the child would run it then the parent would still be the same. The same
+    goes for exit. We want to leave the current process. 
 
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
+    We chose to use lex and yacc because it would help us have a sophisticated
+    parsing system without having to spend all of our time writing it. 
+    TODO NICK explain pipes and redirects
 
 			  SURVEY QUESTIONS
 			  ================
@@ -105,6 +133,9 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+    It was cool to see how much you could do with so little code. In the 
+    end we had a fully functionally terminal that could even compile itself
+    and then run itself. 
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
