@@ -73,6 +73,8 @@ basecommand:
 
         command *cmd = (command *) malloc(sizeof(command));
         cmd->next = NULL;
+        cmd->input_redirection = NULL;
+        cmd->output_redirection = NULL;
 
         if (line->curr != NULL) {
             line->curr->next = cmd;
