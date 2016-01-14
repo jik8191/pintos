@@ -16,7 +16,7 @@ validchars  [^&:;<>`"'#~=%\|\(\)\$\*\?\[\]\\\t\r\n ]
 \|              return PIPE;
 \<              return IN;
 \>              return OUT;
-\".*\"          yylval.str=strdup(yytext); return ARG;
+\".*\"          yylval.str=strdup(yytext); return QUOTE_ARG;
 {validchars}+   yylval.str=strdup(yytext); return ARG;
 \n              return END;
 {whitesp}+      /* Ignore Whitespace */

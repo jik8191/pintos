@@ -16,6 +16,7 @@ void yyerror(); /* Included to get rid of a warning */
 %token OUT
 %token<str> ARG
 %token<str> EXIT
+%token<str> QUOTE_ARG
 %parse-param { struct parsed *line }
 
 %%
@@ -102,7 +103,22 @@ arglist:
         line->curr->len++;
         line->curr->last_token->next = token_value;
         line->curr->last_token = token_value;
-    };
+    }
+    |
+    arglist QUOTE_ARG
+    {
+        // TODO can't handle newlines in string
+        token *token_value = (token *) malloc(sizeof(token));
+        token_value->value = $2;
+        token_value->value++;
+        token_value->value[strlen($2) - 2] = 0; // 2 because of newline?
+        token_value->next = NULL;
+
+        line->curr->len++;
+        line->curr->last_token->next = token_value;
+        line->curr->last_token = token_value;
+    }
+    ;
 
 %%
 
