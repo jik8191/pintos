@@ -113,13 +113,15 @@ arglist:
     arglist QUOTE_ARG
     {
         int len = strlen($2) - 2;
-        char *quoted = malloc(len * sizeof(char));
+        char *quoted = (char *) malloc((len + 1) * sizeof(char));
 
         // Copy over everything but the two quotes.
         int i;
         for (i = 0; i < len; i++) {
             quoted[i] = $2[i+1];
         }
+
+        quoted[len] = '\0';
 
         token *tok = (token *) malloc(sizeof(token));
         tok->value = quoted;
