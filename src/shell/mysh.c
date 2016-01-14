@@ -13,6 +13,7 @@
 
 extern int yyparse(parsed *line);
 int loop();
+int exec_cmd(command *cmd, int *prevfds, int *currfds);
 
 int main() {
     int exitcode;
@@ -54,28 +55,24 @@ int loop() {
     char *dir_curr;
     char prompt[500] = "\0";
     int exitcode;
-    char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
 
     parsed *line = (parsed *) malloc(sizeof(parsed));
     line->frst = NULL;
     line->curr = NULL;
     line->error = 0;
-    // TODO: null check
-
-    /* root = NULL; */
-    /* cmd->first_token = root; */
 
     exitcode = 0;
 
     // Username of the session
     /* username = getlogin(); */
     username = getpwuid(getuid())->pw_name;
-    // Home directory of the user
-    dir_home = getenv("HOME");
+
     // Current directory
     dir_curr = getcwd(NULL, MAX_BUFSIZE); // Need to free this?
+
     // Getting the current prompt
     strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), ">");
+
     // Displaying the prompt
     printf("%s ", prompt);
 
@@ -87,107 +84,34 @@ int loop() {
         return 0; // Parse error, so skip this loop
     }
 
-    /* printf("Command type: %c\n", cmnd_struct->type); */
-    /* printf("Command String: "); */
-    /* for (temp = cmnd_struct->first_token; temp != NULL; temp = temp->next) { */
-    /*     printf("%s ", temp->value); */
-    /* } */
-    /* printf("\n"); */
-
-
-    command *cmd = line->frst;
-    if (cmd == NULL) {
+    if (line->frst == NULL) {
         return 0;
     }
 
-    char **tokens = tokenize(cmd);
+    char **tokens;
+    int prevfds[2] = {-1};
+    int currfds[2] = {-1};
 
-    // cd command. TODO: recognize chdir
-    if ((strcmp("cd", cmd->first_token->value) == 0)) {
-        if (cmd->first_token->next == NULL ||
-                !strcmp("~", cmd->first_token->next->value)){
-            chdir(dir_home);
-        }
-        else {
-            chdir(cmd->first_token->next->value);
-        }
-    } else {
+    command *cmd = line->frst;
 
-        int pipefd[2];
-        pid_t pid;
-        int has_next;
-        int prev_fd;
-
-        for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
-            tokens = tokenize(cmd);
-
-            if (cmd->next != NULL) {
-                has_next = 1;
-            } else {
-                has_next = 0;
-            }
-
-            if (has_next && pipe(pipefd) == -1) {
-                printf("failed to open pipe in command\n");
-                return 0;
-            }
-
-            pid = fork();
-
-            if (pid == -1) {
-                printf("failed to fork process\n");
-                exit(EXIT_FAILURE);
-            }
-
-            if (pid == 0) {
-                dup2(prev_fd, STDIN_FILENO);
-                close(prev_fd);
-
-                // TODO: We can just run a command outside the loop and change
-                // the indexing of the loop so we don't need these
-                // conditionals.
-                if (has_next) {
-                    close(pipefd[0]); // Close read end, we are writing to it.
-                    dup2(pipefd[1], STDOUT_FILENO);
-                    close(pipefd[1]);
-                }
-
-                execvp(tokens[0], tokens);
-
-                // If we return here, then exec failed.
-                printf("That command could not be found.\n");
-                exit(errno);
-            } else {
-                close(pipefd[1]); // Close write end, we are reading from it.
-
-                prev_fd = pipefd[0];
-
-                wait(NULL);
-            }
-
-        }
-
-        /*
+    for (; cmd->next != NULL; cmd = cmd->next) {
         tokens = tokenize(cmd);
-        pid = fork();
 
-        if (pid == 0) {
-            execvp(tokens[0], tokens);
-
-            // If we return here, then exec failed.
-            printf("That command could not be found.\n");
-            exit(errno);
-        } else {
-
-            close(pipefd[0]);
-            close(pipefd[1]);
-
-            wait(NULL);
+        if (pipe(currfds) == -1) {
+            printf("failed to open pipe in command\n");
+            return 0;
         }
-        */
+
+        exitcode = exec_cmd(cmd, prevfds, currfds);
+        // TODO: Maybe check error here.
+
+        *prevfds = *currfds;
     }
 
-    // Freeing the memory
+    exitcode = exec_cmd(cmd, prevfds, NULL);
+
+    /* Memory freeing */
+
     for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
         token *temp;
 
@@ -200,6 +124,81 @@ int loop() {
 
     free(line);
 
+    /******************/
+
     return exitcode;
 }
 
+
+/**
+ * @brief Executes a command specified by a command struct.
+ *
+ * `cd`s or `chdir`s are handled differently.
+ */
+int exec_cmd(command* cmd, int *prevfds, int *currfds) {
+
+    if (strcmp("cd", cmd->first_token->value) == 0 ||
+        strcmp("chdir", cmd->first_token->value) == 0) {
+
+        // CD to the user's home directory by default or with ~
+        if (cmd->first_token->next == NULL ||
+            !strcmp("~", cmd->first_token->next->value)){
+
+            // Home directory of the user
+            char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
+            dir_home = getenv("HOME");
+
+            chdir(dir_home);
+
+        } else {
+            chdir(cmd->first_token->next->value);
+        }
+
+    } else {
+
+        pid_t pid;
+        char **tokens;
+
+        tokens = tokenize(cmd);
+
+        pid = fork();
+
+        if (pid == -1) {
+            printf("failed to fork process\n");
+            return 0;
+        }
+
+        if (pid == 0) {
+
+            // If we are given the file descriptors of the previous process in
+            // the pipe chain, then use that pipe as our STDIN.
+            if (prevfds != NULL && prevfds[0] != -1) {
+                close(prevfds[1]);
+                dup2(prevfds[0], STDIN_FILENO);
+                close(prevfds[0]);
+            }
+
+            // If we have a pipe set up for the next process in the pipe chain,
+            // then use the pipe sa our STDOUT.
+            if (currfds != NULL && currfds[0] != -1) {
+                close(currfds[0]);
+                dup2(currfds[1], STDOUT_FILENO);
+                close(currfds[1]);
+            }
+
+            execvp(tokens[0], tokens);
+
+            // If the above function returned, then the command doesn't exist.
+            printf("That command could not be found.\n");
+            exit(errno); // we exit here because we need the child to quit
+        } else {
+            if (currfds != NULL) {
+                close(currfds[1]);
+            }
+
+            wait(NULL);
+        }
+    }
+
+    return 0;
+}
