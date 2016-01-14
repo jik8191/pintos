@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include "mysh.h"
@@ -72,6 +73,8 @@ void exec_cmd(command *cmd){
     dir_home = getenv("HOME");  // Home directory of the user */
     char **tokens = tokenize(cmd);
     token *temp;
+    int fd_ip;
+    int fd_op;
 
     
     if (debug){
@@ -88,6 +91,7 @@ void exec_cmd(command *cmd){
             printf("Output redirect to: ");
             printf("%s ", cmd->output_redirection); 
         }
+	printf("\n");
     }
     
     // TODO: refactor to include all builtin commands
@@ -108,6 +112,25 @@ void exec_cmd(command *cmd){
         if (pid == 0) {
             // child process
             // first argument is file to
+	    if (cmd->input_redirection != NULL){
+		// obtain file descriptor for input file
+		fd_ip = open(cmd->input_redirection, O_RDONLY);
+		// modify input file descriptor of child process
+		dup2(fd_ip, STDIN_FILENO);
+		// close file descriptor
+		// TODO: check that it actually is closed (-1 on failure)
+		close(fd_ip);
+	    }
+	    if (cmd->output_redirection != NULL){
+		// obtain file descriptor for output file, which might fail.
+		fd_op = open(cmd->output_redirection, O_WRONLY | O_APPEND);
+		// modify input file descriptor of child process
+		dup2(fd_op, STDOUT_FILENO);
+		// close file descriptor
+		// TODO: check that it actually is closed (-1 on failure)
+		close(fd_op);
+	    }
+	    
             execvp(tokens[0], tokens);
             printf("That command could not be found.\n");
             exit(errno);
@@ -124,13 +147,13 @@ void exec_cmd(command *cmd){
 
 
 void free_all(command *cmd, parsed* line){
-    for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
-        token *temp;
-        for (temp = cmd->first_token; temp != NULL; temp = temp->next) {
-            free(temp);
-        }
-        free(cmd);
-    }
+    /* for (cmd = line->frst; cmd != NULL; cmd = cmd->next) { */
+    /*     token *temp; */
+    /*     for (temp = cmd->first_token; temp != NULL; temp = temp->next) { */
+    /*         free(temp); */
+    /*     } */
+    /*     free(cmd); */
+    /* } */
     free(line);
 }
 
