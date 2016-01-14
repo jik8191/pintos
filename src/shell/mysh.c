@@ -225,6 +225,36 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
                 close(out_fd);
             }
 
+            // If we have a redirect of the form " n> file", we want to set
+            // the file descriptor at n to ouput to the file.
+            if (cmd->fdredir != NULL) {
+                char *fname = cmd->fdredir;
+
+                // Specify the options to the write file. Check if appending.
+                int options = O_WRONLY | O_CREAT;
+                if (cmd->outappend) {
+                    options = options | O_APPEND;
+                } else {
+                    options = options | O_TRUNC;
+                }
+
+                // Set the file permissions.
+                int permissions = S_IROTH   // Read for anyone
+                    | S_IRUSR | S_IWUSR     // R/W for owner
+                    | S_IRGRP | S_IWGRP;    // R/W for group
+
+                int out_fd = open(fname, options, permissions);
+
+                if (out_fd < 0) {
+                    printf("error: could not write to file: %s\n", fname);
+                    free(tokens);
+                    exit(EXIT_FAILURE);
+                }
+
+                dup2(out_fd, cmd->fdout);
+                close(out_fd);
+            }
+
             execvp(tokens[0], tokens);
 
             // If the above function returned, then the command doesn't exist.
@@ -316,6 +346,10 @@ void free_line(parsed *line) {
 
         if (ccmd->outredir != NULL) {
             free(ccmd->outredir);
+        }
+
+        if (ccmd->fdredir != NULL) {
+            free(ccmd->fdredir);
         }
 
         free(ccmd);

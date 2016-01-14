@@ -17,6 +17,7 @@ validchars  [^&:;<>`"'#~=%\|\(\)\$\?\[\]\\\t\r\n ]
 \<              return IN;
 \>              return OUT;
 \>\>            return APP;
+[0-9]+\>        yylval.str=strdup(yytext); return FDOUT;
 \".*\"          yylval.str=strdup(yytext); return QUOTE_ARG;
 {validchars}+   yylval.str=strdup(yytext); return ARG;
 \n              return END;

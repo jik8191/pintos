@@ -19,6 +19,7 @@ command *init_command();
 %token IN
 %token OUT
 %token APP
+%token<str> FDOUT
 %token<str> ARG
 %token<str> EXIT
 %token<str> QUOTE_ARG
@@ -73,6 +74,27 @@ redirects:
     {
         line->curr->outredir = $2;
         line->curr->outappend = 1;
+    }
+    |
+    FDOUT ARG redirects
+    {
+        int len = strlen($1) - 1; // pull out the '>'
+
+        char *numstr = (char *) malloc((len + 1) * sizeof(char));
+
+        // Copy over everything but the two quotes.
+        int i;
+        for (i = 0; i < len; i++) {
+            numstr[i] = $1[i];
+        }
+
+        numstr[len] = '\0';
+
+        line->curr->fdout = atoi(numstr);
+        line->curr->fdredir = $2;
+
+        free($1);
+        free(numstr);
     };
 
 basecommand:
@@ -155,6 +177,7 @@ command *init_command() {
     cmd->next = NULL;
     cmd->inredir = NULL;
     cmd->outredir = NULL;
+    cmd->fdredir = NULL;
     cmd->outappend = 0;
 
     return cmd;

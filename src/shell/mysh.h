@@ -24,7 +24,9 @@ typedef struct command {
     struct command *next;   // Next command in sequence
     char *inredir;          // The file to get input from
     char *outredir;         // The file to send output to
-    int outappend;             // Whether or not to append output
+    int outappend;          // Whether or not to append output
+    int fdout;              // If we have a ' n> ' redirect, this is n
+    char *fdredir;          // The file to redirect output specified by fdout
 } command;
 
 // This is an object containing the parsed entirety of a user's input
