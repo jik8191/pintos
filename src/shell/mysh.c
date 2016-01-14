@@ -220,8 +220,15 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             // function if any, which is consistent with bash's behavior.
             if (cmd->output_redirection != NULL) {
                 char *fname = cmd->output_redirection;
-                int out_fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC,
-                                  S_IRUSR | S_IRWXG | S_IRWXO);
+
+                int options = O_WRONLY | O_CREAT;
+                if (cmd->output_append) {
+                    options = options | O_APPEND;
+                } else {
+                    options = options | O_TRUNC;
+                }
+
+                int out_fd = open(fname, options, S_IRUSR | S_IRWXG | S_IRWXO);
 
                 if (out_fd < 0) {
                     printf("error: could not write to file: %s\n", fname);
