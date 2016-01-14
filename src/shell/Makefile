@@ -1,27 +1,22 @@
 CFLAGS = -Wall -g
 
 SRC = mysh.c y.tab.c lex.yy.c
-
-LEXNAME = parser.l
-
-YACCNAME = parser.y
+LEXSRC = parser.l
+YACCSRC = parser.y
 
 all: clean mysh
 
 mysh: $(SRC)
-	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS) -lreadline 
+	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS) -lreadline
 
-y.tab.c: $(YACCNAME)
-	yacc -d $(YACCNAME)
+y.tab.c: $(YACCSRC)
+	yacc -d $(YACCSRC)
 
-lex.yy.c: $(LEXNAME)
-	lex $(LEXNAME)
+lex.yy.c: $(LEXSRC)
+	lex $(LEXSRC)
 
 clean:
-	rm -f *.o *~ mysh
-	rm -f lex.yy.c
-	rm -f y.tab.c
-	rm -f y.tab.h
+	rm -f *.o lex.yy.c y.tab.* mysh *~
 
 .PHONY: all clean
 

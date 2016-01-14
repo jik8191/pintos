@@ -1,32 +1,20 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <errno.h>
-#include <pwd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include "mysh.h"
 #include "y.tab.h"
-#include <readline/readline.h>
-#include <readline/history.h>
 
-#define MAX_BUFSIZE 1024
-// TODO: reallocate memory to support arbitrary length buffer/filepath
+#define MAX_PROMPT_SIZE 500
+#define MAX_TOK_BUFSIZE 64
 
-extern int yyparse(parsed *line);
-extern void set_input(char *str);
-extern void clear();
-int loop();
-int exec_cmd(command *cmd, int *prevfds, int *currfds);
-void free_line(parsed *line);
-
+/**
+ * @brief The main shell process.
+ *
+ * This just loops until we receive an exitcode.
+ */
 int main() {
-    int exitcode;
+    int exitcode = 0;
 
-    exitcode = 0;
+    // Add readline history.
     using_history();
+
     while(exitcode == 0) {
         exitcode = loop();
     }
@@ -34,56 +22,34 @@ int main() {
     return 0;
 }
 
-#define MAX_TOK_BUFSIZE 64
-char **tokenize(command *cmnd_struct){
-    char **tokens = malloc(MAX_TOK_BUFSIZE*sizeof(char*)); // array of tokens
-    token *tok_temp = cmnd_struct->first_token;
-    int index = 0;
-
-    if (!tokens){
-        fprintf(stderr, "error: memory allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    while (tok_temp != NULL){
-        tokens[index] = tok_temp->value;
-        index+= 1;
-        tok_temp = tok_temp->next;
-        // TODO: reallocate if we run out of space
-    }
-
-    tokens[index] = NULL;
-
-    return tokens;
-}
-
+/**
+ * @brief A single iteration of the shell loop.
+ *
+ * Gets user input, parses it, and then runs the input.
+ */
 int loop() {
-    char *username;
-    char *dir_curr;
-    char prompt[500] = "\0";
-    int exitcode;
+    char prompt[MAX_PROMPT_SIZE] = "\0";
 
+    // This is used to check the return values of function calls.
+    int exitcode = 0;
+
+    // Initialize the parser parameter
     parsed *line = (parsed *) malloc(sizeof(parsed));
-    line->frst = NULL;
+    line->first = NULL;
     line->curr = NULL;
     line->error = 0;
 
-    exitcode = 0;
-
     // Username of the session
-    /* username = getlogin(); */
-    username = getpwuid(getuid())->pw_name;
+    /* username = getlogin(); // This is apparently unsafe. */
+    char *username = getpwuid(getuid())->pw_name;
 
     // Current directory
-    dir_curr = getcwd(NULL, MAX_BUFSIZE); // Need to free this?
+    char *dir_curr = getcwd(NULL, 0); // Need to free this?
 
     // Getting the current prompt
     strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), "> ");
 
-    free(dir_curr);
-
-    // Displaying the prompt
-    /*printf("%s ", prompt);*/
+    free(dir_curr); // no longer needed
 
     // Getting user input via readline
     static char *user_input = (char *) NULL;
@@ -94,74 +60,62 @@ int loop() {
         add_history(user_input);
     }
 
-    strcat(user_input, "\n");
+    // Add a newline to the end of the string b/c the parser expects it.
+    int input_len = strlen(user_input);
+    user_input = realloc(user_input, input_len + 2 * sizeof(char));
+    user_input[input_len + 1] = '\0';
+    user_input[input_len] = '\n';
+
+    // Set the input for the lexer & parser
     set_input(user_input);
+
+    // Parse and clear the lexer buffer
     exitcode = yyparse(line);
     clear();
-    free(user_input);
+
+    free(user_input); // no longer needed
+
     if (exitcode != 0) {
         free_line(line);
         return 1; // User asked to exit
-    }
-
-    if (line->error != 0) {
+    } else if (line->error != 0) {
         free_line(line);
         return 0; // Parse error, so skip this loop
-    }
-
-    if (line->frst == NULL) {
+    } else if (line->first == NULL) {
         free_line(line);
         return 0;
     }
 
+    // These will hold the file descriptors of the pipe before and after a
+    // given command. -1 indicates that they have not been set yet.
     int prevfds[2] = {-1};
     int currfds[2] = {-1};
 
-    command *cmd = line->frst;
+    command *cmd = line->first;
 
+    // This only loops through only commands that pipe into another command.
     for (; cmd->next != NULL; cmd = cmd->next) {
+        // Create the pipe
         if (pipe(currfds) == -1) {
             printf("error: failed to open pipe\n");
+
             free_line(line);
             return 0;
         }
 
+        // Exec the actual command
         exitcode = exec_cmd(cmd, prevfds, currfds);
-        // TODO: Maybe check error here.
 
         *prevfds = *currfds;
     }
 
+    // Exec the last command in the chain of pipes, or the single command if
+    // there is only one.
     exitcode = exec_cmd(cmd, prevfds, NULL);
-
-    /* Memory freeing */
-
-
-    /******************/
 
     free_line(line);
     return exitcode;
 }
-
-void free_line(parsed *line) {
-    command *ccmd, *ncmd;
-    token *ctok, *ntok;
-
-    for (ccmd = line->frst; ccmd != NULL; ccmd = ncmd) {
-        ncmd = ccmd->next;
-
-        for (ctok = ccmd->first_token; ctok != NULL; ctok = ntok) {
-            ntok = ctok->next;
-            free(ctok->value);
-            free(ctok);
-        }
-
-        free(ccmd);
-    }
-
-    free(line);
-}
-
 
 /**
  * @brief Executes a command specified by a command struct.
@@ -226,8 +180,8 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             // If we have an input redirect, we set the specified file to the
             // STDIN. This will overwrite any piped input, which is consistent
             // with bash's behavior.
-            if (cmd->input_redirection != NULL) {
-                char *fname = cmd->input_redirection;
+            if (cmd->inredir != NULL) {
+                char *fname = cmd->inredir;
                 int in_fd = open(fname, O_RDONLY);
 
                 if (in_fd < 0) {
@@ -243,11 +197,12 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             // If we have an output redirect, we set the specified file to the
             // STDOUT. This means that nothing will be piped to the next
             // function if any, which is consistent with bash's behavior.
-            if (cmd->output_redirection != NULL) {
-                char *fname = cmd->output_redirection;
+            if (cmd->outredir != NULL) {
+                char *fname = cmd->outredir;
 
+                // Specify the options to the write file. Check if appending.
                 int options = O_WRONLY | O_CREAT;
-                if (cmd->output_append) {
+                if (cmd->outappend) {
                     options = options | O_APPEND;
                 } else {
                     options = options | O_TRUNC;
@@ -272,7 +227,10 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
             free(tokens);
             exit(errno); // we exit here because we need the child to quit
         } else {
-            if (currfds != NULL) {
+            // If we are the parent, we can close the write end of the next
+            // pipe in the chain, since the next child will only need the read
+            // end.
+            if (currfds != NULL && currfds[1] != -1) {
                 close(currfds[1]);
             }
 
@@ -281,6 +239,76 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
     }
 
     return 0;
+}
+
+/**
+ * @brief Takes a linked list of tokens and returns an array.
+ *
+ * A token is an argument to a function and they are attached in a linked list
+ * format from the parser. We just turn this into an array.
+ *
+ * @param cmd The command that is being run.
+ *
+ * @return An array of pointers to the argument strings.
+ */
+char **tokenize(command *cmd){
+    // Size of the string array
+    int size = MAX_TOK_BUFSIZE * sizeof(char *);
+
+    char **tokens = malloc(size); // array of tokens
+    if (!tokens){
+        fprintf(stderr, "error: memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    token *tok_temp = cmd->first_token;
+
+    int index = 0;
+    while (tok_temp != NULL){
+        tokens[index] = tok_temp->value;
+        tok_temp = tok_temp->next;
+
+        index += 1;
+
+        // If we have too many tokens, reallocate the array to a larger one.
+        if (index >= size) {
+            size = size * 2;
+            tokens = realloc(tokens, size);
+        }
+    }
+
+    tokens[index] = NULL;
+
+    return tokens;
+}
+
+/**
+ * @brief Frees all the memory associated with a user's parsed input.
+ *
+ * The parsed line has a series of commands, each of which has a series of
+ * tokens (arguments), each of which have a value that needs to be freed.
+ *
+ * @param line The parsed user input.
+ */
+void free_line(parsed *line) {
+    // We always keep track of the current and next since this is a linked list
+    // and we free current before we can find the next.
+    command *ccmd, *ncmd;
+    token *ctok, *ntok;
+
+    for (ccmd = line->first; ccmd != NULL; ccmd = ncmd) {
+        ncmd = ccmd->next;
+
+        for (ctok = ccmd->first_token; ctok != NULL; ctok = ntok) {
+            ntok = ctok->next;
+            free(ctok->value);
+            free(ctok);
+        }
+
+        free(ccmd);
+    }
+
+    free(line);
 }
 
 
