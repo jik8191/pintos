@@ -27,6 +27,22 @@ int main() {
     return 0;
 }
 
+
+void print_prompt(){
+    char *prompt = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
+    strcat(prompt, "\0");
+    char *username;
+    char *dir_curr;
+
+    username = getlogin();      // Username of the session
+    // Current directory
+    dir_curr = getcwd(NULL, MAX_BUFSIZE); // Need to free this?
+    // Getting the current prompt
+    strcat(strcat(strcat(strcat(prompt, username), ":"), dir_curr), ">");
+    printf("%s ", prompt);
+}
+
+
 #define MAX_TOK_BUFSIZE 64
 char **tokenize(command *cmnd_struct){
     char **tokens = malloc(MAX_TOK_BUFSIZE*sizeof(char*)); // array of tokens
@@ -111,15 +127,42 @@ int loop() {
 
     for (cmd = line->frst; cmd != NULL; cmd = cmd->next) {
         token *temp;
-
         for (temp = cmd->first_token; temp != NULL; temp = temp->next) {
             free(temp);
         }
-
         free(cmd);
     }
-
     free(line);
+}
+
+int loop() {
+    int exitcode = 0;
+
+    parsed *line = (parsed *) malloc(sizeof(parsed));
+    line->frst = NULL;
+    line->curr = NULL;
+    line->error = 0;
+    // TODO: null checks for malloc
+
+    print_prompt();
+    exitcode = yyparse(line);
+    // TODO: move logic here to a function which handles all builtins
+    if (exitcode != 0) {
+        return 1; // User asked to exit
+    }
+    if (line->error != 0) {
+        return 0; // Parse error, so skip this loop
+    }
+
+
+    command *cmd = line->frst;
+    if (cmd == NULL) {
+        return 0;
+    }
+
+
+    exec_cmd(cmd);
+    free_all(cmd, line);
 
     /******************/
 
@@ -135,11 +178,11 @@ int loop() {
 int exec_cmd(command* cmd, int *prevfds, int *currfds) {
 
     if (strcmp("cd", cmd->first_token->value) == 0 ||
-        strcmp("chdir", cmd->first_token->value) == 0) {
+            strcmp("chdir", cmd->first_token->value) == 0) {
 
         // CD to the user's home directory by default or with ~
         if (cmd->first_token->next == NULL ||
-            !strcmp("~", cmd->first_token->next->value)){
+                !strcmp("~", cmd->first_token->next->value)){
 
             // Home directory of the user
             char *dir_home = (char *) malloc(sizeof(char) * MAX_BUFSIZE);
