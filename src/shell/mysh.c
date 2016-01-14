@@ -208,7 +208,12 @@ int exec_cmd(command* cmd, int *prevfds, int *currfds) {
                     options = options | O_TRUNC;
                 }
 
-                int out_fd = open(fname, options, S_IRUSR | S_IRWXG | S_IRWXO);
+                // Set the file permissions.
+                int permissions = S_IROTH   // Read for anyone
+                    | S_IRUSR | S_IWUSR     // R/W for owner
+                    | S_IRGRP | S_IWGRP;    // R/W for group
+
+                int out_fd = open(fname, options, permissions);
 
                 if (out_fd < 0) {
                     printf("error: could not write to file: %s\n", fname);
