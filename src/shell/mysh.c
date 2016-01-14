@@ -60,8 +60,13 @@ int loop() {
         add_history(user_input);
     }
 
+    // Add a newline to the end of the string b/c the parser expects it.
+    int input_len = strlen(user_input);
+    user_input = realloc(user_input, input_len + 2 * sizeof(char));
+    user_input[input_len + 1] = '\0';
+    user_input[input_len] = '\n';
+
     // Set the input for the lexer & parser
-    strcat(user_input, "\n");
     set_input(user_input);
 
     // Parse and clear the lexer buffer

@@ -5,7 +5,7 @@
 
 // Function declarations, defined at the end.
 int yylex();
-void yyerror();
+int yyerror();
 command *init_command();
 
 %}
@@ -134,8 +134,9 @@ arglist:
 
 %%
 
-void yyerror(const char *str) {
+int yyerror(const char *str) {
     fprintf(stderr, "error: couldn't parse that command\n");
+    return 0;
 }
 
 int yywrap() {
