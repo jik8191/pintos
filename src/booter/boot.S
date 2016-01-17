@@ -51,6 +51,23 @@ boot_start:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
 	#---------------------------------------------------------------------
 
+    mov $0x42, %ah # Extended Read Operation
+
+    # Push data disk address packet to packet to stack
+    push $0x00          # Starting index of sectors to read
+    push $0x00
+    push $0x20          # segment:offset of buffer to receive data 0x2000 for us
+    push $0x00
+    push $0x01          # Number of 512 byte sectors to read
+    push $0x00
+    push $0x00          # Unused, should be 0
+    push $0x10          # Size of the packet
+
+    mov %esp, %ds:(%si) # Set the pointer to the stack
+    int $0x10           # Call int 10
+    jc boot_fail        # Check cf flag, jump to boot_fail if set
+
+
 	mov	$STR_LOADED, %si
 	call	print_str
 
