@@ -53,18 +53,16 @@ boot_start:
 
     mov $0x42, %ah # Extended Read Operation
 
+    # Big endian: $0x10000001200000000000000000000001
+
     # Push data disk address packet to packet to stack
-    push $0x00          # Starting index of sectors to read
-    push $0x00
-    push $0x20          # segment:offset of buffer to receive data 0x2000 for us
-    push $0x00
-    push $0x01          # Number of 512 byte sectors to read
-    push $0x00
-    push $0x00          # Unused, should be 0
-    push $0x10          # Size of the packet
+    pushl $0x00000100 # Starting index of sectors to read
+    pushl $0x00000000
+    pushl $0x00200000 # segment:offset of buffer to receive data, 0x2000 for us
+    pushl $0x00100100 # Size of the packet/Unused, should be 0/Number of 512 byte sectors to read
 
     mov %esp, %ds:(%si) # Set the pointer to the stack
-    int $0x10           # Call int 10
+    int $0x13           # Call int 10
     jc boot_fail        # Check cf flag, jump to boot_fail if set
 
 
