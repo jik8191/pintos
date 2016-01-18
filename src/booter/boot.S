@@ -21,7 +21,7 @@
 	# We choose 0x00020000 (2000:0000 or equivalent), just because.  This
 	# would give us hundreds of KB of memory to use, but we won't use
 	# even a fraction of that space.
-	# 
+	#
 	# At this point, %dl will be the drive number of the boot device
 	# (i.e. the disk that the bootloader # was loaded off of).
 	# This allows us to load additional data from the boot disk.
@@ -51,22 +51,22 @@ boot_start:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
 	#---------------------------------------------------------------------
 
-	
+
     mov $0x42, %ah      # Extended Read Operation
 
     # Big endian: $0x10000001200000000000000000000001
     # IA32 is little endian, (read right to left)
     # Push data disk address packet to packet to stack
 
-    push  $0x0000     # starting index of sector to read 
+    push  $0x0000     # starting index of sector to read
     push  $0x0000
-    push  $0x0000	
+    push  $0x0000
     push  $0x0000
     push  $0x2000     # segment of buffer to receive data
-    push  $0x0000     # offset of buffer  
-    push  $0x0001     # 1 sector to read 
+    push  $0x0000     # offset of buffer
+    push  $0x0001     # 1 sector to read
     push  $0x0010     # 16 byte packet/unused
-   
+
 
     mov %sp, %si      # Set the DS:SI pointer to the stack, not
 	              # sure why %ds:(%si) fails when %ds==%ss
