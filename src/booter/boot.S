@@ -51,24 +51,27 @@ boot_start:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
 	#---------------------------------------------------------------------
 
-    # test int 10h printing
-    movb $0x0e, %ah     # use BIOS teletype function
-    movb '*', %al
-    int  $0x10
 	
     mov $0x42, %ah      # Extended Read Operation
 
+    # Big endian: $0x10000001200000000000000000000001
+    # IA32 is little endian, (read right to left)
     # Push data disk address packet to packet to stack
-    push $0x00          # Starting index of sectors to read
-    push $0x00
-    push $0x20          # segment:offset of buffer to receive data 0x2000 for us
-    push $0x00
-    push $0x01          # Number of 512 byte sectors to read
-    push $0x00
-    push $0x00          # Unused, should be 0
-    push $0x10          # Size of the packet
 
-    mov %esp, %ds:(%si) # Set the pointer to the stack
+    ;; push  $0x0000     # starting index of sector to read 
+    ;; push  $0x0000
+    ;; push  $0x0000	
+    ;; push  $0x0000
+    ;; push  $0x0000     # offset of buffer to receive data
+    ;; push  $0x0002     # segment of buffer  
+    ;; push  $0x1000     # 1 sector to read 
+    ;; push  $0x0100     # 16 byte packet/unused
+    pushl $0x00000100 # Starting index of sectors to read
+    pushl $0x00000000
+    pushl $0x00200000 # segment:offset of buffer to receive data, 0x2000 for us
+    pushl $0x00100100 # Size of the packet/Unused, should be 0/Number of 512 byte sectors to read
+
+    mov %esp, %ds:(%si) # Set the DS:SI pointer to the stack
     int $0x13           # Call int 13 for extended read operation
     jc boot_fail        # Check carry flag, jump to boot_fail if set
 
