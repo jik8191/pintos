@@ -58,22 +58,20 @@ boot_start:
     # IA32 is little endian, (read right to left)
     # Push data disk address packet to packet to stack
 
-    ;; push  $0x0000     # starting index of sector to read 
-    ;; push  $0x0000
-    ;; push  $0x0000	
-    ;; push  $0x0000
-    ;; push  $0x0000     # offset of buffer to receive data
-    ;; push  $0x0002     # segment of buffer  
-    ;; push  $0x1000     # 1 sector to read 
-    ;; push  $0x0100     # 16 byte packet/unused
-    pushl $0x00000100 # Starting index of sectors to read
-    pushl $0x00000000
-    pushl $0x00200000 # segment:offset of buffer to receive data, 0x2000 for us
-    pushl $0x00100100 # Size of the packet/Unused, should be 0/Number of 512 byte sectors to read
+    push  $0x0000     # starting index of sector to read 
+    push  $0x0000
+    push  $0x0000	
+    push  $0x0000
+    push  $0x2000     # segment of buffer to receive data
+    push  $0x0000     # offset of buffer  
+    push  $0x0001     # 1 sector to read 
+    push  $0x0010     # 16 byte packet/unused
+   
 
-    mov %esp, %ds:(%si) # Set the DS:SI pointer to the stack
-    int $0x13           # Call int 13 for extended read operation
-    jc boot_fail        # Check carry flag, jump to boot_fail if set
+    mov %sp, %si      # Set the DS:SI pointer to the stack, not
+	              # sure why %ds:(%si) fails when %ds==%ss
+    int $0x13         # Call int 13 for extended read operation
+    jc boot_fail      # Check carry flag, jump to boot_fail if set
 
 
 	mov	$STR_LOADED, %si
