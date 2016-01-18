@@ -51,7 +51,12 @@ boot_start:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
 	#---------------------------------------------------------------------
 
-    mov $0x42, %ah # Extended Read Operation
+    # test int 10h printing
+    movb $0x0e, %ah     # use BIOS teletype function
+    movb '*', %al
+    int  $0x10
+	
+    mov $0x42, %ah      # Extended Read Operation
 
     # Push data disk address packet to packet to stack
     push $0x00          # Starting index of sectors to read
@@ -64,8 +69,8 @@ boot_start:
     push $0x10          # Size of the packet
 
     mov %esp, %ds:(%si) # Set the pointer to the stack
-    int $0x10           # Call int 10
-    jc boot_fail        # Check cf flag, jump to boot_fail if set
+    int $0x13           # Call int 13 for extended read operation
+    jc boot_fail        # Check carry flag, jump to boot_fail if set
 
 
 	mov	$STR_LOADED, %si
