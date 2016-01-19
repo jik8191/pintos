@@ -9,9 +9,10 @@ void c_start(void) {
      */
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
+    init_video();
+    clear_screen();
+    print_screen(0, 0, "Hello World");
     while (1) {
-        init_video();
-        clear_screen();
         int printed = 0;
         if (!printed){
         }

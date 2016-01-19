@@ -29,6 +29,7 @@
 static int default_background;
 static int default_foreground;
 int make_color(int background, int foreground);
+void print_char(int x, int y, char c, int color);
 
 
 void init_video(void) {
@@ -49,12 +50,40 @@ void clear_screen(void) {
         // Setting the color
         *video++ = make_color(default_background, default_foreground); 
     }
+    /*print_char(WIDTH - 1, HEIGHT - 1, 'a', make_color(GREEN, RED));*/
+    /*print_char(0, 0, 'a', make_color(GREEN, RED));*/
 }
 
 int make_color(int background, int foreground) {
+    /* Makes a color given the background and foreground */
     int color;
     color = background;
-    color = color << 4;
-    color = color | foreground;
+    color = color << 4; // Setting the high nibble
+    color = color | foreground; // Setting the low nibble
     return color;
+}
+
+void print_char(int x, int y, char c, int color) {
+    /* Print a char to a location on the screen with a given color. The screen
+     * layout is such that the top left corner is (0, 0) and the bottom left 
+     * corner is (WIDTH - 1, HEIGHT - 1)
+     */
+    volatile char *video = (volatile char*) VIDEO_BUFFER;
+    int index = ((y * WIDTH) + x) * 2;
+    *(video + index) = c;
+    *(video + index + 1) = color;
+}
+
+void print_screen(int x, int y, const char *string) {
+    /* Prints a string to the screen starting from the given coordinates and
+     * goes laterally. 
+     */
+    while(*string != '\0') {
+        print_char(x++, y, *string++, 
+                   make_color(default_background, default_foreground));
+        if (x == WIDTH) {
+            x = 0;
+            y++;
+        }
+    }
 }

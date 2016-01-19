@@ -66,7 +66,7 @@ boot_start:
     pushl $0x00000001
     push  $0x2000     # segment of buffer to receive data
     push  $0x0000     # offset of buffer
-    push  $0x0001     # 1 sector to read
+    push  $0x0004     # 1 sector to read
     push  $0x1000     # 16 byte packet/unused
 
 

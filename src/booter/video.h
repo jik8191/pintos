@@ -29,6 +29,7 @@
 
 void init_video(void);
 void clear_screen(void);
+void print_screen(int x, int y, const char *string);
 
 
 #endif /* VIDEO_H */
