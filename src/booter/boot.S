@@ -64,10 +64,10 @@ boot_start:
     ;push  $0x0000
     pushl $0x00000000
     pushl $0x00000001
-    push  $0x0020     # segment of buffer to receive data
+    push  $0x2000     # segment of buffer to receive data
     push  $0x0000     # offset of buffer
     push  $0x0001     # 1 sector to read
-    push  $0x0010     # 16 byte packet/unused
+    push  $0x1000     # 16 byte packet/unused
 
 
     mov %sp, %si      # Set the DS:SI pointer to the stack, not
@@ -201,7 +201,7 @@ call_c_entry:
     #        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
     #---------------------------------------------------------------------
 
-    movl $0x20094, %ebx
+    movl $0x20018, %ebx
     call *(%ebx)
 
 
