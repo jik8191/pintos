@@ -58,11 +58,13 @@ boot_start:
     # IA32 is little endian, (read right to left)
     # Push data disk address packet to packet to stack
 
-    push  $0x0000     # starting index of sector to read
-    push  $0x0000
-    push  $0x0000
-    push  $0x0000
-    push  $0x2000     # segment of buffer to receive data
+    ;push  $0x0000     # starting index of sector to read
+    ;push  $0x0000
+    ;push  $0x0001
+    ;push  $0x0000
+    pushl $0x00000000
+    pushl $0x00000001
+    push  $0x0020     # segment of buffer to receive data
     push  $0x0000     # offset of buffer
     push  $0x0001     # 1 sector to read
     push  $0x0010     # 16 byte packet/unused
@@ -198,6 +200,10 @@ call_c_entry:
     #        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
     #        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
     #---------------------------------------------------------------------
+
+    movl $0x20094, %ebx
+    call *(%ebx)
+
 
     #=====================================================================
     # The rest of this file contains helper functions for the 16-bit
