@@ -1,3 +1,4 @@
+#include "video.h"
 /* This is the entry-point for the game! */
 void c_start(void) {
     /* TODO:  You will need to initialize various subsystems here.  This
@@ -9,18 +10,10 @@ void c_start(void) {
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {
+        init_video();
+        clear_screen();
         int printed = 0;
         if (!printed){
-            *((int*)0xb8000)=0x07690748;
-            /*
-            char *string = "hello";
-            volatile char *video = (volatile char*)0xb8000;
-            while (*string != '\0') {
-                *video++ = *string++;
-                *video++ = 0x1F;
-            }
-            */
         }
     }
 }
-

@@ -26,10 +26,35 @@
  *        position, or any other details you might want to keep track of!
  */
 
+static int default_background;
+static int default_foreground;
+int make_color(int background, int foreground);
+
 
 void init_video(void) {
     /* TODO:  Do any video display initialization you might want to do, such
      *        as clearing the screen, initializing static variable state, etc.
      */
+    default_background = BLUE;
+    default_foreground = WHITE;
 }
 
+void clear_screen(void) {
+    /* Clear the screen and set it to the default background color. */
+    int i = 0;
+    /* Pointer to the video buffer */
+    volatile char *video = (volatile char*) VIDEO_BUFFER;
+    for (i = 0; i < WIDTH * HEIGHT; i++) {
+        *video++ = ' '; // Setting the char value to a space
+        // Setting the color
+        *video++ = make_color(default_background, default_foreground); 
+    }
+}
+
+int make_color(int background, int foreground) {
+    int color;
+    color = background;
+    color = color << 4;
+    color = color | foreground;
+    return color;
+}

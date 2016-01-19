@@ -22,8 +22,13 @@
 #define YELLOW        14
 #define WHITE         15
 
+/* The width and height of the screen */
+#define WIDTH  80
+#define HEIGHT 25
+
 
 void init_video(void);
+void clear_screen(void);
 
 
 #endif /* VIDEO_H */
