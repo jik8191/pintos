@@ -134,6 +134,21 @@ start_protected:
 	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
 	#---------------------------------------------------------------------
 
+	# Disable interrupts, since any interrupt during this process would
+	# demolish us.  (We don't turn interrupts back on until we are safely in
+	# our C program, and have set up an Interrupt Descriptor Table.)
+	cli
+
+	# Set the Global Descriptor Table Register (GDTR) to our simple
+	# Global Descriptor Table specified at the end of the boot-loader.
+	data32 addr32 lgdt gdtdesc
+
+	# Turn on protected mode by modifying Control Register cr0 bit 0.
+	movl %cr0, %ebx
+	orl  CR0_PE, %ebx
+	movl %ebx, %cr0
+	
+	
 	# We're now in protected mode, but still in a 16-bit segment.  The
 	# CPU still has the real-mode code segment cached in %cs's segment
 	# descriptor.  We need to reload %cs, and the easiest way is to use a
@@ -183,13 +198,15 @@ call_c_entry:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
 	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
 	#---------------------------------------------------------------------
-
+        
 	#=====================================================================
 	# The rest of this file contains helper functions for the 16-bit
 	# portion of the bootloader, so switch back to 16-bit code generation.
 	.code16
 
 halt:
+	mov	$STR_FAILED, %si
+	call	print_str
 	cli			# Disable interrupts so we can't be waken up
 halt_loop:
 	hlt			# Halt the CPU
@@ -229,6 +246,7 @@ write_str_done:
 STR_LOADING:	.string "Loading program.\r\n"
 STR_LOADED:	.string "Loaded.\r\n"
 STR_FAILED:	.string "Failed to load program.\r\n"
+STR_HALTED:	.string "Program halted.\r\n"
 
 	#=====================================================================
 	# Global Descriptor Table for protected-mode operation
