@@ -58,10 +58,10 @@ boot_start:
     # IA32 is little endian, (read right to left)
     # Push data disk address packet to packet to stack
 
-    ;push  $0x0000     # starting index of sector to read
-    ;push  $0x0000
-    ;push  $0x0001
-    ;push  $0x0000
+    #push  $0x0000     # starting index of sector to read
+    #push  $0x0000
+    #push  $0x0001
+    #push  $0x0000
     pushl $0x00000000
     pushl $0x00000001
     push  $0x2000     # segment of buffer to receive data

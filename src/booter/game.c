@@ -11,6 +11,15 @@ void c_start(void) {
     while (1) {
         int printed = 0;
         if (!printed){
+            *((int*)0xb8000)=0x07690748;
+            /*
+            char *string = "hello";
+            volatile char *video = (volatile char*)0xb8000;
+            while (*string != '\0') {
+                *video++ = *string++;
+                *video++ = 0x1F;
+            }
+            */
         }
     }
 }
