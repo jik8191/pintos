@@ -30,20 +30,11 @@
 static int default_background;
 static int default_foreground;
 
-// Functions
-int make_color(int background, int foreground);
-void print_char(int x, int y, char c, int color);
-void print_score(int score);
-void print_col(int mid, int *offsets);
-const char *iota(int val);
-
 
 void init_video(void) {
-    /* TODO:  Do any video display initialization you might want to do, such
-     *        as clearing the screen, initializing static variable state, etc.
-     */
-    default_background = BLUE;
+    default_background = GREEN;
     default_foreground = WHITE;
+    clear_screen();
 }
 
 void clear_screen(void) {
@@ -58,11 +49,6 @@ void clear_screen(void) {
         // Setting the color
         *video++ = make_color(default_background, default_foreground);
     }
-    print_score(999);
-    int offsets[25] = {0,-1,-2,-1,0,0,0,0,0,1,2,3,4,3,2,1,0,0,0,0,0,0,0,0,0};
-    int offsets2[25] = {0,-1,-2,-1,0,0,0,0,0,1,2,3,4,3,2,1,0,0,0,0,0,0,0,0,0};
-    print_col(25, offsets);
-    print_col(35, offsets2);
 }
 
 int make_color(int background, int foreground) {
@@ -74,7 +60,19 @@ int make_color(int background, int foreground) {
     return color;
 }
 
-void print_char(int x, int y, char c, int color) {
+void print_char(int x, int y, char c) {
+    /* Print a char to a location on the screen with a given color. The screen
+     * layout is such that the top left corner is (0, 0) and the bottom left
+     * corner is (WIDTH - 1, HEIGHT - 1)
+     */
+    volatile char *video = (volatile char*) VIDEO_BUFFER;
+    int index = ((y * WIDTH) + x) * 2;
+    int color = make_color(default_background, default_foreground);
+    *(video + index) = c;
+    *(video + index + 1) = color;
+}
+
+void print_char_c(int x, int y, char c, int color) {
     /* Print a char to a location on the screen with a given color. The screen
      * layout is such that the top left corner is (0, 0) and the bottom left
      * corner is (WIDTH - 1, HEIGHT - 1)
@@ -83,16 +81,16 @@ void print_char(int x, int y, char c, int color) {
     int index = ((y * WIDTH) + x) * 2;
     *(video + index) = c;
     *(video + index + 1) = color;
+
 }
 
-void print_screen(int x, int y, const char *string) {
+void print_string(int x, int y, const char *string) {
     /* Prints a string to the screen starting from the given coordinates and
      * goes laterally.
      */
     // TODO handle when it goes beyond the y?
     while(*string != '\0') {
-        print_char(x++, y, *string++,
-                   make_color(default_background, default_foreground));
+        print_char(x++, y, *string++);
         if (x == WIDTH) {
             x = 0;
             y++;
@@ -100,32 +98,16 @@ void print_screen(int x, int y, const char *string) {
     }
 }
 
-void print_score(int score) {
-    // Print the score to the screen
-    print_screen(0, 0, "Score: ");
-    print_screen(7, 0, iota(score));
-}
-
-void print_col(int mid, int *offsets) {
-    // Prints a column centered around the mid x coordinate
-    // The offsets list deviations from the mid going top down
-    int i = 0;
-    for (; i < HEIGHT; i++) {
-        print_char(mid + offsets[i], i, '@', make_color(default_background, default_foreground));
+void print_string_c(int x, int y, const char *string, int color) {
+    /* Prints a string to the screen starting from the given coordinates and
+     * goes laterally.
+     */
+    // TODO handle when it goes beyond the y?
+    while(*string != '\0') {
+        print_char_c(x++, y, *string++, color);
+        if (x == WIDTH) {
+            x = 0;
+            y++;
+        }
     }
-}
-
-const char *iota(int val) {
-    // Converts an int to a string, max 31 chars (32 with null string)
-    // We only need to support base 10 for our purposes
-    int base = 10;
-    static char buf[32] = {0};
-    int i = 30;
-    // Go until i hits 0 or val hits 0
-    // The value is updated by dividing by the base to shift it over
-    for(; val && i; --i, val /= base) {
-        // Getting which char it is based on its mod 10
-        buf[i] = "0123456789"[val % base];
-    }
-    return &buf[i + 1];
 }

@@ -17,15 +17,18 @@ static int tunnelwidth;
 /**
  * Initialize the state of the game.
  */
-void init_state() {
+void init_tunnel() {
     // Player starts in the middle.
     player = COLS / 2;
 
-    tunnelwidth = TUNNEL_WIDTH;
+    //tunnelwidth = TUNNEL_WIDTH;
+    tunnelwidth = 10;
 
     // Wall is centered in the screen initially.
     leftwall[0] = (COLS - tunnelwidth - 2) / 2;
     rightwall[0] = leftwall[0] + tunnelwidth + 1;
+
+    wallarr_ptr = 1;
 
     // Create the randomized walls.
     int i;

@@ -9,7 +9,7 @@
 
 #include "random.h"
 
-void init_state();
+void init_tunnel();
 void tunnel_step();
 void tunnel_shrink();
 

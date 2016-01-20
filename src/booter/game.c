@@ -2,6 +2,7 @@
 #include "video.h"
 #include "keyboard.h"
 #include "timer.h"
+#include "draw.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -17,6 +18,8 @@ void c_start(void) {
     init_video();
     // Clear the screen to the default
     clear_screen();
+    start_screen();
+    /*draw_game();*/
     /*print_screen(0, 0, "Hello World");*/
     /*buffer *b;*/
     /*unsigned char k[20];*/
