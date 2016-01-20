@@ -18,15 +18,16 @@ void c_start(void) {
     // Clear the screen to the default
     clear_screen();
     /*print_screen(0, 0, "Hello World");*/
-    buffer *b;
-    unsigned char k[20];
-    init_buffer(b, k, 20);
+    /*buffer *b;*/
+    /*unsigned char k[20];*/
+    /*init_buffer(b, k, 20);*/
     // Initialize the keyboard
     /*init_keyboard();*/
     // Initialize the timer
     /*init_timer();*/
     int i = 0;
     while (1) {
+        /*
         i++;
         if (i % 200 == 0) {
             enqueue(b, 0x04);
@@ -38,5 +39,6 @@ void c_start(void) {
         else {
             print_screen(0, 0, "Hello World");
         }
+        */
     }
 }
