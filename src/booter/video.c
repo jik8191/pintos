@@ -47,10 +47,12 @@ void init_video(void) {
 }
 
 void clear_screen(void) {
-    /* Clear the screen and set it to the default background color. */
+    // Clear the screen and set it to the default background color.
     int i = 0;
-    /* Pointer to the video buffer */
+
+    // Pointer to the video buffer
     volatile char *video = (volatile char*) VIDEO_BUFFER;
+
     for (i = 0; i < WIDTH * HEIGHT; i++) {
         *video++ = ' '; // Setting the char value to a space
         // Setting the color
