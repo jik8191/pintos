@@ -1,3 +1,4 @@
+#include "buffer.h"
 #include "ports.h"
 #include "keyboard.h"
 #include "interrupts.h"
@@ -41,9 +42,9 @@
 
 // TODO does these need to be volatile?
 static unsigned char keyboard_array[BUFFER_LEN];
-static buffer *b;
+static buffer *keyboard_buffer;
 
-void init_keyboard(buffer *b) {
+void init_keyboard() {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
     /* TODO:  You might want to install your keyboard interrupt handler
@@ -51,7 +52,7 @@ void init_keyboard(buffer *b) {
      */
 
     /*disable_interrupts();*/
-    init_buffer(b, keyboard_array, BUFFER_LEN);
+    init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
     /*enable_interrupts();*/
 }
 
@@ -60,7 +61,11 @@ void keyboard_interupt(void) {
     unsigned char scan_code = inb(KEYBOARD_PORT);
     // Add it to the pressed queue
     /*disable_interrupts();*/
-    enqueue(b, scan_code);
+    enqueue(keyboard_buffer, scan_code);
     /*enable_interrupts();*/
+}
+
+unsigned char get_key() {
+    return dequeue(keyboard_buffer);
 }
 
