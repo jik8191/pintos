@@ -50,8 +50,6 @@ void clear_screen(void) {
         // Setting the color
         *video++ = make_color(default_background, default_foreground); 
     }
-    /*print_char(WIDTH - 1, HEIGHT - 1, 'a', make_color(GREEN, RED));*/
-    /*print_char(0, 0, 'a', make_color(GREEN, RED));*/
 }
 
 int make_color(int background, int foreground) {
@@ -78,6 +76,7 @@ void print_screen(int x, int y, const char *string) {
     /* Prints a string to the screen starting from the given coordinates and
      * goes laterally. 
      */
+    // TODO handle when it goes beyond the y?
     while(*string != '\0') {
         print_char(x++, y, *string++, 
                    make_color(default_background, default_foreground));

@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "ports.h"
+#include "game.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -39,6 +40,15 @@
 #define PIT_CHAN2_DATA 0x42
 #define PIT_MODE_CMD   0x43
 
+/* How often the timer is firing */
+#define FIRE_SPEED 100
+
+/* How often to change the speed of the game */
+#define PHASE_LENGTH 15
+
+/* The inital update time */
+#define INITIAL_UPDATE 0.25
+
 
 /* TODO:  You can create static variables here to hold timer state.
  *
@@ -46,6 +56,9 @@
  *        compiler knows they can be changed by exceptional control flow.
  */
 
+volatile int time_cnt;
+volatile float update_time;
+int seconds_to_interupts(float seconds);
 
 void init_timer(void) {
 
@@ -62,8 +75,25 @@ void init_timer(void) {
     outb(PIT_CHAN0_DATA, 0x2e);
 
     /* TODO:  Initialize other timer state here. */
+    time_cnt = 0; // Start the time count to be 0
+    update_time = INITIAL_UPDATE; // How often to update the game state
 
     /* TODO:  You might want to install your timer interrupt handler
      *        here as well.
      */
+}
+
+void timer_interupt(void) {
+    // A boolean to determine whether to change the game map
+    int update_map = time_cnt % seconds_to_interupts(update_time) == 0;
+    /* Seeing if you need to update the game state */
+    /*update_game_state(update_map);*/
+    /* Increment the time_count */
+    time_cnt++;
+}
+
+int seconds_to_interupts(float seconds) {
+    float num_interupts;
+    num_interupts = seconds * FIRE_SPEED;
+    return (int) num_interupts;
 }

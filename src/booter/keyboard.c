@@ -1,4 +1,6 @@
 #include "ports.h"
+#include "keyboard.h"
+#include "interrupts.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
  * codes are made available.  Scan codes can be read as follows:
@@ -22,6 +24,7 @@
  * See http://wiki.osdev.org/PS/2_Keyboard for details.
  */
 #define KEYBOARD_PORT 0x60
+#define BUFFER_LEN 20
 
 
 /* TODO:  You can create static variables here to hold keyboard state.
@@ -36,12 +39,28 @@
  *        so that nothing gets mangled...
  */
 
+// TODO does these need to be volatile?
+static unsigned char keyboard_array[BUFFER_LEN];
+static buffer *b;
 
-void init_keyboard(void) {
+void init_keyboard(buffer *b) {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
     /* TODO:  You might want to install your keyboard interrupt handler
      *        here as well.
      */
+
+    /*disable_interrupts();*/
+    init_buffer(b, keyboard_array, BUFFER_LEN);
+    /*enable_interrupts();*/
+}
+
+void keyboard_interupt(void) {
+    // Get the key that was pressed
+    unsigned char scan_code = inb(KEYBOARD_PORT);
+    // Add it to the pressed queue
+    /*disable_interrupts();*/
+    enqueue(b, scan_code);
+    /*enable_interrupts();*/
 }
 

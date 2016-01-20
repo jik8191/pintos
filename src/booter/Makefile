@@ -10,7 +10,7 @@ CFLAGS=-g
 
 BOOT_BIN = boot.bin
 
-OBJS = game.o video.o interrupts.o handlers.o timer.o keyboard.o
+OBJS = game.o video.o interrupts.o handlers.o timer.o keyboard.o buffer.o
 PROGRAM_OBJ = program.o
 PROGRAM_BIN = program.bin
 
