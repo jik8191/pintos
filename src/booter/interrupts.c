@@ -160,6 +160,13 @@ void IRQ_clear_mask(unsigned char IRQline) {
     outb(port, value);
 }
 
+/* Write len copies of val to dest 
+ * from JamesM's kernel development tutorials.*/
+void memset(u8int *dest, u8int val, u32int len) {
+    u8int *temp = (u8int *)dest;
+    for ( ; len != 0; len--) *temp++ = val;
+}
+
 
 /*============================================================================
  * GENERAL INTERRUPT-HANDLING OPERATIONS
@@ -177,6 +184,14 @@ void init_interrupts(void) {
      *        Once the entire IDT has been cleared, use the lidt() function
      *        defined above to install our IDT.
      */
+    int i;
+    u8int *temp = (u8int *) interrupt_descriptor_table;
+    // could use &idt instead of idt (same value in C), check code guidelines
+    memset(interrupt_descriptor_table, 0, 
+	   sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+    // Install the IDT
+    lidt((void *)interrupt_descriptor_table, 
+	 sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
