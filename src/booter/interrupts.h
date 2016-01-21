@@ -11,11 +11,8 @@
 #define TIMER_INTERRUPT 0x20
 #define KEYBOARD_INTERRUPT 0x21
 
-
 void init_interrupts(void);
 void install_interrupt_handler(int num, void *handler);
-void mask_interrupts();
-
 
 /* Returns true if interrupts are currently enabled, false otherwise. */
 static inline int are_interrupts_enabled() {

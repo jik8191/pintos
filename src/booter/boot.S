@@ -82,7 +82,7 @@ start_protected:
     # See also IA32 Manual Volume 3A, Section 8.9.1 for the general
     # overview.  (We only do the parts that are relevant to our
     # needs in this project!)
-   
+
     # Disable interrupts, since any interrupt during this process would
     # demolish us.  (We don't turn interrupts back on until we are safely in
     # our C program, and have set up an Interrupt Descriptor Table.)
