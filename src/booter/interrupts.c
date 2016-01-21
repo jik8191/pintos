@@ -162,10 +162,10 @@ void IRQ_clear_mask(unsigned char IRQline) {
 
 /* Write len copies of val to dest 
  * from JamesM's kernel development tutorials.*/
-void memset(u8int *dest, u8int val, u32int len) {
-    u8int *temp = (u8int *)dest;
-    for ( ; len != 0; len--) *temp++ = val;
-}
+/* void memset(u8int *dest, u8int val, u32int len) { */
+/*     u8int *temp = (u8int *)dest; */
+/*     for ( ; len != 0; len--) *temp++ = val; */
+/* } */
 
 
 /*============================================================================
@@ -184,14 +184,14 @@ void init_interrupts(void) {
      *        Once the entire IDT has been cleared, use the lidt() function
      *        defined above to install our IDT.
      */
-    int i;
-    u8int *temp = (u8int *) interrupt_descriptor_table;
-    // could use &idt instead of idt (same value in C), check code guidelines
-    memset(interrupt_descriptor_table, 0, 
-	   sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
-    // Install the IDT
-    lidt((void *)interrupt_descriptor_table, 
-	 sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+    /* int i; */
+    /* u8int *temp = (u8int *) interrupt_descriptor_table; */
+    /* // could use &idt instead of idt (same value in C), check code guidelines */
+    /* memset(interrupt_descriptor_table, 0,  */
+    /* 	   sizeof(IDT_Descriptor)*NUM_INTERRUPTS); */
+    /* // Install the IDT */
+    /* lidt((void *)interrupt_descriptor_table,  */
+    /* 	 sizeof(IDT_Descriptor)*NUM_INTERRUPTS); */
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
@@ -228,6 +228,21 @@ void install_interrupt_handler(int num, void *handler) {
      *        REMOVE THIS COMMENT WHEN YOU WRITE THE CODE.  (FEEL FREE TO
      *        INCORPORATE THE ABOVE COMMENTS IF YOU WISH.)
      */
+    interrupt_descriptor_table[num].offset_15_0 = handler & 0xFFFF;
+    interrupt_descriptor_table[num].offset_31_16 = (handler >> 16) & 0xFFFF;
 }
+
+
+/* This is the structure of a single interrupt descriptor.  For 32-bit
+ * interrupt addresses, the address is split across two 16-bit fields.
+ */
+typedef struct IDT_Descriptor {
+    uint16_t offset_15_0;      // offset bits 0..15
+    uint16_t selector;         // a code segment selector in GDT or LDT
+    uint8_t zero;              // unused, set to 0
+    uint8_t type_attr;         // descriptor type and attributes
+    uint16_t offset_31_16;     // offset bits 16..31
+} IDT_Descriptor;
+
 
 
