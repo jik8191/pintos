@@ -7,5 +7,6 @@
 #include "state.h"
 
 void init_keyboard();
+extern void keyboard_interrupt(void);
 
 #endif /* KEYBOARD_H */
