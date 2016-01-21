@@ -37,4 +37,7 @@ void print_string(int x, int y, const char *string);
 void print_string_c(int x, int y, const char *string, int color);
 
 
+void set_char(int x, int y, char c);
+void set_color(int x, int y, int color);
+
 #endif /* VIDEO_H */

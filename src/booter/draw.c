@@ -7,10 +7,17 @@ void print_tunnel(int *cols);
 void print_tunnels(int *right_col, int *left_col);
 void print_player(int x, int y);
 
+/**
+ * Print the starting message.
+ */
 void start_screen(void) {
-    // The inital screen at the start of the game
-    print_string(30, 7, "Don't Go Ashore!");
-    print_string(28, 10, "Press Space to begin");
+    print_string(2, 5, " ____              _ _      ____            _        _                    _");
+    print_string(2, 6, "|  _ \\  ___  _ __ ( ) |_   / ___| ___      / \\   ___| |__   ___  _ __ ___| |");
+    print_string(2, 7, "| | | |/ _ \\| '_ \\|/| __| | |  _ / _ \\    / _ \\ / __| '_ \\ / _ \\| '__/ _ \\ |");
+    print_string(2, 8, "| |_| | (_) | | | | | |_  | |_| | (_) |  / ___ \\\\__ \\ | | | (_) | | |  __/_|");
+    print_string(2, 9, "|____/ \\___/|_| |_|  \\__|  \\____|\\___/  /_/   \\_\\___/_| |_|\\___/|_|  \\___(_)");
+
+    print_string(30, 15, "Press Space to begin");
 }
 
 void draw_game() {
@@ -43,25 +50,32 @@ void print_tunnel(int *cols) {
     }
 }
 
-void print_tunnels(int *right_col, int *left_col) {
-    int i = 0;
-    int j = 0;
+void print_tunnels(int *lcol, int *rcol) {
     int wall_color = make_color(BROWN, WHITE);
     int water_color = make_color(BLUE, WHITE);
-    int left_bound;
-    int right_bound;
+
+    int i = 0;
+    int j = 0;
+
+    int l, r;
+    int h;
+
     for (; i < HEIGHT; i++) {
-        left_bound = left_col[i];
-        right_bound = right_col[i];
-        print_char_c(right_col[i], HEIGHT - i - 1, ' ', wall_color);
-        print_char_c(left_col[i], HEIGHT - i - 1, ' ', wall_color);
-        for (j = left_bound + 1; j < right_bound; j++) {
-            print_char_c(j, HEIGHT - i - 1, ' ', water_color);
+        l = lcol[i];
+        r = rcol[i];
+
+        h = HEIGHT - i - 1;
+
+        set_color(rcol[i], h, wall_color);
+        set_color(lcol[i], h, wall_color);
+
+        for (j = l + 1; j < r; j++) {
+            set_color(j, h, water_color);
         }
     }
 }
 
 void print_player(int x, int y) {
     int water_color = make_color(BLUE, WHITE);
-    print_char_c(40, 10, '@', water_color);
+    print_char_c(x, y, '^', water_color);
 }

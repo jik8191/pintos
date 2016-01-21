@@ -21,8 +21,7 @@ void init_tunnel() {
     // Player starts in the middle.
     player = COLS / 2;
 
-    //tunnelwidth = TUNNEL_WIDTH;
-    tunnelwidth = 10;
+    tunnelwidth = TUNNEL_WIDTH;
 
     // Wall is centered in the screen initially.
     leftwall[0] = (COLS - tunnelwidth - 2) / 2;
@@ -91,4 +90,11 @@ int *get_leftwall() {
  */
 int *get_rightwall() {
     return rightwall;
+}
+
+/**
+ * Return the x position of the player.
+ */
+int get_playerx() {
+    return player;
 }

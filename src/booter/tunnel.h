@@ -4,7 +4,7 @@
 #define COLS 80
 #define ROWS 25
 
-#define TUNNEL_WIDTH 16
+#define TUNNEL_WIDTH 22
 #define MINWIDTH 4
 
 #include "random.h"
@@ -15,6 +15,7 @@ void tunnel_shrink();
 
 int *get_leftwall();
 int *get_rightwall();
+int get_playerx();
 
 static inline int mod(int a, int b) {
     int r = a % b;

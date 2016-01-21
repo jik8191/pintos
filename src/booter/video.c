@@ -60,6 +60,20 @@ int make_color(int background, int foreground) {
     return color;
 }
 
+void set_char(int x, int y, char c) {
+    volatile char *video = (volatile char *) VIDEO_BUFFER;
+
+    int i = ((y * WIDTH) + x) * 2;
+    *(video + i) = c;
+}
+
+void set_color(int x, int y, int color) {
+    volatile char *video = (volatile char *) VIDEO_BUFFER;
+
+    int i = ((y * WIDTH) + x) * 2;
+    *(video + i + 1) = color;
+}
+
 void print_char(int x, int y, char c) {
     /* Print a char to a location on the screen with a given color. The screen
      * layout is such that the top left corner is (0, 0) and the bottom left
@@ -90,7 +104,7 @@ void print_string(int x, int y, const char *string) {
      */
     // TODO handle when it goes beyond the y?
     while(*string != '\0') {
-        print_char(x++, y, *string++);
+        set_char(x++, y, *string++);
         if (x == WIDTH) {
             x = 0;
             y++;
