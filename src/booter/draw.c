@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "video.h"
 
 /**
  * Print the starting message.
@@ -21,7 +22,7 @@ void print_gameover() {
     print_string(13, 9, "| |__| | (_| | | | | | |  __/ | |__| |\\ V /  __/ |   ");
     print_string(13, 10, " \\_____|\\__,_|_| |_| |_|\\___|  \\____/  \\_/ \\___|_|   ");
 
-    print_string(30, 15, "Press Space to restart");
+    print_string(29, 15, "Press Space to restart");
 }
 
 void draw_game() {
@@ -29,19 +30,20 @@ void draw_game() {
 
     switch(state) {
         case start:
-            /* clear_chars(); */
+            clear_chars();
             print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case running:
-            /* clear_chars(); */
+            reset_colors();
+            clear_chars();
             print_player(get_playerx(), ROWS - 2);
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case over:
-            /* clear_chars(); */
+            clear_chars();
             print_gameover();
             break;
     }
@@ -77,13 +79,13 @@ void print_tunnels(int *lcol, int *rcol) {
     int h;
 
     for (; i < HEIGHT; i++) {
-        l = lcol[i];
-        r = rcol[i];
+        l = get_wallelem(lcol, i);
+        r = get_wallelem(rcol, i);
 
         h = HEIGHT - i - 1;
 
-        set_color(rcol[i], h, wall_color);
-        set_color(lcol[i], h, wall_color);
+        set_color(l, h, wall_color);
+        set_color(r, h, wall_color);
 
         for (j = l + 1; j < r; j++) {
             set_color(j, h, water_color);

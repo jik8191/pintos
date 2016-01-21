@@ -2,6 +2,8 @@
 #include "ports.h"
 #include "game.h"
 #include "handlers.h"
+#include "video.h"
+#include "iota.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -45,7 +47,9 @@
 #define FIRE_SPEED 100
 
 /* How often to change the speed of the game */
-#define PHASE_LENGTH 15
+#define START_INTERVAL 20
+#define PHASE_LENGTH 100
+#define MIN_SPEED 3
 
 /* The inital update time */
 #define INITIAL_UPDATE 0.25
@@ -60,6 +64,8 @@
 volatile int time_cnt;
 volatile float update_time;
 int seconds_to_interrupts(float seconds);
+
+int step_t;
 
 void init_timer(void) {
 
@@ -76,6 +82,8 @@ void init_timer(void) {
     outb(PIT_CHAN0_DATA, 0x2e);
 
     /* TODO:  Initialize other timer state here. */
+    step_t = START_INTERVAL;
+
     time_cnt = 0; // Start the time count to be 0
     update_time = INITIAL_UPDATE; // How often to update the game state
 
@@ -84,9 +92,22 @@ void init_timer(void) {
 
 void timer_interrupt(void) {
     // A boolean to determine whether to change the game map
-    int do_update = time_cnt % seconds_to_interrupts(update_time) == 0;
+    /* int do_update = time_cnt % seconds_to_interrupts(update_time) == 0; */
     // Seeing if you need to update the game state
     //update_game_state(update_map);
+    print_string(60, 2, iota(time_cnt));
+
+    if (time_cnt % step_t == 0) {
+        if (get_state() == running) {
+            tunnel_step();
+        }
+    }
+
+    if (time_cnt % PHASE_LENGTH == 0 && step_t > MIN_SPEED) {
+        step_t -= 1;
+        tunnel_shrink();
+    }
+
     // Increment the time_count
     time_cnt++;
 }
@@ -95,4 +116,13 @@ int seconds_to_interrupts(float seconds) {
     float num_interrupts;
     num_interrupts = seconds * FIRE_SPEED;
     return (int) num_interrupts;
+}
+
+int get_t() {
+    return time_cnt;
+}
+
+void reset_t() {
+    step_t = START_INTERVAL;
+    time_cnt = 0;
 }
