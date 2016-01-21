@@ -33,9 +33,11 @@ void clear_screen();
 void clear_chars();
 void reset_colors();
 int make_color(int background, int foreground);
+void print_string(int x, int y, const char *string);
+
+// These are not used right now, but they are there for debugging.
 void print_char(int x, int y, char c);
 void print_char_c(int x, int y, char c, int color);
-void print_string(int x, int y, const char *string);
 void print_string_c(int x, int y, const char *string, int color);
 
 

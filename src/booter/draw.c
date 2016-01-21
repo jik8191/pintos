@@ -108,6 +108,6 @@ void print_tunnels(int *lcol, int *rcol) {
  * Print the player character.
  */
 void print_player(int x, int y) {
-    int raft_color = make_color(WHITE, BROWN);
     set_char(x, y, '^');
 }
+

@@ -109,7 +109,7 @@ void set_color(int x, int y, int color) {
 }
 
 /**
- * Print a char to a location on the screen with a given color.
+ * Print a char to a location on the screen with the default color.
  *
  * The screen layout is such that the top left corner is (0, 0) and the bottom
  * left corner is (WIDTH - 1, HEIGHT - 1)

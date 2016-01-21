@@ -1,9 +1,11 @@
 #include "timer.h"
+
 #include "ports.h"
 #include "game.h"
 #include "handlers.h"
 #include "video.h"
 #include "iota.h"
+#include "interrupts.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
