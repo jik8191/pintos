@@ -1,4 +1,5 @@
 #include "buffer.h"
+
 /* Change this code to use an array because thats how we will have to implement
  * it because we do not have malloc.
  */

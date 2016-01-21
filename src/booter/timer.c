@@ -89,6 +89,8 @@ void init_timer(void) {
 /* What to do when the timer interupt fires */
 void timer_interrupt(void) {
 
+    disable_interrupts();
+
     if (get_state() == running) {
         /* If the number of interupts is divisble by the tunnel update time then
         * call tunnel_step.
@@ -116,6 +118,8 @@ void timer_interrupt(void) {
 
     // Increment the time_count
     time_cnt++;
+
+    enable_interrupts();
 }
 
 /* Returns the number of timer counts */
