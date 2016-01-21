@@ -3,5 +3,10 @@
  *
  * You will need lines like these:  void *(irqN_handler)(void)
  */
-void * (keyboard_handler)(void);
+#ifndef HANDLER_H
+#define HANDLER_H
+
+#define (void *) keyboard_handler(void);
+#endif /* HANDLER_H */
+
 
