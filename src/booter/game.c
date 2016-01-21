@@ -18,6 +18,7 @@ void c_start(void) {
     init_state();
     // Clear the screen to the default
     clear_screen();
+    draw_game();
 
     /* mask_interrupts(); */
     enable_interrupts();
@@ -25,6 +26,5 @@ void c_start(void) {
     draw_game();
 
     while (1) {
-        /* draw_game(); */
     }
 }
