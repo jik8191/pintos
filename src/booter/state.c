@@ -1,4 +1,4 @@
-#include "tunnel.h"
+#include "state.h"
 
 // The state of the game
 static gamestate state = start;
@@ -22,7 +22,7 @@ static int tunnelwidth;
 /**
  * Initialize the state of the game.
  */
-void init_tunnel() {
+void init_state() {
     // Player starts in the middle.
     player = COLS / 2;
 

@@ -1,9 +1,4 @@
-#include "buffer.h"
-#include "video.h"
-#include "keyboard.h"
-#include "timer.h"
-#include "draw.h"
-#include "tunnel.h"
+#include "game.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -17,7 +12,7 @@ void c_start(void) {
     /* Loop forever, so that we don't fall back into the bootloader code. */
     // Initialize the video
     init_video();
-    init_tunnel();
+    init_state();
     // Clear the screen to the default
     clear_screen();
 

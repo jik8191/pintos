@@ -26,7 +26,7 @@
 #define WIDTH  80
 #define HEIGHT 25
 
-#include "tunnel.h"
+#include "state.h"
 
 void init_video(void);
 void clear_screen(void);

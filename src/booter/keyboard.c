@@ -1,8 +1,4 @@
-#include "buffer.h"
-#include "ports.h"
 #include "keyboard.h"
-#include "interrupts.h"
-#include "tunnel.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
  * codes are made available.  Scan codes can be read as follows:

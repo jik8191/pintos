@@ -1,5 +1,5 @@
-#ifndef TUNNEL_H
-#define TUNNEL_H
+#ifndef STATE_H
+#define STATE_H
 
 #define COLS 80
 #define ROWS 25
@@ -15,7 +15,7 @@ typedef enum State {
     over
 } gamestate;
 
-void init_tunnel();
+void init_state();
 void tunnel_step();
 void tunnel_shrink();
 
@@ -37,4 +37,4 @@ static inline int mod(int a, int b) {
     return r;
 }
 
-#endif // TUNNEL_H
+#endif // STATE_H
