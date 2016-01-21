@@ -73,13 +73,13 @@ void check_key() {
         // A is pressed
         case 0x1E:
             if (state == running) {
-                update_player();
+                /* update_player(); */
             }
             break;
         // D is pressed
         case 0x20:
             if (state == running) {
-                update_player();
+                /* update_player(); */
             }
             break;
         // Space is pressed
