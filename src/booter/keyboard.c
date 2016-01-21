@@ -50,9 +50,8 @@ void init_keyboard() {
      *        here as well.
      */
 
-    disable_interrupts();
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
-    enable_interrupts();
+    install_interrupt_handler(KEYBOARD_INTERRUPT, keyboard_interrupt);
 }
 
 void keyboard_interrupt(void) {
@@ -75,17 +74,22 @@ void check_key() {
                 update_player(-1);
             }
             break;
+
         // D is pressed
         case 0x20:
             if (state == running) {
                 update_player(1);
             }
             break;
+
         // Space is pressed
         case 0x39:
             if (state == start) {
                 set_state(running);
+            } else if (state == over) {
+                set_state(start);
             }
+
             break;
     }
 }

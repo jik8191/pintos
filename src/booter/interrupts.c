@@ -2,9 +2,6 @@
 #include "boot.h"
 #include "ports.h"
 
-
-
-
 /*============================================================================
  * INTERRUPT DESCRIPTOR TABLE
  *
@@ -193,8 +190,7 @@ void init_interrupts(void) {
     memset_zero(start, start + size);
 
     // Install the IDT
-    lidt((void *) interrupt_descriptor_table,
-         sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+    lidt(interrupt_descriptor_table, size);
 
     /* For each interupt, let the interrupt handler know where the ISR is
        Do after ISRs are written.

@@ -8,6 +8,7 @@
 #define MINWIDTH 4
 
 #include "random.h"
+#include "draw.h"
 
 typedef enum State {
     start,
