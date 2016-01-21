@@ -258,10 +258,14 @@ We don't use any keys with multi-byte scan codes.
 >> E3: What abstraction does your keyboard code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+None really since interrupts are handled by the keyboard code itself.
+
 >> E4: Does your keyboard subsystem expose scan-codes directly to your main
 >> program, or does it preprocess them and expose other information to your
 >> main program?  If scan-code data is preprocessed, briefly describe what
 >> information is actually exposed, and how it is derived from scan-codes.
+
+It just preprocesses them and updates the game state  accordingly.
 
 ---- SYNCHRONIZATION ----
 
@@ -270,16 +274,23 @@ We don't use any keys with multi-byte scan codes.
 >> internal state?  If so, what steps did you take to ensure that such
 >> situations cannot occur?
 
+No.
+
 >> E6: Given how your program handles keyboard events, is there any
 >> potential for keyboard interrupts to generate race conditions in updating
 >> your program's global state?  If so, what steps did you take to ensure
 >> that such situations cannot occur?
+
+No.
 
 ---- RATIONALE ----
 
 >> E7: Why did you choose the design and data representation that your
 >> keyboard subsystem uses?  How is it suited to your program's overall
 >> operation?
+
+We used a circular queue to handle multiple key presses, but this was 
+not strictly necessary since the game does not have multiple key presses.
 
 			  SURVEY QUESTIONS
 			  ================
