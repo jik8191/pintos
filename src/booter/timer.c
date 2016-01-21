@@ -2,6 +2,8 @@
 #include "ports.h"
 #include "game.h"
 #include "handlers.h"
+#include "video.h"
+#include "iota.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -87,6 +89,7 @@ void timer_interrupt(void) {
     /* int do_update = time_cnt % seconds_to_interrupts(update_time) == 0; */
     // Seeing if you need to update the game state
     //update_game_state(update_map);
+    print_string(60, 2, iota(time_cnt));
 
     // Increment the time_count
     time_cnt++;
