@@ -52,7 +52,7 @@ void init_keyboard() {
      *        here as well.
      */
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
-    install_interrupt_handler(KEYBOARD_INTERRUPT, keyboard_handler);
+    install_interrupt_handler(KEYBOARD_INTERRUPT, irq_keyboard_handler);
 }
 
 void keyboard_interrupt(void) {
@@ -60,10 +60,10 @@ void keyboard_interrupt(void) {
     unsigned char scan_code = inb(KEYBOARD_PORT);
 
     // Add it to the pressed queue
-    disable_interrupts();
+    /* disable_interrupts(); */
     enqueue(keyboard_buffer, scan_code);
     check_key();
-    enable_interrupts();
+    /* enable_interrupts(); */
 }
 
 void check_key() {

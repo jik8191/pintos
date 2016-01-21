@@ -12,10 +12,10 @@ void c_start(void) {
     /* Loop forever, so that we don't fall back into the bootloader code. */
     // Initialize the video
     init_interrupts();
-    init_video();
-    init_state();
     init_keyboard();
     init_timer();
+    init_video();
+    init_state();
     // Clear the screen to the default
     clear_screen();
 

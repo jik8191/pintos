@@ -3,5 +3,5 @@
  *
  * You will need lines like these:  void *(irqN_handler)(void)
  */
-void * (keyboard_handler)(void);
-void * (timer_handler)(void);
+void *(irq_keyboard_handler)(void);
+void *(irq_timer_handler)(void);
