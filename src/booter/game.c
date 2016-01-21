@@ -18,6 +18,7 @@ void c_start(void) {
     init_timer();
     // Clear the screen to the default
     clear_screen();
+
     enable_interrupts();
 
     draw_game();
