@@ -12,13 +12,13 @@ Nicholas	Cho		ncho2@caltech.edu
 Darius		Simmons		darius.simmons05@gmail.com
 Austin 		Liu 		yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment: 0 
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL:
    commit ...
 
 ---- PRELIMINARIES ----
@@ -35,6 +35,9 @@ INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
 https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
 http://www.osdever.net/bkerndev/Docs/idt.htm
 http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html
+https://en.wikipedia.org/wiki/Circular_buffer
+http://wiki.osdev.org/Printing_To_Screen
+http://www.strudel.org.uk/itoa/
 
 			     PC BOOTER
 			     =========
@@ -47,18 +50,18 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
-   
-   Nick:
-   Darius:
-   Austin:
-   
+
+   Nick: 14
+   Darius: 17
+   Austin: 10
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   Nick: 
-   Darius: Bootstrapping code for the bootloader, video and keyboard 
+   Nick:
+   Darius: Bootstrapping code for the bootloader, video and keyboard
            functionality
-   Austin: Bootstrapping code for the bootloader, interrupt 
+   Austin: Bootstrapping code for the bootloader, interrupt
            descriptor table setup
 
 Note that this design document is a bit long.  Most of the questions can be
@@ -72,13 +75,13 @@ not required by the question.
 
 >> A1: In 25-30 words or less, what does your PC booter do?
 
-It loads the game program we want to run into memory and then passes 
+It loads the game program we want to run into memory and then passes
 control of the processor to the game program.
 
 >> A2: In 25-30 words or less, how does the user interact with the program?
 >> What are the controls?  What should the user try to do?
 
-The user interacts with the program via the keyboard. 
+The user interacts with the program via the keyboard.
 TODO: elaborate on controls and game
 
 ---- DATA STRUCTURES ----
@@ -97,9 +100,9 @@ TODO: elaborate on controls and game
 >> Similarly, when a keyboard interrupt occurs, what does your program do
 >> in response?
 
-When an timer interrupt occurs, we suspend the program and call the 
-interrupt service routine (ISR) from the interrupt descriptor 
-table (IDT). We maintain a count and update the map 
+When an timer interrupt occurs, we suspend the program and call the
+interrupt service routine (ISR) from the interrupt descriptor
+table (IDT). We maintain a count and update the map
 and game time at regular intervals.
 
 
@@ -143,8 +146,13 @@ No information is passed.
 >> B3: Briefly describe how your bootloader brings your program into
 >> memory.  Does it perform one large load, or multiple smaller loads?
 
+Our bootloader does one large load. It pushes the DAP onto the stack and then
+calls the interupt to do the load.
+
 >> B4: Did you add any BIOS calls to your bootloader to prepare for your
 >> main program?  (i.e. things that aren't available in protected mode)
+
+No we didn't do any BIOS calls.
 
 			  VIDEO SUBSYSTEM
 			  ===============
@@ -156,20 +164,33 @@ No information is passed.
 >> represented in this mode?  (Please be brief; we don't need complete
 >> documentation on the video system.)
 
+We used text mode. The video buffer starts from 0xB8000. It is represented
+by two btyes. Where one byte is the char and the second is the color.
+
 >> C2: Does your video code maintain any variables or data structures to
 >> facilitate video output?  Briefly describe these values and their
 >> purposes here.
+
+The only variables that we maintain are variables to the default colors. Just
+wanted to keep a default background and foreground color.
 
 ---- ALGORITHMS ----
 
 >> C3: What abstraction does your video code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+It provides abstractions to clear the screen, reset the colors to defaults,
+make a color byte given the desired background and foreground. And the ability
+to print chars and strings to any where on the screen.
+
 ---- RATIONALE ----
 
 >> C4: Did you take any specific steps to improve the appearance of your
 >> program's display output?  For example, using Extended ASCII Codes, or
 >> choosing specific colors to represent different things?
+
+We used colors in our program. We have a river that is blue. A shore that is
+brown and green grass.
 
 			  TIMER SUBSYSTEM
 			  ===============
@@ -213,6 +234,10 @@ No information is passed.
 >> program, or does it preprocess them and expose other information to your
 >> main program?  If scan-code data is preprocessed, briefly describe what
 >> information is actually exposed, and how it is derived from scan-codes.
+
+It doesn't expose scan codes to the main program. It proprocesses them and then
+calls functions based n the codee. The information exposed is that the player
+should go right or left or that the game should start.
 
 ---- SYNCHRONIZATION ----
 
