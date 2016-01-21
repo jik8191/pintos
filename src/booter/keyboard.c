@@ -1,8 +1,8 @@
-#include "buffer.h"
-#include "ports.h"
 #include "keyboard.h"
-#include "interrupts.h"
-#include "tunnel.h"
+#include "video.h"
+#include "handlers.h"
+#include "random.h"
+#include "timer.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
  * codes are made available.  Scan codes can be read as follows:
@@ -50,23 +50,17 @@ void check_key();
 void init_keyboard() {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
-    /* TODO:  You might want to install your keyboard interrupt handler
-     *        here as well.
-     */
-
-    disable_interrupts();
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
-    enable_interrupts();
+    install_interrupt_handler(KEYBOARD_INTERRUPT, irq_keyboard_handler);
 }
 
-void keyboard_interupt(void) {
+void keyboard_interrupt(void) {
     // Get the key that was pressed
     unsigned char scan_code = inb(KEYBOARD_PORT);
+
     // Add it to the pressed queue
-    disable_interrupts();
     enqueue(keyboard_buffer, scan_code);
     check_key();
-    enable_interrupts();
 }
 
 void check_key() {
@@ -79,17 +73,26 @@ void check_key() {
                 update_player(-1);
             }
             break;
+
         // D is pressed
         case 0x20:
             if (state == running) {
                 update_player(1);
             }
             break;
+
         // Space is pressed
         case 0x39:
             if (state == start) {
+                seed(get_t());
                 set_state(running);
+            } else if (state == over) {
+                reset_t();
+                clear_screen();
+                init_state();
+                set_state(start);
             }
+
             break;
     }
 }

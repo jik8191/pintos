@@ -1,16 +1,10 @@
 #include "draw.h"
-
-// Functions
-void start_screen();
-void print_score(int score);
-void print_tunnel(int *cols);
-void print_tunnels(int *right_col, int *left_col);
-void print_player(int x, int y);
+#include "video.h"
 
 /**
  * Print the starting message.
  */
-void start_screen(void) {
+void print_startmsg() {
     print_string(2, 5, " ____              _ _      ____            _        _                    _");
     print_string(2, 6, "|  _ \\  ___  _ __ ( ) |_   / ___| ___      / \\   ___| |__   ___  _ __ ___| |");
     print_string(2, 7, "| | | |/ _ \\| '_ \\|/| __| | |  _ / _ \\    / _ \\ / __| '_ \\ / _ \\| '__/ _ \\ |");
@@ -18,27 +12,52 @@ void start_screen(void) {
     print_string(2, 9, "|____/ \\___/|_| |_|  \\__|  \\____|\\___/  /_/   \\_\\___/_| |_|\\___/|_|  \\___(_)");
 
     print_string(30, 15, "Press Space to begin");
+    print_string(27, 17, "Press 'A' and 'D' to move");
+}
+
+void print_gameover() {
+    print_string(13, 5, "  _____                         ____                 ");
+    print_string(13, 6, " / ____|                       / __ \\                ");
+    print_string(13, 7, "| |  __  __ _ _ __ ___   ___  | |  | |_   _____ _ __ ");
+    print_string(13, 8, "| | |_ |/ _` | '_ ` _ \\ / _ \\ | |  | \\ \\ / / _ \\ '__|");
+    print_string(13, 9, "| |__| | (_| | | | | | |  __/ | |__| |\\ V /  __/ |   ");
+    print_string(13, 10, " \\_____|\\__,_|_| |_| |_|\\___|  \\____/  \\_/ \\___|_|   ");
+
+    print_string(29, 15, "Press Space to restart");
 }
 
 void draw_game() {
     gamestate state = get_state();
+
     switch(state) {
         case start:
-            start_screen();
-        case running:
-            print_score(get_score());
+            clear_chars();
+            print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
+            break;
+
+        case running:
+            reset_colors();
+            clear_chars();
             print_player(get_playerx(), ROWS - 2);
+            print_tunnels(get_leftwall(), get_rightwall());
+            break;
+
         case over:
+            clear_chars();
+            print_gameover();
             break;
     }
-    print_score(get_score());
+
+    print_scores();
 }
 
-void print_score(int score) {
+void print_scores() {
     // Print the score to the screen
     print_string(0, 0, "Score: ");
-    print_string(7, 0, iota(score));
+    print_string(7, 0, iota(get_score()));
+    print_string(0, 1, "High Score: ");
+    print_string(12, 1, iota(get_highscore()));
 }
 
 void print_tunnel(int *cols) {
@@ -63,13 +82,13 @@ void print_tunnels(int *lcol, int *rcol) {
     int h;
 
     for (; i < HEIGHT; i++) {
-        l = lcol[i];
-        r = rcol[i];
+        l = get_wallelem(lcol, i);
+        r = get_wallelem(rcol, i);
 
         h = HEIGHT - i - 1;
 
-        set_color(rcol[i], h, wall_color);
-        set_color(lcol[i], h, wall_color);
+        set_color(l, h, wall_color);
+        set_color(r, h, wall_color);
 
         for (j = l + 1; j < r; j++) {
             set_color(j, h, water_color);

@@ -2,9 +2,6 @@
 #include "boot.h"
 #include "ports.h"
 
-#include <stdint.h>
-
-
 /*============================================================================
  * INTERRUPT DESCRIPTOR TABLE
  *
@@ -44,7 +41,6 @@ static inline void lidt(void* base, uint16_t size) {
         uint16_t length;
         void*    base;
     } __attribute__((packed)) IDTR = { size, base };
-
     // let the compiler choose an addressing mode
     asm ( "lidt %0" : : "m"(IDTR) );
 }
@@ -82,11 +78,13 @@ static inline void lidt(void* base, uint16_t size) {
 #define ICW1_LEVEL      0x08        /* Level triggered (edge) mode */
 #define ICW1_INIT       0x10        /* Initialization - required! */
 
+
 #define ICW4_8086       0x01        /* 8086/88 (MCS-80/85) mode */
 #define ICW4_AUTO       0x02        /* Auto (normal) EOI */
 #define ICW4_BUF_SLAVE  0x08        /* Buffered mode/slave */
 #define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
 #define ICW4_SFNM       0x10        /* Special fully nested (not) */
+
 
 /* Remap the interrupts that the PIC generates.  The default interrupt
  * mapping conflicts with the IA32 protected-mode interrupts for indicating
@@ -160,12 +158,15 @@ void IRQ_clear_mask(unsigned char IRQline) {
     outb(port, value);
 }
 
+
 /* Write len copies of val to dest
  * from JamesM's kernel development tutorials.*/
-/* void memset(u8int *dest, u8int val, u32int len) { */
-/*     u8int *temp = (u8int *)dest; */
-/*     for ( ; len != 0; len--) *temp++ = val; */
-/* } */
+void memset_zero(uint8_t *start, uint8_t *end) {
+    while (start < end) {
+        *start = 0;
+        start++;
+    }
+}
 
 
 /*============================================================================
@@ -184,15 +185,26 @@ void init_interrupts(void) {
      *        Once the entire IDT has been cleared, use the lidt() function
      *        defined above to install our IDT.
      */
-    /* int i; */
-    /* u8int *temp = (u8int *) interrupt_descriptor_table; */
-    /* // could use &idt instead of idt (same value in C), check code guidelines */
-    /* memset(interrupt_descriptor_table, 0,  */
-    /* 	   sizeof(IDT_Descriptor)*NUM_INTERRUPTS); */
-    /* // Install the IDT */
-    /* lidt((void *)interrupt_descriptor_table,  */
-    /* 	 sizeof(IDT_Descriptor)*NUM_INTERRUPTS); */
+    unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
+    uint8_t *start = (uint8_t *) interrupt_descriptor_table;
+    memset_zero(start, start + size);
 
+    /**
+    int i;
+    for (i = 0; i < NUM_INTERRUPTS; i++) {
+        IDT_Descriptor descriptor = {0};
+        interrupt_descriptor_table[i] = descriptor;
+    }
+    **/
+
+    // Install the IDT
+    lidt(interrupt_descriptor_table, size);
+
+    /* For each interupt, let the interrupt handler know where the ISR is
+       Do after ISRs are written.
+     */
+
+    // Setup all interrupt gates
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
      * in protected-mode interrupts.  (Each PIC services 7 interrupts, and
@@ -203,46 +215,47 @@ void init_interrupts(void) {
     PIC_remap(0x20, 0x27);
 }
 
+void mask_interrupts() {
+    int i;
+    for(i = 0; i < 16; i++) {
+        IRQ_set_mask(i);
+    }
+
+    IRQ_clear_mask(TIMER_INTERRUPT);
+    IRQ_clear_mask(KEYBOARD_INTERRUPT);
+}
+
 
 /* Installs an interrupt handler into the Interrupt Descriptor Table.
  * The handler is expected to be an assembly language handler function,
  * not a C function, although the handler might call a C function.
  */
 void install_interrupt_handler(int num, void *handler) {
-    /* TODO:  IMPLEMENT.  See IA32 Manual, Volume 3A, Section 5.11 for an
-     *        overview of the contents of IDT Descriptors.  These are
-     *        Interrupt Gates.
-     *
-     *        The handler address must be split into two halves, so that it
-     *        can be stored into the IDT descriptor.
-     *
-     *        The segment selector should be the code-segment selector
-     *        that was set up in the bootloader.  (See boot.h for the
-     *        appropriate definition.)
-     *
-     *        The DPL component of the "type_attr" field specifies the
-     *        required privilege level to invoke the interrupt.  You can
-     *        set this to 0 (which allows anything to invoke the interrupt),
-     *        but its value isn't really relevant to us.
-     *
-     *        REMOVE THIS COMMENT WHEN YOU WRITE THE CODE.  (FEEL FREE TO
-     *        INCORPORATE THE ABOVE COMMENTS IF YOU WISH.)
+    /* See IA32 Manual, Volume 3A, Section 5.11 for an
+     * overview of the contents of IDT Descriptors.  These are
+     * Interrupt Gates.
      */
-    interrupt_descriptor_table[num].offset_15_0 = handler & 0xFFFF;
-    interrupt_descriptor_table[num].offset_31_16 = (handler >> 16) & 0xFFFF;
+
+    IDT_Descriptor *descriptor = &interrupt_descriptor_table[num];
+
+    // The handler address must be split into two halves, so that it
+    // can be stored into the IDT descriptor.
+    descriptor->offset_15_0 = ((intptr_t) handler) & 0xFFFF;
+    descriptor->offset_31_16 = ((intptr_t) handler >> 16) & 0xFFFF;
+
+    //  The segment selector should be the code-segment selector
+    // that was set up in the bootloader.  (See boot.h for the
+    // appropriate definition.
+    descriptor->selector = SEL_CODESEG;
+    descriptor->zero = 0;
+
+    // The DPL component of the "type_attr" field specifies the
+    // required privilege level to invoke the interrupt.  You can
+    // set this to 0 (which allows anything to invoke the interrupt),
+    // but its value isn't really relevant to us.
+    descriptor->type_attr = 0x8E;
 }
 
-
-/* This is the structure of a single interrupt descriptor.  For 32-bit
- * interrupt addresses, the address is split across two 16-bit fields.
- */
-typedef struct IDT_Descriptor {
-    uint16_t offset_15_0;      // offset bits 0..15
-    uint16_t selector;         // a code segment selector in GDT or LDT
-    uint8_t zero;              // unused, set to 0
-    uint8_t type_attr;         // descriptor type and attributes
-    uint16_t offset_31_16;     // offset bits 16..31
-} IDT_Descriptor;
 
 
 

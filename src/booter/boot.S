@@ -201,8 +201,8 @@ call_c_entry:
     #        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
     #---------------------------------------------------------------------
 
-    movl $0x20018, %ebx
-    call *(%ebx)
+    movl $0x2007a, %ebx
+    call *%ebx
 
 
     #=====================================================================

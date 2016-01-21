@@ -14,6 +14,7 @@
 
 void init_interrupts(void);
 void install_interrupt_handler(int num, void *handler);
+void mask_interrupts();
 
 
 /* Returns true if interrupts are currently enabled, false otherwise. */

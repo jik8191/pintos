@@ -1,9 +1,4 @@
-#include "buffer.h"
-#include "video.h"
-#include "keyboard.h"
-#include "timer.h"
-#include "draw.h"
-#include "tunnel.h"
+#include "game.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -17,23 +12,19 @@ void c_start(void) {
     /* Loop forever, so that we don't fall back into the bootloader code. */
     // Initialize the video
     init_video();
-    init_tunnel();
+    init_interrupts();
+    init_keyboard();
+    init_timer();
+    init_state();
     // Clear the screen to the default
     clear_screen();
+    draw_game();
 
-    /*
-    print_tunnels(get_leftwall(), get_rightwall()); // move to start_screen
-    print_player(get_playerx(), ROWS - 2);          // move to start_screen
-    start_screen();
-    */
+    /* mask_interrupts(); */
+    enable_interrupts();
 
-    /*draw_game();*/
-    // Initialize the keyboard
-    /*init_keyboard();*/
-    // Initialize the timer
-    /*init_timer();*/
-    int i = 0;
+    draw_game();
+
     while (1) {
-        draw_game();
     }
 }

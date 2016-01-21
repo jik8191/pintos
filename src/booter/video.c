@@ -37,29 +37,60 @@ void init_video(void) {
     clear_screen();
 }
 
-void clear_screen(void) {
-    // Clear the screen and set it to the default background color.
+/**
+ * Clears the screen of chars and resets to the default color.
+ */
+void clear_screen() {
+    clear_chars();
+    reset_colors();
+}
+
+/**
+ * Clear all characters on the screen.
+ */
+void clear_chars() {
     int i = 0;
 
     // Pointer to the video buffer
     volatile char *video = (volatile char*) VIDEO_BUFFER;
 
     for (i = 0; i < WIDTH * HEIGHT; i++) {
-        *video++ = ' '; // Setting the char value to a space
-        // Setting the color
-        *video++ = make_color(default_background, default_foreground);
+        *video = ' ';
+        video += 2;
     }
 }
 
+/**
+ * Reset the screen to the default color.
+ */
+void reset_colors() {
+    int i = 0;
+
+    // Pointer to the video buffer
+    volatile char *video = (volatile char*) VIDEO_BUFFER;
+
+    int default_color = make_color(default_background, default_foreground);
+
+    for (i = 0; i < WIDTH * HEIGHT; i++) {
+        *(video + 1) = default_color;
+        video += 2;
+    }
+}
+
+/**
+ * Makes a color given the background and foreground
+ */
 int make_color(int background, int foreground) {
-    /* Makes a color given the background and foreground */
-    int color;
-    color = background;
-    color = color << 4; // Setting the high nibble
-    color = color | foreground; // Setting the low nibble
+    int color = background;
+    color <<= 4;         // Setting the high nibble
+    color |= foreground; // Setting the low nibble
+
     return color;
 }
 
+/**
+ * Set the char at the given (x, y) coordinates.
+ */
 void set_char(int x, int y, char c) {
     volatile char *video = (volatile char *) VIDEO_BUFFER;
 
@@ -67,6 +98,9 @@ void set_char(int x, int y, char c) {
     *(video + i) = c;
 }
 
+/**
+ * Set the color at the given (x, y) coordinates.
+ */
 void set_color(int x, int y, int color) {
     volatile char *video = (volatile char *) VIDEO_BUFFER;
 
@@ -74,54 +108,53 @@ void set_color(int x, int y, int color) {
     *(video + i + 1) = color;
 }
 
+/**
+ * Print a char to a location on the screen with a given color.
+ *
+ * The screen layout is such that the top left corner is (0, 0) and the bottom
+ * left corner is (WIDTH - 1, HEIGHT - 1)
+ */
 void print_char(int x, int y, char c) {
-    /* Print a char to a location on the screen with a given color. The screen
-     * layout is such that the top left corner is (0, 0) and the bottom left
-     * corner is (WIDTH - 1, HEIGHT - 1)
-     */
-    volatile char *video = (volatile char*) VIDEO_BUFFER;
-    int index = ((y * WIDTH) + x) * 2;
-    int color = make_color(default_background, default_foreground);
-    *(video + index) = c;
-    *(video + index + 1) = color;
+    int default_color = make_color(default_background, default_foreground);
+    set_char(x, y, c);
+    set_color(x, y, default_color);
 }
 
+/**
+ * Print a char to a location on the screen with a given color.
+ *
+ * The screen layout is such that the top left corner is (0, 0) and the bottom
+ * left corner is (WIDTH - 1, HEIGHT - 1)
+ */
 void print_char_c(int x, int y, char c, int color) {
-    /* Print a char to a location on the screen with a given color. The screen
-     * layout is such that the top left corner is (0, 0) and the bottom left
-     * corner is (WIDTH - 1, HEIGHT - 1)
-     */
-    volatile char *video = (volatile char*) VIDEO_BUFFER;
-    int index = ((y * WIDTH) + x) * 2;
-    *(video + index) = c;
-    *(video + index + 1) = color;
-
+    set_char(x, y, c);
+    set_color(x, y, color);
 }
 
+/**
+ * Prints a string to the screen starting from the given coordinates and goes
+ * laterally.
+ */
 void print_string(int x, int y, const char *string) {
-    /* Prints a string to the screen starting from the given coordinates and
-     * goes laterally.
-     */
-    // TODO handle when it goes beyond the y?
     while(*string != '\0') {
         set_char(x++, y, *string++);
+
         if (x == WIDTH) {
-            x = 0;
-            y++;
+            return;
         }
     }
 }
 
+/**
+ * Prints a string to the screen starting from the given coordinates and goes
+ * laterally.
+ */
 void print_string_c(int x, int y, const char *string, int color) {
-    /* Prints a string to the screen starting from the given coordinates and
-     * goes laterally.
-     */
-    // TODO handle when it goes beyond the y?
     while(*string != '\0') {
         print_char_c(x++, y, *string++, color);
+
         if (x == WIDTH) {
-            x = 0;
-            y++;
+            return;
         }
     }
 }
