@@ -21,16 +21,18 @@ void start_screen(void) {
 }
 
 void draw_game() {
-    // Draw the screen
-    clear_screen();
-    print_score(0);
-    init_tunnel();
-    int * right_wall = get_rightwall();
-    int * left_wall = get_leftwall();
-    print_tunnels(right_wall, left_wall);
-    print_player(0, 0);
-    /*print_tunnel(right_wall);*/
-    /*print_tunnel(left_wall);*/
+    gamestate state = get_state();
+    switch(state) {
+        case start:
+            start_screen();
+        case running:
+            print_score(get_score());
+            print_tunnels(get_leftwall(), get_rightwall());
+            print_player(get_playerx(), ROWS - 2);
+        case over:
+            break;
+    }
+    print_score(get_score());
 }
 
 void print_score(int score) {

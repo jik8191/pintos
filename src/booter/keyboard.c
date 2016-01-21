@@ -45,6 +45,8 @@
 static unsigned char keyboard_array[BUFFER_LEN];
 static buffer *keyboard_buffer;
 
+void check_key();
+
 void init_keyboard() {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
@@ -63,6 +65,7 @@ void keyboard_interupt(void) {
     // Add it to the pressed queue
     disable_interrupts();
     enqueue(keyboard_buffer, scan_code);
+    check_key();
     enable_interrupts();
 }
 
@@ -73,13 +76,13 @@ void check_key() {
         // A is pressed
         case 0x1E:
             if (state == running) {
-                update_player();
+                update_player(-1);
             }
             break;
         // D is pressed
         case 0x20:
             if (state == running) {
-                update_player();
+                update_player(1);
             }
             break;
         // Space is pressed

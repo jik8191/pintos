@@ -22,6 +22,8 @@ void tunnel_shrink();
 int *get_leftwall();
 int *get_rightwall();
 int get_playerx();
+void update_player();
+int get_score();
 
 gamestate get_state();
 void set_state(gamestate s);
