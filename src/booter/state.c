@@ -96,6 +96,9 @@ void tunnel_step() {
     draw_game();
 }
 
+/**
+ * Deals with losing the game, resetting state and setting the high score.
+ */
 void lose_game() {
     if (score > high_score) {
         high_score = score;
@@ -180,13 +183,12 @@ int get_playerx() {
     return player;
 }
 
+
+/*********************************/
+/* Accessors for state variables */
+
 gamestate get_state() {
     return state;
-}
-
-void set_state(gamestate s) {
-    state = s;
-    draw_game();
 }
 
 int get_score() {
@@ -196,3 +198,15 @@ int get_score() {
 int get_highscore() {
     return high_score;
 }
+
+/*********************************/
+
+
+/**
+ * Set the state of the game and redraw.
+ */
+void set_state(gamestate s) {
+    state = s;
+    draw_game();
+}
+
