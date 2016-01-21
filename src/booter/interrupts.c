@@ -2,9 +2,6 @@
 #include "boot.h"
 #include "ports.h"
 
-
-
-
 /*============================================================================
  * INTERRUPT DESCRIPTOR TABLE
  *
@@ -164,7 +161,7 @@ void IRQ_clear_mask(unsigned char IRQline) {
 
 /* Write len copies of val to dest
  * from JamesM's kernel development tutorials.*/
-void memset_zero(char *start, char *end) {
+void memset_zero(uint8_t *start, uint8_t *end) {
     while (start < end) {
         *start = 0;
         start++;
@@ -188,13 +185,13 @@ void init_interrupts(void) {
      *        defined above to install our IDT.
      */
 
+
     unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
-    char *start = (char *) interrupt_descriptor_table;
+    uint8_t *start = (uint8_t *) interrupt_descriptor_table;
     memset_zero(start, start + size);
 
     // Install the IDT
-    lidt((void *) interrupt_descriptor_table,
-         sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+    lidt(interrupt_descriptor_table, size);
 
     /* For each interupt, let the interrupt handler know where the ISR is
        Do after ISRs are written.
@@ -208,6 +205,16 @@ void init_interrupts(void) {
      * second number says where to map the Slave PIC's IRQs.)
      */
     PIC_remap(0x20, 0x27);
+}
+
+void mask_interrupts() {
+    int i;
+    for(i = 0; i < 16; i++) {
+        IRQ_set_mask(i);
+    }
+
+    IRQ_clear_mask(TIMER_INTERRUPT);
+    IRQ_clear_mask(KEYBOARD_INTERRUPT);
 }
 
 

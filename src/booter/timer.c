@@ -1,6 +1,7 @@
 #include "timer.h"
 #include "ports.h"
 #include "game.h"
+#include "handlers.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -81,14 +82,15 @@ void init_timer(void) {
     /* TODO:  You might want to install your timer interrupt handler
      *        here as well.
      */
+    install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
 }
 
-void timer_interupt(void) {
+void timer_interrupt(void) {
     // A boolean to determine whether to change the game map
     int do_update = time_cnt % seconds_to_interupts(update_time) == 0;
-    /* Seeing if you need to update the game state */
-    /*update_game_state(update_map);*/
-    /* Increment the time_count */
+    // Seeing if you need to update the game state
+    //update_game_state(update_map);
+    // Increment the time_count
     time_cnt++;
 }
 

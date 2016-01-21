@@ -6,7 +6,8 @@
 #ifndef HANDLER_H
 #define HANDLER_H
 
-#define (void *) keyboard_handler(void);
+void * (keyboard_handler)(void);
+void * (timer_handler)(void);
 #endif /* HANDLER_H */
 
 
