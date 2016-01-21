@@ -41,6 +41,7 @@ void init_state() {
     }
 
     wallarr_ptr = 0;
+    score = 0;
 }
 
 /**
@@ -70,6 +71,40 @@ void tunnel_step() {
     rightwall[wallarr_ptr] = right;
 
     wallarr_ptr = mod(wallarr_ptr + 1, ROWS);
+
+    score++;
+}
+
+/**
+ * Move a player in a given direction if possible.
+ *
+ * This might result in the player losing. Pass in a 1 for a move to the right
+ * and a -1 for a move to the left. All other inputs will be ignored. The game
+ * must also be currently running for this to work.
+ */
+void move(int direction) {
+    // Don't do anything unless we are running.
+    if (state != running) {
+        return;
+    }
+
+    // Don't do anything for invalid moves.
+    if (direction != 1 && direction != -1) {
+        return;
+    }
+
+    int lft = leftwall[PLAYER_ROW];
+    int rht = rightwall[PLAYER_ROW];
+
+    int newx = player + direction;
+
+    if (newx >= rht || newx <= lft) {
+        state = over;
+    } else {
+        player = newx;
+    }
+
+    draw_game();
 }
 
 /**
