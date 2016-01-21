@@ -33,6 +33,8 @@ FirstName LastName <email@domain.example>
 https://en.wikipedia.org/wiki/
 INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
 https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
+http://www.osdever.net/bkerndev/Docs/idt.htm
+http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html
 
 			     PC BOOTER
 			     =========
