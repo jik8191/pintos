@@ -5,7 +5,7 @@
 #include "game.h"
 
 void init_timer(void);
-void timer_interupt(void);
+void timer_interrupt(void);
 
 
 #endif /* TIMER_H */

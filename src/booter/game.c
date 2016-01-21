@@ -15,15 +15,14 @@ void c_start(void) {
     init_video();
     init_state();
     init_keyboard();
+    init_timer();
     // Clear the screen to the default
     clear_screen();
     enable_interrupts();
-    // Initialize the keyboard
-    /*init_keyboard();*/
-    // Initialize the timer
-    /*init_timer();*/
-    int i = 0;
+
+    draw_game();
+
     while (1) {
-        draw_game();
+        /* draw_game(); */
     }
 }

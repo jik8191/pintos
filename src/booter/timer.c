@@ -81,10 +81,10 @@ void init_timer(void) {
     /* TODO:  You might want to install your timer interrupt handler
      *        here as well.
      */
-    install_interrupt_handler(TIMER_INTERRUPT, timer_interupt);
+    install_interrupt_handler(TIMER_INTERRUPT, timer_interrupt);
 }
 
-void timer_interupt(void) {
+void timer_interrupt(void) {
     // A boolean to determine whether to change the game map
     int do_update = time_cnt % seconds_to_interupts(update_time) == 0;
     /* Seeing if you need to update the game state */
