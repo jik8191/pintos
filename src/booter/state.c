@@ -131,9 +131,6 @@ void update_player(int direction) {
 
 /**
  * Shrink the size of the tunnel, down to a minimum.
- *
- * TODO: When we shrink, we need to make sure the tunnel isn't draw in a weird
- * state so that it leaves an open end.
  */
 void tunnel_shrink() {
     tunnelwidth -= 1;
