@@ -18,6 +18,10 @@ void c_start(void) {
     // Clear the screen to the default
     clear_screen();
     enable_interrupts();
+    // Initialize the keyboard
+    /*init_keyboard();*/
+    // Initialize the timer
+    /*init_timer();*/
     int i = 0;
     while (1) {
         draw_game();

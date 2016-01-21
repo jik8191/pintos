@@ -110,6 +110,7 @@ gamestate get_state() {
 
 void set_state(gamestate s) {
     state = s;
+    draw_game();
 }
 
 void update_player(int dir) {
