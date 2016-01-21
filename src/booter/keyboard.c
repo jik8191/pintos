@@ -55,7 +55,7 @@ void init_keyboard() {
     enable_interrupts();
 }
 
-void keyboard_interupt(void) {
+void keyboard_interrupt(void) {
     // Get the key that was pressed
     unsigned char scan_code = inb(KEYBOARD_PORT);
     // Add it to the pressed queue

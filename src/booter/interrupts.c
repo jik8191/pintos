@@ -87,7 +87,7 @@ static inline void lidt(void* base, uint16_t size) {
 #define ICW4_BUF_SLAVE  0x08        /* Buffered mode/slave */
 #define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
 #define ICW4_SFNM       0x10        /* Special fully nested (not) */
- 
+
 
 /* Remap the interrupts that the PIC generates.  The default interrupt
  * mapping conflicts with the IA32 protected-mode interrupts for indicating
@@ -164,11 +164,12 @@ void IRQ_clear_mask(unsigned char IRQline) {
 
 /* Write len copies of val to dest
  * from JamesM's kernel development tutorials.*/
-void memset(uint8_t *dest, uint8_t val, uint32_t len) {
-    uint8_t *temp = (uint8_t *)dest;
-    for ( ; len != 0; len--) *temp++ = val;
+void memset_zero(char *start, char *end) {
+    while (start < end) {
+        *start = 0;
+        start++;
+    }
 }
-
 
 /*============================================================================
  * GENERAL INTERRUPT-HANDLING OPERATIONS
@@ -186,14 +187,14 @@ void init_interrupts(void) {
      *        Once the entire IDT has been cleared, use the lidt() function
      *        defined above to install our IDT.
      */
-    int i;
-    uint8_t *temp = (uint8_t *) interrupt_descriptor_table;
-    // could use &idt instead of idt (same value in C), check code guidelines
-    memset((uint8_t *)interrupt_descriptor_table, 0,
-    	   sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+
+    unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
+    char *start = (char *) interrupt_descriptor_table;
+    memset_zero(start, start + size);
+
     // Install the IDT
-    lidt((void *)interrupt_descriptor_table,
-    	 sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
+    lidt((void *) interrupt_descriptor_table,
+         sizeof(IDT_Descriptor)*NUM_INTERRUPTS);
 
     /* For each interupt, let the interrupt handler know where the ISR is
        Do after ISRs are written.
@@ -220,21 +221,25 @@ void install_interrupt_handler(int num, void *handler) {
      * overview of the contents of IDT Descriptors.  These are
      * Interrupt Gates.
      */
-    
+
+    IDT_Descriptor *descriptor = &interrupt_descriptor_table[num];
+
     // The handler address must be split into two halves, so that it
     // can be stored into the IDT descriptor.
-    interrupt_descriptor_table[num].offset_15_0 = (uint32_t) handler & 0xFFFF;
-    interrupt_descriptor_table[num].offset_31_16 = 
-        ((uint32_t) handler >> 16) & 0xFFFF;
+    descriptor->offset_15_0 = ((intptr_t) handler) & 0xFFFF;
+    descriptor->offset_31_16 = ((intptr_t) handler >> 16) & 0xFFFF;
+
     //  The segment selector should be the code-segment selector
     // that was set up in the bootloader.  (See boot.h for the
     // appropriate definition.
-    interrupt_descriptor_table[num].selector = SEL_CODESEG;
-    interrupt_descriptor_table[num].zero = 0;
+    descriptor->selector = SEL_CODESEG;
+    descriptor->zero = 0;
+
     // The DPL component of the "type_attr" field specifies the
-    // required privilege level to invoke the interrupt. This is set to 
-    // 0 here, see manual for details.
-    interrupt_descriptor_table[num].type_attr = 0x8E;
+    // required privilege level to invoke the interrupt.  You can
+    // set this to 0 (which allows anything to invoke the interrupt),
+    // but its value isn't really relevant to us.
+    descriptor->type_attr = 0x8E;
 }
 
 
