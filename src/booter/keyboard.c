@@ -49,10 +49,8 @@ void init_keyboard() {
     /* TODO:  You might want to install your keyboard interrupt handler
      *        here as well.
      */
-
-    disable_interrupts();
+    install_interrupt_handler(KEYBOARD_INTERRUPT, keyboard_interrupt);
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
-    enable_interrupts();
 }
 
 void keyboard_interrupt(void) {

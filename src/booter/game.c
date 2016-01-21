@@ -11,15 +11,13 @@ void c_start(void) {
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     // Initialize the video
+    init_interrupts();
     init_video();
     init_state();
+    init_keyboard();
     // Clear the screen to the default
     clear_screen();
-
-    // Initialize the keyboard
-    /*init_keyboard();*/
-    // Initialize the timer
-    /*init_timer();*/
+    enable_interrupts();
     int i = 0;
     while (1) {
         draw_game();
