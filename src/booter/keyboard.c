@@ -54,6 +54,7 @@ void init_keyboard() {
 }
 
 void keyboard_interrupt(void) {
+    /*
     // Get the key that was pressed
     unsigned char scan_code = inb(KEYBOARD_PORT);
 
@@ -62,6 +63,7 @@ void keyboard_interrupt(void) {
     enqueue(keyboard_buffer, scan_code);
     check_key();
     enable_interrupts();
+    */
 }
 
 void check_key() {
