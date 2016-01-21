@@ -88,29 +88,30 @@ void init_timer(void) {
 
 /* What to do when the timer interupt fires */
 void timer_interrupt(void) {
-    /* If the number of interupts is divisble by the tunnel update time then
-     * call tunnel_step.
-     */
-    if (time_cnt % step_t == 0) {
-        if (get_state() == running) {
+
+    if (get_state() == running) {
+        /* If the number of interupts is divisble by the tunnel update time then
+        * call tunnel_step.
+        */
+        if (time_cnt % step_t == 0) {
             tunnel_step();
         }
-    }
 
-    /* If the number of interrupts is divisble by the phase length then
-     * change the speed of the game.
-     */
-    if (time_cnt % PHASE_LENGTH == 0) {
-        if (step_t > MIN_SPEED) {
-            step_t *= 3;
-            step_t /= 4;
+        /* If the number of interrupts is divisble by the phase length then
+        * change the speed of the game.
+        */
+        if (time_cnt % PHASE_LENGTH == 0) {
+            if (step_t > MIN_SPEED) {
+                step_t *= 3;
+                step_t /= 4;
 
-            if (step_t < MIN_SPEED) {
-                step_t = MIN_SPEED;
+                if (step_t < MIN_SPEED) {
+                    step_t = MIN_SPEED;
+                }
             }
-        }
 
-        tunnel_shrink();
+            tunnel_shrink();
+        }
     }
 
     // Increment the time_count
