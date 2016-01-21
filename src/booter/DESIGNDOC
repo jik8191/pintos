@@ -1,4 +1,4 @@
-              +-----------------------+
+            +-----------------------+
             |         CS 124        |
             | PROJECT 2: BOOTLOADER |
             |    DESIGN DOCUMENT    |
@@ -19,7 +19,7 @@ Austin      Liu         yliu@caltech.edu
    on Moodle.)
 
    Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
-   commit ...
+   commit 2e2ee984db3a3bbf5fde3be9e1aeba057f99afa4
 
 ---- PRELIMINARIES ----
 
