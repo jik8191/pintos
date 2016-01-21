@@ -4,7 +4,7 @@
 #define COLS 80
 #define ROWS 25
 
-#define TUNNEL_WIDTH 10
+#define TUNNEL_WIDTH 16
 #define MINWIDTH 4
 
 #include "random.h"
