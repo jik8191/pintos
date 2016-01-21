@@ -1,4 +1,4 @@
-			+-----------------------+
+	   		+-----------------------+
 			|         CS 124        |
 			| PROJECT 2: BOOTLOADER |
 			|    DESIGN DOCUMENT    |
@@ -8,11 +8,11 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Nicholas	Cho		ncho2@caltech.edu
+Darius		Simmons		darius.simmons05@gmail.com
+Austin 		Liu 		yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0 
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -47,9 +47,19 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
-
+   
+   Nick:
+   Darius:
+   Austin:
+   
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+   Nick: 
+   Darius: Bootstrapping code for the bootloader, video and keyboard 
+           functionality
+   Austin: Bootstrapping code for the bootloader, interrupt 
+           descriptor table setup
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -62,8 +72,14 @@ not required by the question.
 
 >> A1: In 25-30 words or less, what does your PC booter do?
 
+It loads the game program we want to run into memory and then passes 
+control of the processor to the game program.
+
 >> A2: In 25-30 words or less, how does the user interact with the program?
 >> What are the controls?  What should the user try to do?
+
+The user interacts with the program via the keyboard. 
+TODO: elaborate on controls and game
 
 ---- DATA STRUCTURES ----
 
@@ -80,6 +96,12 @@ not required by the question.
 >> of operations or updates that is performed within your program?
 >> Similarly, when a keyboard interrupt occurs, what does your program do
 >> in response?
+
+When an timer interrupt occurs, we suspend the program and call the 
+interrupt service routine (ISR) from the interrupt descriptor 
+table (IDT). We maintain a count and update the map 
+and game time at regular intervals.
+
 
 >> A5: Would you say your program relies on polling or busy-waiting anywhere
 >> to accomplish its tasks?  If so, what tasks?
@@ -108,9 +130,13 @@ not required by the question.
 >> memory occupied by the DAP get reclaimed after it is used?  If not,
 >> why not?
 
+We decided to store the Disk Address Packet on the stack
+
 >> B2: Does your bootloader pass any information to the main program?
 >> (If not, just say no.)  If so, what information is passed, and how
 >> is it passed?
+
+No information is passed.
 
 ---- ALGORITHMS ----
 
