@@ -1,3 +1,4 @@
+#include"keyboard.h"
 # TODO:  Put IRQ handlers in this file.  The handlers can do whatever you
 #        want, but the recommendation is to keep them very simple; for
 #        example, call a C function that handles the interrupt and then
@@ -29,3 +30,19 @@
 #
 #                popa    # Restore all registers
 #                iret    # Go back to interrupted code
+    .align 4
+    .globl keyboard_handler
+     keyboard_handler:
+        pusha   # Save registers from the interrupted code!
+        cld     # If calling C code, clear direction flag
+	call keyboard_interrupt
+
+        # Acknowledge the interrupt so that the PIC will send more
+        # interrupts!  We do this by sending 0x20 to port 0x20.
+        # See http://wiki.osdev.org/8259_PIC#End_of_Interrupt for
+        # details.
+        mov     $0x20, %al
+        out     %al, $0x20
+	
+        popa    # Restore all registers
+        iret    # Go back to interrupted code
