@@ -91,12 +91,6 @@ void init_timer(void) {
 }
 
 void timer_interrupt(void) {
-    // A boolean to determine whether to change the game map
-    /* int do_update = time_cnt % seconds_to_interrupts(update_time) == 0; */
-    // Seeing if you need to update the game state
-    //update_game_state(update_map);
-    print_string(60, 2, iota(time_cnt));
-
     if (time_cnt % step_t == 0) {
         if (get_state() == running) {
             tunnel_step();
@@ -115,6 +109,7 @@ void timer_interrupt(void) {
 
         tunnel_shrink();
     }
+
 
     // Increment the time_count
     time_cnt++;
