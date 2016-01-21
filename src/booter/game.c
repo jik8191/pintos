@@ -14,10 +14,10 @@ void c_start(void) {
     init_interrupts();
     init_video();
     init_state();
+    init_keyboard();
     // Clear the screen to the default
     clear_screen();
     enable_interrupts();
-
     // Initialize the keyboard
     /*init_keyboard();*/
     // Initialize the timer
