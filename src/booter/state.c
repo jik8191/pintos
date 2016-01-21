@@ -1,5 +1,9 @@
 #include "state.h"
 
+#include "random.h"
+#include "draw.h"
+
+
 // The state of the game
 static gamestate state = start;
 
