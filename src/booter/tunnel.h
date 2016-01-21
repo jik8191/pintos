@@ -16,6 +16,9 @@ void tunnel_shrink();
 int *get_leftwall();
 int *get_rightwall();
 
+gamestate get_state();
+void set_state(gamestate s);
+
 static inline int mod(int a, int b) {
     int r = a % b;
 
@@ -24,5 +27,11 @@ static inline int mod(int a, int b) {
 
     return r;
 }
+
+typedef enum State {
+    start,
+    running,
+    over
+} gamestate;
 
 #endif // TUNNEL_H

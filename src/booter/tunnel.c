@@ -1,5 +1,8 @@
 #include "tunnel.h"
 
+// The state of the game
+static gamestate state;
+
 // The columns of the player (always at the bottom row).
 static int player;
 
@@ -91,4 +94,12 @@ int *get_leftwall() {
  */
 int *get_rightwall() {
     return rightwall;
+}
+
+gamestate get_state() {
+    return state;
+}
+
+void set_state(gamestate s) {
+    state = s;
 }

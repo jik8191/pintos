@@ -12,5 +12,6 @@ typedef struct Buffer {
 void init_buffer(buffer *b, unsigned char *array, int len);
 unsigned char dequeue(buffer *b);
 void enqueue(buffer *b, unsigned char code);
+unsigned char peek(buffer *b);
 
 #endif // BUFFER_H
