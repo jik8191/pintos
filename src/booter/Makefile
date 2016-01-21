@@ -6,7 +6,7 @@
 #     we invoke gcc to assemble boot.S, and we use gcc to process the
 #     linker script, and so forth.
 
-CFLAGS=-g -Wall
+CFLAGS=-g
 
 BOOT_BIN = boot.bin
 
