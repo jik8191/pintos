@@ -30,10 +30,12 @@
 #                popa    # Restore all registers
 #                iret    # Go back to interrupted code
     .align 4
-    .globl keyboard_interrupt
-    .globl keyboard_handler
 
-keyboard_handler:
+    .globl irq_keyboard_handler
+    .globl irq_timer_handler
+
+
+irq_keyboard_handler:
     pusha   # Save registers from the interrupted code!
     cld     # If calling C code, clear direction flag
 
@@ -49,9 +51,7 @@ keyboard_handler:
     popa    # Restore all registers
     iret    # Go back to interrupted code
 
-    .globl timer_handler
-
-timer_handler:
+irq_timer_handler:
     pusha   # Save registers from the interrupted code!
     cld     # If calling C code, clear direction flag
 

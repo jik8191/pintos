@@ -190,6 +190,14 @@ void init_interrupts(void) {
     uint8_t *start = (uint8_t *) interrupt_descriptor_table;
     memset_zero(start, start + size);
 
+    /**
+    int i;
+    for (i = 0; i < NUM_INTERRUPTS; i++) {
+        IDT_Descriptor descriptor = {0};
+        interrupt_descriptor_table[i] = descriptor;
+    }
+    **/
+
     // Install the IDT
     lidt(interrupt_descriptor_table, size);
 
