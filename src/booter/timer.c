@@ -103,8 +103,16 @@ void timer_interrupt(void) {
         }
     }
 
-    if (time_cnt % PHASE_LENGTH == 0 && step_t > MIN_SPEED) {
-        step_t -= 1;
+    if (time_cnt % PHASE_LENGTH == 0) {
+        if (step_t > MIN_SPEED) {
+            step_t *= 3;
+            step_t /= 4;
+
+            if (step_t < MIN_SPEED) {
+                step_t = MIN_SPEED;
+            }
+        }
+
         tunnel_shrink();
     }
 

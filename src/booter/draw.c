@@ -12,6 +12,7 @@ void print_startmsg() {
     print_string(2, 9, "|____/ \\___/|_| |_|  \\__|  \\____|\\___/  /_/   \\_\\___/_| |_|\\___/|_|  \\___(_)");
 
     print_string(30, 15, "Press Space to begin");
+    print_string(27, 17, "Press 'A' and 'D' to move");
 }
 
 void print_gameover() {
@@ -48,13 +49,15 @@ void draw_game() {
             break;
     }
 
-    print_score(get_score());
+    print_scores();
 }
 
-void print_score(int score) {
+void print_scores() {
     // Print the score to the screen
     print_string(0, 0, "Score: ");
-    print_string(7, 0, iota(score));
+    print_string(7, 0, iota(get_score()));
+    print_string(0, 1, "High Score: ");
+    print_string(12, 1, iota(get_highscore()));
 }
 
 void print_tunnel(int *cols) {

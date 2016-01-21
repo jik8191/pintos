@@ -4,6 +4,7 @@
 static gamestate state = start;
 
 static int score = 0;
+static int high_score = 0;
 
 // The columns of the player (always at the bottom row).
 static int player;
@@ -55,8 +56,6 @@ void tunnel_step() {
     if (state == running &&
             (get_wallelem(leftwall, PLAYER_ROW+1) == player ||
              get_wallelem(rightwall, PLAYER_ROW+1) == player)) {
-        state = over;
-        draw_game();
         return;
     }
 
@@ -93,6 +92,15 @@ void tunnel_step() {
 
     score++;
 
+    draw_game();
+}
+
+void lose_game() {
+    if (score > high_score) {
+        high_score = score;
+    }
+
+    state = over;
     draw_game();
 }
 
@@ -181,4 +189,8 @@ void set_state(gamestate s) {
 
 int get_score() {
     return score;
+}
+
+int get_highscore() {
+    return high_score;
 }
