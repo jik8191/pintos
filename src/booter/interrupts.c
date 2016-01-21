@@ -203,7 +203,6 @@ void init_interrupts(void) {
     /* For each interupt, let the interrupt handler know where the ISR is
        Do after ISRs are written.
      */
-
     // Setup all interrupt gates
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
