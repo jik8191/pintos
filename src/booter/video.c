@@ -38,9 +38,31 @@ void init_video(void) {
 }
 
 /**
- * Clear the screen and set it to the default background color.
+ * Clears the screen of chars and resets to the default color.
  */
 void clear_screen() {
+    clear_chars();
+    reset_colors();
+}
+
+/**
+ * Clear all characters on the screen.
+ */
+void clear_chars() {
+    int i = 0;
+
+    // Pointer to the video buffer
+    volatile char *video = (volatile char*) VIDEO_BUFFER;
+
+    for (i = 0; i < WIDTH * HEIGHT; i++) {
+        *video++ = ' ';
+    }
+}
+
+/**
+ * Reset the screen to the default color.
+ */
+void reset_colors() {
     int i = 0;
 
     // Pointer to the video buffer
@@ -49,8 +71,8 @@ void clear_screen() {
     int default_color = make_color(default_background, default_foreground);
 
     for (i = 0; i < WIDTH * HEIGHT; i++) {
-        *video++ = ' ';             // Clear any characters
-        *video++ = default_color;   // Reset the color
+        *(video + 1) = default_color;
+        video += 2;
     }
 }
 
@@ -65,7 +87,8 @@ void clear_rowchars(int row) {
     int i = row * WIDTH;
 
     for (; i < (row + 1) * WIDTH; i++) {
-        *video++ = ' ';
+        *video = ' ';
+        video += 2;
     }
 }
 

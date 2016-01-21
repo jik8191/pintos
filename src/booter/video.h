@@ -29,7 +29,9 @@
 #include "state.h"
 
 void init_video(void);
-void clear_screen(void);
+void clear_screen();
+void clear_chars();
+void reset_colors();
 int make_color(int background, int foreground);
 void print_char(int x, int y, char c);
 void print_char_c(int x, int y, char c, int color);

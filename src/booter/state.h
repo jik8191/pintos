@@ -4,10 +4,14 @@
 #define COLS 80
 #define ROWS 25
 
+// This is indexed from 0, so this is row 2.
+#define PLAYER_ROW 1
+
 #define TUNNEL_WIDTH 22
 #define MINWIDTH 4
 
 #include "random.h"
+#include "draw.h"
 
 typedef enum State {
     start,
@@ -19,6 +23,7 @@ void init_state();
 void tunnel_step();
 void tunnel_shrink();
 
+int get_wallelem(int *wall, int index);
 int *get_leftwall();
 int *get_rightwall();
 int get_playerx();

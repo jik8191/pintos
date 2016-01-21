@@ -13,21 +13,36 @@ void print_startmsg() {
     print_string(30, 15, "Press Space to begin");
 }
 
+void print_gameover() {
+    print_string(13, 5, "  _____                         ____                 ");
+    print_string(13, 6, " / ____|                       / __ \\                ");
+    print_string(13, 7, "| |  __  __ _ _ __ ___   ___  | |  | |_   _____ _ __ ");
+    print_string(13, 8, "| | |_ |/ _` | '_ ` _ \\ / _ \\ | |  | \\ \\ / / _ \\ '__|");
+    print_string(13, 9, "| |__| | (_| | | | | | |  __/ | |__| |\\ V /  __/ |   ");
+    print_string(13, 10, " \\_____|\\__,_|_| |_| |_|\\___|  \\____/  \\_/ \\___|_|   ");
+
+    print_string(30, 15, "Press Space to restart");
+}
+
 void draw_game() {
     gamestate state = get_state();
 
     switch(state) {
         case start:
+            /* clear_chars(); */
             print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case running:
+            /* clear_chars(); */
             print_player(get_playerx(), ROWS - 2);
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case over:
+            /* clear_chars(); */
+            print_gameover();
             break;
     }
 
