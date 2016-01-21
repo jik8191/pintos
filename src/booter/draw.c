@@ -36,6 +36,7 @@ void draw_game() {
             break;
 
         case running:
+            reset_colors();
             clear_chars();
             print_player(get_playerx(), ROWS - 2);
             print_tunnels(get_leftwall(), get_rightwall());
@@ -78,13 +79,13 @@ void print_tunnels(int *lcol, int *rcol) {
     int h;
 
     for (; i < HEIGHT; i++) {
-        l = lcol[i];
-        r = rcol[i];
+        l = get_wallelem(lcol, i);
+        r = get_wallelem(rcol, i);
 
         h = HEIGHT - i - 1;
 
-        set_color(rcol[i], h, wall_color);
-        set_color(lcol[i], h, wall_color);
+        set_color(l, h, wall_color);
+        set_color(r, h, wall_color);
 
         for (j = l + 1; j < r; j++) {
             set_color(j, h, water_color);

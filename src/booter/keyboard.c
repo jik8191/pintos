@@ -1,6 +1,8 @@
 #include "keyboard.h"
 #include "video.h"
 #include "handlers.h"
+#include "random.h"
+#include "timer.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
  * codes are made available.  Scan codes can be read as follows:
@@ -82,8 +84,11 @@ void check_key() {
         // Space is pressed
         case 0x39:
             if (state == start) {
+                seed(get_t());
                 set_state(running);
             } else if (state == over) {
+                reset_t();
+                clear_screen();
                 init_state();
                 set_state(start);
             }

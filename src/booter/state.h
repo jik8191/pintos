@@ -8,7 +8,7 @@
 #define PLAYER_ROW 1
 
 #define TUNNEL_WIDTH 22
-#define MINWIDTH 4
+#define MINWIDTH 5
 
 #include "random.h"
 #include "draw.h"
