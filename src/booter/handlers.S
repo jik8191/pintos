@@ -1,4 +1,3 @@
-#include"keyboard.h"
 # TODO:  Put IRQ handlers in this file.  The handlers can do whatever you
 #        want, but the recommendation is to keep them very simple; for
 #        example, call a C function that handles the interrupt and then
@@ -31,6 +30,7 @@
 #                popa    # Restore all registers
 #                iret    # Go back to interrupted code
     .align 4
+    .globl keyboard_interrupt
     .globl keyboard_handler
      keyboard_handler:
         pusha   # Save registers from the interrupted code!
