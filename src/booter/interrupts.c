@@ -232,9 +232,8 @@ void install_interrupt_handler(int num, void *handler) {
     interrupt_descriptor_table[num].selector = SEL_CODESEG;
     interrupt_descriptor_table[num].zero = 0;
     // The DPL component of the "type_attr" field specifies the
-    // required privilege level to invoke the interrupt.  You can
-    // set this to 0 (which allows anything to invoke the interrupt),
-    // but its value isn't really relevant to us.
+    // required privilege level to invoke the interrupt. This is set to 
+    // 0 here, see manual for details.
     interrupt_descriptor_table[num].type_attr = 0x8E;
 }
 
