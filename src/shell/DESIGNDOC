@@ -1,30 +1,34 @@
-			+------------------+
-			|      CS 124      |
-			| PROJECT 1: SHELL |
-			|  DESIGN DOCUMENT |
-			+------------------+
-				   
+            +------------------+
+            |      CS 124      |
+            | PROJECT 1: SHELL |
+            |  DESIGN DOCUMENT |
+            +------------------+
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
 
-Nicholas	Cho		ncho2@caltech.edu
-Darius		Simmons		darius.simmons05@gmail.com
-Austin 		Liu 		yliu@caltech.edu
+Nicholas    Cho         ncho2@caltech.edu
+Darius      Simmons     darius.simmons05@gmail.com
+Austin      Liu         yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment:
+0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
-   commit ...
+   Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
+   commit e9a84e4dd52b9288d8cb0fa7e00025fcd1be4d04
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please include them here.
+    For extra credit we did the appending instead of truncating with
+    '>>, we used readline and implemented the history command, and
+    standard error redirection.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -33,9 +37,16 @@ Austin 		Liu 		yliu@caltech.edu
 http://www.cs.cornell.edu/Courses/cs414/2004su/homework/shell/shell.html
 http://stackoverflow.com/questions/4788374/writing-a-basic-shell
 http://stephen-brennan.com/2015/01/16/write-a-shell-in-c/
+http://www.tldp.org/HOWTO/Lex-YACC-HOWTO.html#toc4
+http://web.mit.edu/gnu/doc/html/rlman_2.html
+https://ftp.gnu.org/old-gnu/Manuals/flex-2.5.4/html_node/flex_12.html
+http://pubs.opengroup.org/onlinepubs/009695399/basedefs/sys/stat.h.html
+http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
+http://stackoverflow.com/questions/15000544/get-string-size-in-bytes-in-c
+http://linux.die.net/man/3/getcwd
 
-			   COMMAND SHELL
-			   =============
+               COMMAND SHELL
+               =============
 
 ---- LOGISTICS ----
 
@@ -45,9 +56,18 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+   Austin Liu: 7
+   Darius Simmons: 22
+   Nick Cho: 17
+
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+   Darius: Started the parsing via lex and yacc and the interface to C. Did
+   the readline extra credit.
+   Nick: Improved the parsing, did pipes, and redirecting. Appending extra
+   credit. Standard error redirection extra credit.
+   Austin: Refactored code in mysh.c, tokenizing the input from a linked list
 
 ---- DATA STRUCTURES ----
 
@@ -55,17 +75,35 @@ which parts.
 >> commands that contain arguments and pipes, using the example
 >> command "a arg1 arg2 | b arg1 | c arg1 arg2 arg3".  How does your
 >> shell internally represent such a command?
+    A user's input is interpreted as a set of commands (with
+    arguments) separated by pipes. Each command (e.g. "a arg1 arg2",
+    "b arg1", etc.) is stored in a command struct which is a node in a
+    linked list that points to the next command in the chain of pipes.
+    Each command struct has a linked list of tokens (= arguments) to
+    that command. Pipes are handled using the unix pipe() command and
+    setting STDIN and STDOUT to the appropriate file descriptors.
 
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
 >> Briefly explain specifically how the redirections are parsed and
 >> represented, and by what processes.
+    A command is represented as a base command (e.g "a") with
+    arguments, and then a set of redirects. The command struct storing
+    the command has a field for the input file and output file to
+    redirect from/to. After we fork a child process for the command,
+    we set the STDIN and STDOUT to the redirect files, as necessary.
 
 ---- ALGORITHMS ----
-
 >> A3: Illustrate how you solved the problem of setting up
 >> redirection in a simple command like "a < inp.txt > out.txt", by
 >> describing what process takes care of the redirection and when.
+    The parser sees a command with an input redirection and an output
+    redirection. Since the command is stored inside a command struct,
+    the struct's fields for output and input redirections are set to
+    the filenames provided. Then, after we fork the child process for
+    the command and are about to execute the command, we set the STDIN
+    and STDOUT of the child process to the redirect files, as
+    necessary.
 
 >> A4: Illustrate how you solved the problem of setting up the pipes
 >> between multiple operations in a single command, by describing
@@ -75,24 +113,44 @@ which parts.
 >> process, and going through the execution of programs a, b and c.
 >> Keep your description of each process' responsibilities limited to
 >> ~25 words or less.
+    "a" has a command that it is going to pipe to, so it creates a
+    pipe and sets its STDOUT to that pipe. We have a pipe from a
+    previous process, and "b" has a command it is going to pipe to, so
+    it sets its STDIN to the previous pipe and its STDOUT to a new
+    pipe. "c" sets its STDIN to the previous pipe (from "b") and
+    doesn't have a next command to pipe to, so it does not create a
+    pipe.
 
 >> A5: Similarly, describe the details of how terminated processes are
 >> reaped in the example command "a | b | c".
+    We run the processes sequentially as they appear, so we wait for
+    "a" to complete in the shell process before forking "b". Likewise
+    for "b" and "c".
 
 >> A6: Similarly, describe which processes are responsible for setting
 >> up the redirections in the example command
 >> "a < inp.txt | b | c > out.txt".
+    When "a" forks into a child process and before it executes, it
+    sets its STDIN to "inp.txt". Similarly, "c" sets its STDOUT to
+    "out.txt" after it is forked as a child and before it executes.
 
 ---- RATIONALE ----
 
 >> A7: Why must the chdir and exit commands be implemented as built-in
 >> functions, rather than external programs?
+    We want to change directories for the current process such that after
+    the command we will be in another directory. If we were to fork then
+    the child would run it then the parent would still be the same. The same
+    goes for exit. We want to leave the current process.
 
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
+    We chose to use lex and yacc because it would help us have a sophisticated
+    parsing system without having to spend all of our time writing it.
+    TODO NICK explain pipes and redirects
 
-			  SURVEY QUESTIONS
-			  ================
+              SURVEY QUESTIONS
+              ================
 
 Answering these questions is optional, but it will help us improve the
 course in future years.  Feel free to tell us anything you want - these
@@ -102,12 +160,17 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
+    The parsing was the most time-consuming part.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+    It was cool to see how much you could do with so little code. In the
+    end we had a fully functionally terminal that could even compile itself
+    and then run itself.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
+    The parsing.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
