@@ -17,11 +17,9 @@ void c_start(void) {
     init_keyboard();
     // Clear the screen to the default
     clear_screen();
-    enable_interrupts();
-    // Initialize the keyboard
-    /*init_keyboard();*/
     // Initialize the timer
-    /*init_timer();*/
+    init_timer();
+    enable_interrupts();
     int i = 0;
     while (1) {
         draw_game();
