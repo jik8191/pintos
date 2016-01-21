@@ -159,8 +159,7 @@ void IRQ_clear_mask(unsigned char IRQline) {
 }
 
 
-/* Write len copies of val to dest
- * from JamesM's kernel development tutorials.*/
+/* Fill from start to end with zeros. */
 void memset_zero(uint8_t *start, uint8_t *end) {
     while (start < end) {
         *start = 0;
@@ -176,34 +175,15 @@ void memset_zero(uint8_t *start, uint8_t *end) {
 
 /* Initialize interrupts */
 void init_interrupts(void) {
-    /* TODO:  INITIALIZE AND LOAD THE INTERRUPT DESCRIPTOR TABLE.
-     *
-     *        The entire Interrupt Descriptor Table should be zeroed out.
-     *        (Unfortunately you have to do this yourself since you don't
-     *        have the C Standard Library to use...)
-     *
-     *        Once the entire IDT has been cleared, use the lidt() function
-     *        defined above to install our IDT.
-     */
+
     unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
     uint8_t *start = (uint8_t *) interrupt_descriptor_table;
+    // Zero out the entire Interrupt Descriptor Table
     memset_zero(start, start + size);
 
-    /**
-    int i;
-    for (i = 0; i < NUM_INTERRUPTS; i++) {
-        IDT_Descriptor descriptor = {0};
-        interrupt_descriptor_table[i] = descriptor;
-    }
-    **/
-
-    // Install the IDT
+    // Install the IDT using lidt()
     lidt(interrupt_descriptor_table, size);
 
-    /* For each interupt, let the interrupt handler know where the ISR is
-       Do after ISRs are written.
-     */
-    // Setup all interrupt gates
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
      * in protected-mode interrupts.  (Each PIC services 7 interrupts, and
