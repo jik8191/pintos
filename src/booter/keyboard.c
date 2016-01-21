@@ -29,31 +29,19 @@
 #define BUFFER_LEN 20
 
 
-/* TODO:  You can create static variables here to hold keyboard state.
- *        Note that if you create some kind of circular queue (a very good
- *        idea, you should declare it "volatile" so that the compiler knows
- *        that it can be changed by exceptional control flow.
- *
- *        Also, don't forget that interrupts can interrupt *any* code,
- *        including code that fetches key data!  If you are manipulating a
- *        shared data structure that is also manipulated from an interrupt
- *        handler, you might want to disable interrupts while you access it,
- *        so that nothing gets mangled...
- */
-
-// TODO does these need to be volatile?
 static unsigned char keyboard_array[BUFFER_LEN];
 static buffer *keyboard_buffer;
 
 void check_key();
 
+/* Code to set up the keybaord. */
 void init_keyboard() {
-    /* TODO:  Initialize any state required by the keyboard handler. */
-
+    // Initialize the keyboard buffer and install the handler
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
     install_interrupt_handler(KEYBOARD_INTERRUPT, irq_keyboard_handler);
 }
 
+/* What to do when a keyboard interupt fires. */
 void keyboard_interrupt(void) {
     // Get the key that was pressed
     unsigned char scan_code = inb(KEYBOARD_PORT);
@@ -63,13 +51,17 @@ void keyboard_interrupt(void) {
     check_key();
 }
 
+/* Check the key that was pressed and act accordingly */
 void check_key() {
+    // Peek into the buffer
     unsigned char scan_code = peek(keyboard_buffer);
+    // Get the gamestate
     gamestate state = get_state();
     switch(scan_code) {
         // A is pressed
         case 0x1E:
             if (state == running) {
+                // Move the player to the left
                 update_player(-1);
             }
             break;
@@ -77,6 +69,7 @@ void check_key() {
         // D is pressed
         case 0x20:
             if (state == running) {
+                // Move the player to the right
                 update_player(1);
             }
             break;
@@ -84,9 +77,13 @@ void check_key() {
         // Space is pressed
         case 0x39:
             if (state == start) {
+                // If its in the start state then set the seed and go into
+                // the running state
                 seed(get_t());
                 set_state(running);
             } else if (state == over) {
+                // If its in the over state then reset and go back to start
+                // state
                 reset_t();
                 clear_screen();
                 init_state();
@@ -94,5 +91,7 @@ void check_key() {
             }
 
             break;
+        // Dequeue from the buffer
+        dequeue(keyboard_buffer);
     }
 }

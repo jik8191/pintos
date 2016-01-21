@@ -56,19 +56,13 @@
 /* The inital update time */
 #define INITIAL_UPDATE 0.25
 
+// Global variables
+volatile int time_cnt; // Number of timer interupts that have fired
+volatile float update_time; // How often to update the game state
 
-/* TODO:  You can create static variables here to hold timer state.
- *
- *        You should probably declare variables "volatile" so that the
- *        compiler knows they can be changed by exceptional control flow.
- */
+int step_t; // The time in between the tunnels moving down
 
-volatile int time_cnt;
-volatile float update_time;
-int seconds_to_interrupts(float seconds);
-
-int step_t;
-
+/* Initialize the timer */
 void init_timer(void) {
 
     /* Turn on timer channel 0 for generating interrupts. */
@@ -83,22 +77,29 @@ void init_timer(void) {
     outb(PIT_CHAN0_DATA, 0x9c);
     outb(PIT_CHAN0_DATA, 0x2e);
 
-    /* TODO:  Initialize other timer state here. */
     step_t = START_INTERVAL;
 
     time_cnt = 0; // Start the time count to be 0
     update_time = INITIAL_UPDATE; // How often to update the game state
 
+    // Installing the interrupt handler
     install_interrupt_handler(TIMER_INTERRUPT, irq_timer_handler);
 }
 
+/* What to do when the timer interupt fires */
 void timer_interrupt(void) {
+    /* If the number of interupts is divisble by the tunnel update time then
+     * call tunnel_step.
+     */
     if (time_cnt % step_t == 0) {
         if (get_state() == running) {
             tunnel_step();
         }
     }
 
+    /* If the number of interrupts is divisble by the phase length then
+     * change the speed of the game.
+     */
     if (time_cnt % PHASE_LENGTH == 0) {
         if (step_t > MIN_SPEED) {
             step_t *= 3;
@@ -112,21 +113,16 @@ void timer_interrupt(void) {
         tunnel_shrink();
     }
 
-
     // Increment the time_count
     time_cnt++;
 }
 
-int seconds_to_interrupts(float seconds) {
-    float num_interrupts;
-    num_interrupts = seconds * FIRE_SPEED;
-    return (int) num_interrupts;
-}
-
+/* Returns the number of timer counts */
 int get_t() {
     return time_cnt;
 }
 
+/* Resets the timer variables */
 void reset_t() {
     step_t = START_INTERVAL;
     time_cnt = 0;
