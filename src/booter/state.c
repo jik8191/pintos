@@ -1,4 +1,9 @@
-#include "tunnel.h"
+#include "state.h"
+
+// The state of the game
+static gamestate state = start;
+
+static int score = 0;
 
 // The columns of the player (always at the bottom row).
 static int player;
@@ -17,12 +22,11 @@ static int tunnelwidth;
 /**
  * Initialize the state of the game.
  */
-void init_tunnel() {
+void init_state() {
     // Player starts in the middle.
     player = COLS / 2;
 
-    //tunnelwidth = TUNNEL_WIDTH;
-    tunnelwidth = 10;
+    tunnelwidth = TUNNEL_WIDTH;
 
     // Wall is centered in the screen initially.
     leftwall[0] = (COLS - tunnelwidth - 2) / 2;
@@ -91,4 +95,27 @@ int *get_leftwall() {
  */
 int *get_rightwall() {
     return rightwall;
+}
+
+/**
+ * Return the x position of the player.
+ */
+int get_playerx() {
+    return player;
+}
+
+gamestate get_state() {
+    return state;
+}
+
+void set_state(gamestate s) {
+    state = s;
+}
+
+void update_player(int dir) {
+    player += dir;
+}
+
+int get_score() {
+    return score;
 }

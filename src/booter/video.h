@@ -26,7 +26,7 @@
 #define WIDTH  80
 #define HEIGHT 25
 
-#include "tunnel.h"
+#include "state.h"
 
 void init_video(void);
 void clear_screen(void);
@@ -36,5 +36,8 @@ void print_char_c(int x, int y, char c, int color);
 void print_string(int x, int y, const char *string);
 void print_string_c(int x, int y, const char *string, int color);
 
+
+void set_char(int x, int y, char c);
+void set_color(int x, int y, int color);
 
 #endif /* VIDEO_H */

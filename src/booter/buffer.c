@@ -23,3 +23,7 @@ void enqueue(buffer *b, unsigned char code) {
     b->array[index] = code;
     b->tail = index;
 }
+
+unsigned char peek(buffer *b) {
+    return b->array[b->head];
+}
