@@ -21,33 +21,19 @@ void c_start(void) {
     // Clear the screen to the default
     clear_screen();
 
+    /*
     print_tunnels(get_leftwall(), get_rightwall()); // move to start_screen
     print_player(get_playerx(), ROWS - 2);          // move to start_screen
     start_screen();
+    */
 
     /*draw_game();*/
-    /*print_screen(0, 0, "Hello World");*/
-    /*buffer *b;*/
-    /*unsigned char k[20];*/
-    /*init_buffer(b, k, 20);*/
     // Initialize the keyboard
     /*init_keyboard();*/
     // Initialize the timer
     /*init_timer();*/
     int i = 0;
     while (1) {
-        /*
-        i++;
-        if (i % 200 == 0) {
-            enqueue(b, 0x04);
-            unsigned char scan_code = dequeue(b);
-            if (scan_code == 0x04) {
-                clear_screen();
-            }
-        }
-        else {
-            print_screen(0, 0, "Hello World");
-        }
-        */
+        draw_game();
     }
 }

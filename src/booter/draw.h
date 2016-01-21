@@ -2,6 +2,7 @@
 #define DRAW_H
 
 #include "video.h"
+#include "tunnel.h"
 #include "iota.h"
 
 void start_screen();
