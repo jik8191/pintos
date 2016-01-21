@@ -23,6 +23,7 @@ void init_state();
 void tunnel_step();
 void tunnel_shrink();
 
+void lose_game();
 int get_wallelem(int *wall, int index);
 int *get_leftwall();
 int *get_rightwall();

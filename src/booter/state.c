@@ -56,6 +56,7 @@ void tunnel_step() {
     if (state == running &&
             (get_wallelem(leftwall, PLAYER_ROW+1) == player ||
              get_wallelem(rightwall, PLAYER_ROW+1) == player)) {
+        lose_game();
         return;
     }
 
@@ -129,7 +130,8 @@ void update_player(int direction) {
     int newx = player + direction;
 
     if (newx >= rht || newx <= lft) {
-        state = over;
+        lose_game();
+        return;
     } else {
         player = newx;
     }
