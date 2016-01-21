@@ -23,6 +23,8 @@ static int tunnelwidth;
  * Initialize the state of the game.
  */
 void init_state() {
+    seed(1);
+
     // Player starts in the middle.
     player = COLS / 2;
 

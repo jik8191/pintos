@@ -185,12 +185,6 @@ void init_interrupts(void) {
      *        defined above to install our IDT.
      */
 
-    int i;
-    for(i = 0; i < NUM_INTERRUPTS; i++) {
-        IRQ_set_mask(i);
-    }
-    IRQ_clear_mask(TIMER_INTERRUPT);
-    IRQ_clear_mask(KEYBOARD_INTERRUPT);
 
     unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
     uint8_t *start = (uint8_t *) interrupt_descriptor_table;
@@ -212,6 +206,16 @@ void init_interrupts(void) {
      * second number says where to map the Slave PIC's IRQs.)
      */
     PIC_remap(0x20, 0x27);
+}
+
+void mask_interrupts() {
+    int i;
+    for(i = 0; i < 16; i++) {
+        IRQ_set_mask(i);
+    }
+
+    IRQ_clear_mask(TIMER_INTERRUPT);
+    IRQ_clear_mask(KEYBOARD_INTERRUPT);
 }
 
 
