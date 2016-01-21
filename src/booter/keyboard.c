@@ -48,9 +48,6 @@ void check_key();
 void init_keyboard() {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
-    /* TODO:  You might want to install your keyboard interrupt handler
-     *        here as well.
-     */
     init_buffer(keyboard_buffer, keyboard_array, BUFFER_LEN);
     install_interrupt_handler(KEYBOARD_INTERRUPT, irq_keyboard_handler);
 }
@@ -65,9 +62,7 @@ void keyboard_interrupt(void) {
 }
 
 void check_key() {
-    /* print_string(5, 5, "checking.."); */
     unsigned char scan_code = peek(keyboard_buffer);
-    /* set_char(2, 2, scan_code); */
     gamestate state = get_state();
     switch(scan_code) {
         // A is pressed
@@ -86,10 +81,10 @@ void check_key() {
 
         // Space is pressed
         case 0x39:
-            print_string(3,3,"got space");
             if (state == start) {
                 set_state(running);
             } else if (state == over) {
+                init_state();
                 set_state(start);
             }
 

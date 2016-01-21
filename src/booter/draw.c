@@ -22,7 +22,7 @@ void print_gameover() {
     print_string(13, 9, "| |__| | (_| | | | | | |  __/ | |__| |\\ V /  __/ |   ");
     print_string(13, 10, " \\_____|\\__,_|_| |_| |_|\\___|  \\____/  \\_/ \\___|_|   ");
 
-    print_string(30, 15, "Press Space to restart");
+    print_string(29, 15, "Press Space to restart");
 }
 
 void draw_game() {

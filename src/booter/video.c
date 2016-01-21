@@ -55,7 +55,8 @@ void clear_chars() {
     volatile char *video = (volatile char*) VIDEO_BUFFER;
 
     for (i = 0; i < WIDTH * HEIGHT; i++) {
-        *video++ = ' ';
+        *video = ' ';
+        video += 2;
     }
 }
 
@@ -72,22 +73,6 @@ void reset_colors() {
 
     for (i = 0; i < WIDTH * HEIGHT; i++) {
         *(video + 1) = default_color;
-        video += 2;
-    }
-}
-
-/**
- * Clear the characters in a row.
- *
- * TODO: Not sure if needed. Not called right now. Remove if you call this.
- */
-void clear_rowchars(int row) {
-    volatile char *video = (volatile char *) VIDEO_BUFFER;
-
-    int i = row * WIDTH;
-
-    for (; i < (row + 1) * WIDTH; i++) {
-        *video = ' ';
         video += 2;
     }
 }
