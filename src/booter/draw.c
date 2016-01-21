@@ -29,19 +29,19 @@ void draw_game() {
 
     switch(state) {
         case start:
-            clear_chars();
+            /* clear_chars(); */
             print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case running:
-            clear_chars();
+            /* clear_chars(); */
             print_player(get_playerx(), ROWS - 2);
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
         case over:
-            clear_chars();
+            /* clear_chars(); */
             print_gameover();
             break;
     }

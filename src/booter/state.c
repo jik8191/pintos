@@ -23,6 +23,9 @@ static int tunnelwidth;
  * Initialize the state of the game.
  */
 void init_state() {
+    // Start with the same screen, but change it when the game starts.
+    seed(1);
+
     // Player starts in the middle.
     player = COLS / 2;
 
@@ -48,9 +51,18 @@ void init_state() {
  * Create a new randomized row of the tunnel at the top.
  */
 void tunnel_step() {
+    // Check if the user will lose
+    if (state == running &&
+            (get_wallelem(leftwall, PLAYER_ROW+1) == player ||
+             get_wallelem(rightwall, PLAYER_ROW+1) == player)) {
+        state = over;
+        draw_game();
+        return;
+    }
+
     // Get the position of the last row
-    int last_idx = mod(wallarr_ptr - 1, ROWS);
-    int last_left = leftwall[last_idx];
+    int last_left = get_wallelem(leftwall, -1);
+    int last_right = get_wallelem(rightwall, -1);
 
     // Get a random number (-1, 0, 1).
     int del = rand(3) - 1;
@@ -67,12 +79,21 @@ void tunnel_step() {
         right--;
     }
 
+    // This is in case the tunnel shrunk and we went left, this would leave an
+    // open gap in the wall.
+    while (right < last_right - 1) {
+        left++;
+        right++;
+    }
+
     leftwall[wallarr_ptr] = left;
     rightwall[wallarr_ptr] = right;
 
     wallarr_ptr = mod(wallarr_ptr + 1, ROWS);
 
     score++;
+
+    draw_game();
 }
 
 /**
@@ -82,7 +103,7 @@ void tunnel_step() {
  * and a -1 for a move to the left. All other inputs will be ignored. The game
  * must also be currently running for this to work.
  */
-void move(int direction) {
+void update_player(int direction) {
     // Don't do anything unless we are running.
     if (state != running) {
         return;
@@ -93,8 +114,9 @@ void move(int direction) {
         return;
     }
 
-    int lft = leftwall[PLAYER_ROW];
-    int rht = rightwall[PLAYER_ROW];
+
+    int lft = get_wallelem(leftwall, PLAYER_ROW);
+    int rht = get_wallelem(rightwall, PLAYER_ROW);
 
     int newx = player + direction;
 
@@ -109,6 +131,9 @@ void move(int direction) {
 
 /**
  * Shrink the size of the tunnel, down to a minimum.
+ *
+ * TODO: When we shrink, we need to make sure the tunnel isn't draw in a weird
+ * state so that it leaves an open end.
  */
 void tunnel_shrink() {
     tunnelwidth -= 1;
@@ -116,6 +141,15 @@ void tunnel_shrink() {
     while (tunnelwidth < MINWIDTH) {
         tunnelwidth++;
     }
+}
+
+/**
+ * Returns the element corresponding to the index, indexed from 0 starting from
+ * the bottom row of the screen.
+ */
+int get_wallelem(int *wall, int index) {
+    int i = mod(wallarr_ptr + index, ROWS);
+    return wall[i];
 }
 
 /**
@@ -145,10 +179,6 @@ gamestate get_state() {
 
 void set_state(gamestate s) {
     state = s;
-}
-
-void update_player(int dir) {
-    player += dir;
 }
 
 int get_score() {

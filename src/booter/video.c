@@ -62,7 +62,7 @@ void clear_chars() {
 /**
  * Reset the screen to the default color.
  */
-void reset_color() {
+void reset_colors() {
     int i = 0;
 
     // Pointer to the video buffer
@@ -71,7 +71,8 @@ void reset_color() {
     int default_color = make_color(default_background, default_foreground);
 
     for (i = 0; i < WIDTH * HEIGHT; i++) {
-        *video++ = default_color;
+        *(video + 1) = default_color;
+        video += 2;
     }
 }
 
@@ -86,7 +87,8 @@ void clear_rowchars(int row) {
     int i = row * WIDTH;
 
     for (; i < (row + 1) * WIDTH; i++) {
-        *video++ = ' ';
+        *video = ' ';
+        video += 2;
     }
 }
 
