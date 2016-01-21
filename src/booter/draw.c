@@ -1,16 +1,9 @@
 #include "draw.h"
 
-// Functions
-void start_screen();
-void print_score(int score);
-void print_tunnel(int *cols);
-void print_tunnels(int *right_col, int *left_col);
-void print_player(int x, int y);
-
 /**
  * Print the starting message.
  */
-void start_screen(void) {
+void print_startmsg() {
     print_string(2, 5, " ____              _ _      ____            _        _                    _");
     print_string(2, 6, "|  _ \\  ___  _ __ ( ) |_   / ___| ___      / \\   ___| |__   ___  _ __ ___| |");
     print_string(2, 7, "| | | |/ _ \\| '_ \\|/| __| | |  _ / _ \\    / _ \\ / __| '_ \\ / _ \\| '__/ _ \\ |");
@@ -22,16 +15,22 @@ void start_screen(void) {
 
 void draw_game() {
     gamestate state = get_state();
+
     switch(state) {
         case start:
-            start_screen();
-        case running:
-            print_score(get_score());
+            print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
+            break;
+
+        case running:
             print_player(get_playerx(), ROWS - 2);
+            print_tunnels(get_leftwall(), get_rightwall());
+            break;
+
         case over:
             break;
     }
+
     print_score(get_score());
 }
 

@@ -40,16 +40,32 @@ void init_video(void) {
 /**
  * Clear the screen and set it to the default background color.
  */
-void clear_screen(void) {
+void clear_screen() {
     int i = 0;
 
     // Pointer to the video buffer
     volatile char *video = (volatile char*) VIDEO_BUFFER;
 
+    int default_color = make_color(default_background, default_foreground);
+
     for (i = 0; i < WIDTH * HEIGHT; i++) {
-        *video++ = ' '; // Setting the char value to a space
-        // Setting the color
-        *video++ = make_color(default_background, default_foreground);
+        *video++ = ' ';             // Clear any characters
+        *video++ = default_color;   // Reset the color
+    }
+}
+
+/**
+ * Clear the characters in a row.
+ *
+ * TODO: Not sure if needed. Not called right now. Remove if you call this.
+ */
+void clear_rowchars(int row) {
+    volatile char *video = (volatile char *) VIDEO_BUFFER;
+
+    int i = row * WIDTH;
+
+    for (; i < (row + 1) * WIDTH; i++) {
+        *video++ = ' ';
     }
 }
 
@@ -57,10 +73,10 @@ void clear_screen(void) {
  * Makes a color given the background and foreground
  */
 int make_color(int background, int foreground) {
-    int color;
-    color = background;
-    color = color << 4; // Setting the high nibble
-    color = color | foreground; // Setting the low nibble
+    int color = background;
+    color <<= 4;         // Setting the high nibble
+    color |= foreground; // Setting the low nibble
+
     return color;
 }
 
@@ -112,13 +128,11 @@ void print_char_c(int x, int y, char c, int color) {
  * laterally.
  */
 void print_string(int x, int y, const char *string) {
-    // TODO handle when it goes beyond the y?
     while(*string != '\0') {
         set_char(x++, y, *string++);
 
         if (x == WIDTH) {
-            x = 0;
-            y++;
+            return;
         }
     }
 }
@@ -128,13 +142,11 @@ void print_string(int x, int y, const char *string) {
  * laterally.
  */
 void print_string_c(int x, int y, const char *string, int color) {
-    // TODO handle when it goes beyond the y?
     while(*string != '\0') {
         print_char_c(x++, y, *string++, color);
 
         if (x == WIDTH) {
-            x = 0;
-            y++;
+            return;
         }
     }
 }
