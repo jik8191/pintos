@@ -35,6 +35,9 @@ INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
 https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
 http://www.osdever.net/bkerndev/Docs/idt.htm
 http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html
+https://en.wikipedia.org/wiki/Circular_buffer
+http://wiki.osdev.org/Printing_To_Screen
+http://www.strudel.org.uk/itoa/
 
                  PC BOOTER
                  =========
@@ -48,9 +51,9 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick:    14
+   Darius:  17
+   Austin:  10
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
@@ -157,9 +160,13 @@ No information is passed.
 >> B3: Briefly describe how your bootloader brings your program into
 >> memory.  Does it perform one large load, or multiple smaller loads?
 
+Our bootloader does one large load. It pushes the DAP onto the stack and then
+calls the interupt to do the load.
+
 >> B4: Did you add any BIOS calls to your bootloader to prepare for your
 >> main program?  (i.e. things that aren't available in protected mode)
 
+No
 
               VIDEO SUBSYSTEM
               ===============
@@ -171,20 +178,33 @@ No information is passed.
 >> represented in this mode?  (Please be brief; we don't need complete
 >> documentation on the video system.)
 
+We used text mode. The video buffer starts from 0xB8000. It is represented
+by two btyes. Where one byte is the char and the second is the color.
+
 >> C2: Does your video code maintain any variables or data structures to
 >> facilitate video output?  Briefly describe these values and their
 >> purposes here.
+
+The only variables that we maintain are variables to the default colors. Just
+wanted to keep a default background and foreground color.
 
 ---- ALGORITHMS ----
 
 >> C3: What abstraction does your video code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+It provides abstractions to clear the screen, reset the colors to defaults,
+make a color byte given the desired background and foreground. And the ability
+to print chars and strings to any where on the screen.
+
 ---- RATIONALE ----
 
 >> C4: Did you take any specific steps to improve the appearance of your
 >> program's display output?  For example, using Extended ASCII Codes, or
 >> choosing specific colors to represent different things?
+
+We used colors in our program. We have a river that is blue. A shore that is
+brown and green grass.
 
               TIMER SUBSYSTEM
               ===============
@@ -256,6 +276,10 @@ keypresses itself.
 >> program, or does it preprocess them and expose other information to your
 >> main program?  If scan-code data is preprocessed, briefly describe what
 >> information is actually exposed, and how it is derived from scan-codes.
+
+It doesn't expose scan codes to the main program. It proprocesses them and then
+calls functions based n the codee. The information exposed is that the player
+should go right or left or that the game should start.
 
 ---- SYNCHRONIZATION ----
 
