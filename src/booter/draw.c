@@ -1,5 +1,8 @@
 #include "draw.h"
+
 #include "video.h"
+#include "state.h"
+#include "iota.h"
 
 /**
  * Print the starting message.
@@ -15,6 +18,9 @@ void print_startmsg() {
     print_string(27, 17, "Press 'A' and 'D' to move");
 }
 
+/**
+ * Print the game over message.
+ */
 void print_gameover() {
     print_string(13, 5, "  _____                         ____                 ");
     print_string(13, 6, " / ____|                       / __ \\                ");
@@ -26,16 +32,21 @@ void print_gameover() {
     print_string(29, 15, "Press Space to restart");
 }
 
+/**
+ * Redraw the game board depending on the state.
+ */
 void draw_game() {
     gamestate state = get_state();
 
     switch(state) {
+        // Start screen for the game
         case start:
             clear_chars();
             print_startmsg();
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
+        // While the game is running
         case running:
             reset_colors();
             clear_chars();
@@ -43,6 +54,7 @@ void draw_game() {
             print_tunnels(get_leftwall(), get_rightwall());
             break;
 
+        // Game over screen
         case over:
             clear_chars();
             print_gameover();
@@ -52,25 +64,20 @@ void draw_game() {
     print_scores();
 }
 
+/**
+ * Print the scores.
+ */
 void print_scores() {
-    // Print the score to the screen
     print_string(0, 0, "Score: ");
     print_string(7, 0, iota(get_score()));
     print_string(0, 1, "High Score: ");
     print_string(12, 1, iota(get_highscore()));
 }
 
-void print_tunnel(int *cols) {
-    // Prints a column centered around the mid x coordinate
-    // The offsets list deviations from the mid going top down
-    // TODO fix iteration start Nick
-    int i = 0;
-    int color = make_color(BROWN, WHITE);
-    for (; i < HEIGHT; i++) {
-        print_char_c(cols[i], HEIGHT - i - 1, ' ', color);
-    }
-}
-
+/**
+ * Print the tunnel walls where lcol and rcol specify the left and right walls
+ * of the tunnel in arrays of column indices.
+ */
 void print_tunnels(int *lcol, int *rcol) {
     int wall_color = make_color(BROWN, WHITE);
     int water_color = make_color(BLUE, WHITE);
@@ -90,14 +97,17 @@ void print_tunnels(int *lcol, int *rcol) {
         set_color(l, h, wall_color);
         set_color(r, h, wall_color);
 
+        // Print water between the walls.
         for (j = l + 1; j < r; j++) {
             set_color(j, h, water_color);
         }
     }
 }
 
+/**
+ * Print the player character.
+ */
 void print_player(int x, int y) {
-    int raft_color = make_color(WHITE, BROWN);
-    /* set_color(x, y, raft_color); */
     set_char(x, y, '^');
 }
+

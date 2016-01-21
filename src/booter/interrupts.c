@@ -176,12 +176,14 @@ void memset_zero(uint8_t *start, uint8_t *end) {
 /* Initialize interrupts */
 void init_interrupts(void) {
 
+    // Pointer math
     unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
     uint8_t *start = (uint8_t *) interrupt_descriptor_table;
-    // Zero out the entire Interrupt Descriptor Table
+
+    // Zero out the IDT
     memset_zero(start, start + size);
 
-    // Install the IDT using lidt()
+    // Install the IDT
     lidt(interrupt_descriptor_table, size);
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
@@ -193,17 +195,6 @@ void init_interrupts(void) {
      */
     PIC_remap(0x20, 0x27);
 }
-
-void mask_interrupts() {
-    int i;
-    for(i = 0; i < 16; i++) {
-        IRQ_set_mask(i);
-    }
-
-    IRQ_clear_mask(TIMER_INTERRUPT);
-    IRQ_clear_mask(KEYBOARD_INTERRUPT);
-}
-
 
 /* Installs an interrupt handler into the Interrupt Descriptor Table.
  * The handler is expected to be an assembly language handler function,

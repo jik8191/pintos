@@ -10,9 +10,6 @@
 #define TUNNEL_WIDTH 22
 #define MINWIDTH 5
 
-#include "random.h"
-#include "draw.h"
-
 typedef enum State {
     start,
     running,
@@ -24,17 +21,23 @@ void tunnel_step();
 void tunnel_shrink();
 
 void lose_game();
+
+// Accessors
 int get_wallelem(int *wall, int index);
 int *get_leftwall();
 int *get_rightwall();
 int get_playerx();
-void update_player();
 int get_score();
 int get_highscore();
-
 gamestate get_state();
+
+// Mutators
+void update_player();
 void set_state(gamestate s);
 
+/**
+ * Modulo that wraps negative numbers around to the positive remainder.
+ */
 static inline int mod(int a, int b) {
     int r = a % b;
 

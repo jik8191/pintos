@@ -1,5 +1,8 @@
 #include "iota.h"
 
+/* Converts an int to a string, max 31 chars (32 with null string)
+ * We only need to support base 10 for our purposes
+ */
 const char *iota(int val) {
     // Converts an int to a string, max 31 chars (32 with null string)
     // We only need to support base 10 for our purposes
