@@ -78,6 +78,7 @@ void print_tunnels(int *lcol, int *rcol) {
 }
 
 void print_player(int x, int y) {
-    int water_color = make_color(BLUE, WHITE);
-    print_char_c(x, y, '^', water_color);
+    int raft_color = make_color(WHITE, BROWN);
+    /* set_color(x, y, raft_color); */
+    set_char(x, y, '^');
 }
