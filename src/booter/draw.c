@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "video.h"
 
 /**
  * Print the starting message.
@@ -23,6 +24,7 @@ void draw_game() {
             break;
 
         case running:
+            clear_chars();
             print_player(get_playerx(), ROWS - 2);
             print_tunnels(get_leftwall(), get_rightwall());
             break;

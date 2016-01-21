@@ -60,14 +60,14 @@ void keyboard_interrupt(void) {
     unsigned char scan_code = inb(KEYBOARD_PORT);
 
     // Add it to the pressed queue
-    /* disable_interrupts(); */
     enqueue(keyboard_buffer, scan_code);
     check_key();
-    /* enable_interrupts(); */
 }
 
 void check_key() {
+    /* print_string(5, 5, "checking.."); */
     unsigned char scan_code = peek(keyboard_buffer);
+    /* set_char(2, 2, scan_code); */
     gamestate state = get_state();
     switch(scan_code) {
         // A is pressed
@@ -86,6 +86,7 @@ void check_key() {
 
         // Space is pressed
         case 0x39:
+            print_string(3,3,"got space");
             if (state == start) {
                 set_state(running);
             } else if (state == over) {
