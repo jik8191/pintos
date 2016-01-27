@@ -85,13 +85,13 @@ void thread_init(void) {
     ASSERT(intr_get_level() == INTR_OFF);
 
     lock_init(&tid_lock);
+
+    /* Initialize the array of ready_lists */
     int i = PRI_MIN;
     for (; i <= PRI_MAX; i++) {
-        struct list priority_list;
-        list_init(&priority_list);
-
-        ready_lists[i] = priority_list;
+        list_init(&ready_lists[i]);
     }
+
     list_init(&all_list);
 
     /* Set up a thread structure for the running thread. */
@@ -223,9 +223,16 @@ void thread_unblock(struct thread *t) {
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    struct list *ready_list = &ready_lists[t->priority];
-    list_push_back(ready_list, &t->elem);
+    list_push_back(&ready_lists[t->priority], &t->elem);
     t->status = THREAD_READY;
+
+    /* If the current running thread is of lower priority than a new thread
+       that is about to be unblocked, then yield the current thread */
+    struct thread *cur = thread_current();
+    if (cur != idle_thread && cur->priority < t->priority) {
+        thread_yield();
+    }
+
     intr_set_level(old_level);
 }
 
@@ -285,11 +292,12 @@ void thread_yield(void) {
 
     old_level = intr_disable();
     if (cur != idle_thread) {
-        struct list *ready_list = &ready_lists[cur->priority];
-        list_push_back(ready_list, &cur->elem);
+        list_push_back(&ready_lists[cur->priority], &cur->elem);
     }
     cur->status = THREAD_READY;
+    /* printf("about to schedule"); */
     schedule();
+    /* printf("scheduled"); */
     intr_set_level(old_level);
 }
 
@@ -309,7 +317,24 @@ void thread_foreach(thread_action_func *func, void *aux) {
 
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
+    /* TODO: Maybe we want to use sync primitives to access the data below
+       rather than disabling interrupts here. */
+    enum intr_level old_level = intr_disable();
+
+    /* Make sure the value is valid, or it would segfault array access */
+    ASSERT(new_priority <= PRI_MAX);
+    ASSERT(new_priority >= PRI_MIN);
+
     thread_current()->priority = new_priority;
+
+    /* Check if there are any threads in a higher queue that want to run */
+    int i = PRI_MAX;
+    for (; i > new_priority; i--) {
+        if (!list_empty(&ready_lists[i]))
+            thread_yield();
+    }
+
+    intr_set_level(old_level);
 }
 
 /*! Returns the current thread's priority. */
@@ -438,9 +463,7 @@ static struct thread * next_thread_to_run(void) {
     for (; i >= PRI_MIN; i--) {
         struct list *ready_list = &ready_lists[i];
 
-        if (list_empty(ready_list))
-            continue;
-        else
+        if (!list_empty(ready_list))
             return list_entry(list_pop_front(ready_list), struct thread, elem);
     }
 
