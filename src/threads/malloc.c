@@ -241,7 +241,7 @@ void free(void *p) {
         }
     }
 }
-
+
 /*! Returns the arena that block B is inside. */
 static struct arena * block_to_arena(struct block *b) {
     struct arena *a = pg_round_down(b);
