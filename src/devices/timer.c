@@ -23,6 +23,10 @@
 /*! Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/*! List processes in THREAD_BLOCKED state, that is, processes
+    that are blocked because they have been made to sleep. */
+static struct list wait_list;
+
 /*! Number of loops per timer tick.  Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
@@ -37,6 +41,7 @@ static void real_time_delay(int64_t num, int32_t denom);
 void timer_init(void) {
     pit_configure_channel(0, 2, TIMER_FREQ);
     intr_register_ext(0x20, timer_interrupt, "8254 Timer");
+    list_init(&wait_list);
 }
 
 /*! Calibrates loops_per_tick, used to implement brief delays. */
@@ -78,14 +83,35 @@ int64_t timer_elapsed(int64_t then) {
     return timer_ticks() - then;
 }
 
+/*! Helper function for thread_sleep, return whether thread f should 
+    wake up before thread g so the list is in order, 
+    with the head having the earliest wake time. */
+static bool awake_earlier (const struct list_elem *a, 
+		    const struct list_elem *b, void *aux){
+    struct thread *f = list_entry (a, struct thread, waitelem);
+    struct thread *g = list_entry (b, struct thread, waitelem);
+    return f->ticks_awake < g->ticks_awake;
+}
+
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
-
+    // int64_t start = timer_ticks();
+    struct thread *t_curr = thread_current();
+    if (ticks > 0) {
+	t_curr->ticks_awake = timer_ticks() + ticks;
+    } else {
+	return;  // ignore negative time
+    }
     ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks) 
-        thread_yield();
+    enum intr_level old_level = intr_disable();
+    list_insert_ordered (&wait_list, &(t_curr->waitelem),
+			 awake_earlier, NULL);
+    intr_set_level(old_level);
+    sema_down(&t_curr->sema_wait);
+
+    // while (timer_elapsed(start) < ticks) 
+    //	  thread_yield();
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
@@ -136,11 +162,33 @@ void timer_ndelay(int64_t ns) {
 void timer_print_stats(void) {
     printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
-
-/*! Timer interrupt handler. */
+
+
+/*! Timer interrupt handler (interrupt service routine - ISR). */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
     thread_tick();
+    // Interrupts should be disabled during an ISR
+    // this will only be called in a timer interrupt
+    int64_t ticks_now = timer_ticks();
+
+    // if (ticks_now % 10 == 0) printf("\n tick time is %i\n", ticks_now);
+
+    // The wait list has the thread with the earliest 
+    // wake time in front, so go over the list until we find a thread 
+    // with a later wake up time than the current time, 
+    bool cont = 1;
+    while (!list_empty(&wait_list) && cont){
+	struct list_elem *waitelem_thr = list_front(&wait_list);
+	struct thread *thr = list_entry (waitelem_thr, 
+					 struct thread, waitelem);
+	if (thr->ticks_awake < ticks_now){
+	    sema_up(&thr->sema_wait);      // wake this thread
+	    list_pop_front(&wait_list);  // remove it from the list
+	} else {
+	    cont = 0;
+	}
+    }
 }
 
 /*! Returns true if LOOPS iterations waits for more than one timer tick,
