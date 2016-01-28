@@ -284,6 +284,7 @@ void thread_yield(void) {
     intr_set_level(old_level);
 }
 
+
 /*! Invoke function 'func' on all threads, passing along 'aux'.
     This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux) {
@@ -403,6 +404,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
+    sema_init(&(t->sema_wait), 0);  // thread is initially not blocked
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

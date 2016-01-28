@@ -9,6 +9,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -102,6 +103,9 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    int64_t ticks_awake;                /*!< Tick time to wake up at. */ 
+    struct semaphore sema_wait;         /*!< Semaphore for thread waiting. */
+    struct list_elem waitelem;          /*!< List element for waiting threads list. */
     /**@}*/
 
 #ifdef USERPROG
