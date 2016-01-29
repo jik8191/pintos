@@ -297,7 +297,12 @@ static bool awake_earlier (const struct list_elem *a,
 		    const struct list_elem *b, void *aux){
     struct thread *f = list_entry (a, struct thread, welem);
     struct thread *g = list_entry (b, struct thread, welem);
-    return f->ticks_awake < g->ticks_awake;
+    if (f->ticks_awake != g->ticks_awake){
+	return f->ticks_awake < g->ticks_awake;
+    } else {
+	// check priority
+	return f->priority > g->priority;
+    }
 }
 
 void thread_sleep(struct thread *t){
@@ -318,7 +323,7 @@ void threads_wake(int64_t ticks_now){
 	struct list_elem *welem_thr = list_front(&wait_list);
 	struct thread *thr = list_entry (welem_thr, 
 					 struct thread, welem);
-	if (thr->ticks_awake < ticks_now){
+	if (thr->ticks_awake <= ticks_now){
 	    sema_up(&thr->sema_wait);      // wake this thread
 	    list_pop_front(&wait_list);  // remove it from the list
 	} else {
