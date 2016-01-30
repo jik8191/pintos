@@ -97,6 +97,7 @@ void thread_init(void) {
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
     init_thread(initial_thread, "main", PRI_DEFAULT);
+    /*init_thread(initial_thread, "main", 16);*/
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
 }
@@ -230,7 +231,13 @@ void thread_unblock(struct thread *t) {
        that is about to be unblocked, then yield the current thread */
     struct thread *cur = thread_current();
     if (cur != idle_thread && cur->priority < t->priority) {
+        /*printf("Current priority: %d, t priority %d\n", cur->priority, t->priority);*/
+        /*printf("Current thread: %d\n", cur->tid);*/
+        /*printf("t is thread: %d\n", t->tid);*/
         thread_yield();
+        /*schedule();*/
+        /*struct thread *now = thread_current();*/
+        /*printf("Current thread is now: %d\n", now->tid);*/
     }
 
     intr_set_level(old_level);
@@ -295,9 +302,9 @@ void thread_yield(void) {
         list_push_back(&ready_lists[cur->priority], &cur->elem);
     }
     cur->status = THREAD_READY;
-    /* printf("about to schedule"); */
+    /*printf("about to schedule");*/
     schedule();
-    /* printf("scheduled"); */
+    /*printf("scheduled");*/
     intr_set_level(old_level);
 }
 
