@@ -282,7 +282,7 @@ void thread_yield(void) {
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    if (cur != idle_thread) 
+    if (cur != idle_thread)
         list_push_back(&ready_list, &cur->elem);
     cur->status = THREAD_READY;
     schedule();
@@ -496,7 +496,7 @@ static struct thread * next_thread_to_run(void) {
    After this function and its caller returns, the thread switch is complete. */
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
-  
+
     ASSERT(intr_get_level() == INTR_OFF);
 
     /* Mark us as running. */
