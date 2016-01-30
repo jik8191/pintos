@@ -230,14 +230,17 @@ void thread_unblock(struct thread *t) {
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
     struct thread *cur = thread_current();
-    if (cur != idle_thread && cur->priority < t->priority) {
-        /*printf("Current priority: %d, t priority %d\n", cur->priority, t->priority);*/
-        /*printf("Current thread: %d\n", cur->tid);*/
-        /*printf("t is thread: %d\n", t->tid);*/
-        thread_yield();
-        /*schedule();*/
-        /*struct thread *now = thread_current();*/
-        /*printf("Current thread is now: %d\n", now->tid);*/
+
+    // TODO: Not sure why we can't yield from the idle_thread.
+    if (t != idle_thread && cur->priority < t->priority) {
+        if (cur != idle_thread || strcmp(t->name, "main") != 0) {
+        // TODO: Not sure if this is 100% correct for all situations. Need to
+        // think about it more.
+        if (!intr_context()) {
+            msg ("(%s) thread yielding to (%s) thread...", cur->name, t->name);
+            thread_yield();
+        }
+        }
     }
 
     intr_set_level(old_level);
@@ -528,6 +531,9 @@ static void schedule(void) {
     struct thread *cur = running_thread();
     struct thread *next = next_thread_to_run();
     struct thread *prev = NULL;
+
+    /* if (next != NULL && cur != next) */
+    /*     printf ("Switching from thread (%s) to thread (%s)", cur->name, next->name); */
 
     ASSERT(intr_get_level() == INTR_OFF);
     ASSERT(cur->status != THREAD_RUNNING);

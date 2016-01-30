@@ -72,6 +72,7 @@ void sema_down(struct semaphore *sema) {
         list_insert_ordered(&sema->waiters, &thread_current()->elem,
                             priority_higher, NULL);
         thread_block();
+        printf ("(%s) thread called sema_down and is blocked\n", thread_current()->name);
     }
     sema->value--;
     intr_set_level(old_level);
@@ -317,6 +318,6 @@ bool priority_higher(const struct list_elem *a, const struct list_elem *b,
                    void *aux) {
     struct thread *f = list_entry (a, struct thread, elem);
     struct thread *g = list_entry (b, struct thread, elem);
-    return f->priority > g->priority;
+    return f->priority >= g->priority;
 }
 
