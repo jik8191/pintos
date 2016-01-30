@@ -69,6 +69,8 @@ void sema_down(struct semaphore *sema) {
     old_level = intr_disable();
     while (sema->value == 0) {
         list_push_back(&sema->waiters, &thread_current()->elem);
+        /*list_insert_ordered(&sema->waiters, &thread_current()->elem,*/
+                            /*priority_higher, NULL);*/
         thread_block();
     }
     sema->value--;
@@ -89,7 +91,7 @@ bool sema_try_down(struct semaphore *sema) {
     old_level = intr_disable();
     if (sema->value > 0) {
         sema->value--;
-        success = true; 
+        success = true;
     }
     else {
       success = false;
@@ -270,7 +272,7 @@ void cond_wait(struct condition *cond, struct lock *lock) {
     ASSERT(lock != NULL);
     ASSERT(!intr_context());
     ASSERT(lock_held_by_current_thread(lock));
-  
+
     sema_init(&waiter.semaphore, 0);
     list_push_back(&cond->waiters, &waiter.elem);
     lock_release(lock);
@@ -291,7 +293,7 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(!intr_context ());
     ASSERT(lock_held_by_current_thread (lock));
 
-    if (!list_empty(&cond->waiters)) 
+    if (!list_empty(&cond->waiters))
         sema_up(&list_entry(list_pop_front(&cond->waiters),
                             struct semaphore_elem, elem)->semaphore);
 }
@@ -308,5 +310,13 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
 
     while (!list_empty(&cond->waiters))
         cond_signal(cond, lock);
+}
+
+/* A function that returns if threads A's priority is less than B's */
+bool priority_higher(const struct list_elem *a, const struct list_elem *b,
+                   void *aux) {
+    struct thread *f = list_entry (a, struct thread, elem);
+    struct thread *g = list_entry (b, struct thread, elem);
+    return f->priority > g->priority;
 }
 
