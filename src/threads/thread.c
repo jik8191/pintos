@@ -237,7 +237,7 @@ void thread_unblock(struct thread *t) {
         // TODO: Not sure if this is 100% correct for all situations. Need to
         // think about it more.
         if (!intr_context()) {
-            msg ("(%s) thread yielding to (%s) thread...", cur->name, t->name);
+            /*msg ("(%s) thread yielding to (%s) thread...", cur->name, t->name);*/
             thread_yield();
         }
         }

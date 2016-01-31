@@ -33,7 +33,7 @@ test_priority_sema (void)
   for (i = 0; i < 10; i++)
     {
       sema_up (&sema);
-      msg ("Back in main thread with priority %d.", thread_current()->priority);
+      msg ("Back in main thread.", thread_current()->priority);
     }
 }
 
