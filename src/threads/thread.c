@@ -473,8 +473,10 @@ static struct thread * next_thread_to_run(void) {
     for (; i >= PRI_MIN; i--) {
         struct list *ready_list = &ready_lists[i];
 
-        if (!list_empty(ready_list))
-            return list_entry(list_pop_front(ready_list), struct thread, elem);
+        if (!list_empty(ready_list)) {
+            struct thread *next = list_entry(list_pop_front(ready_list), struct thread, elem);
+            return next;
+        }
     }
 
     return idle_thread;
@@ -528,16 +530,18 @@ void thread_schedule_tail(struct thread *prev) {
     It's not safe to call printf() until thread_schedule_tail() has
     completed. */
 static void schedule(void) {
-    struct thread *cur = running_thread();
-    struct thread *next = next_thread_to_run();
+    volatile struct thread *cur = running_thread();
+    volatile struct thread *next = next_thread_to_run();
     struct thread *prev = NULL;
-
-    /* if (next != NULL && cur != next) */
-    /*     printf ("Switching from thread (%s) to thread (%s)", cur->name, next->name); */
 
     ASSERT(intr_get_level() == INTR_OFF);
     ASSERT(cur->status != THREAD_RUNNING);
     ASSERT(is_thread(next));
+
+    volatile char *unused = cur->name;
+    ASSERT(unused != NULL);
+    unused = next->name;
+    ASSERT(unused != NULL);
 
     if (cur != next)
         prev = switch_threads(cur, next);
@@ -555,7 +559,7 @@ static tid_t allocate_tid(void) {
 
     return tid;
 }
-
+
 /*! Offset of `stack' member within `struct thread'.
     Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);

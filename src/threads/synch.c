@@ -72,7 +72,7 @@ void sema_down(struct semaphore *sema) {
         list_insert_ordered(&sema->waiters, &thread_current()->elem,
                             priority_higher, NULL);
         thread_block();
-        printf ("(%s) thread called sema_down and is blocked\n", thread_current()->name);
+        msg ("(%s) thread was unblocked in sema_down", thread_current()->name);
     }
     sema->value--;
     intr_set_level(old_level);
