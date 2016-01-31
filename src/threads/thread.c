@@ -194,6 +194,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Add to run queue. */
     thread_unblock(t);
 
+    yield_if_needed();
+
     return tid;
 }
 
@@ -229,6 +231,7 @@ void thread_unblock(struct thread *t) {
 
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
+    /*
     struct thread *cur = thread_current();
 
     // TODO: Not sure why we can't yield from the idle_thread.
@@ -237,14 +240,32 @@ void thread_unblock(struct thread *t) {
         // TODO: Not sure if this is 100% correct for all situations. Need to
         // think about it more.
         if (!intr_context()) {
-            /*msg ("(%s) thread yielding to (%s) thread...", cur->name, t->name);*/
             thread_yield();
         }
         }
     }
+    */
 
     intr_set_level(old_level);
 }
+
+/*! Sees if the current thread should yield to any of the ready threads */
+void yield_if_needed(void) {
+    /* TODO: Maybe we want to use sync primitives to access the data below
+       rather than disabling interrupts here. */
+    enum intr_level old_level = intr_disable();
+
+    /* Check if there are any threads in a higher queue that want to run */
+    int i = PRI_MAX;
+    for (; i > thread_current()->priority; i--) {
+        if (!list_empty(&ready_lists[i]))
+            thread_yield();
+    }
+
+    intr_set_level(old_level);
+}
+
+
 
 /*! Returns the name of the running thread. */
 const char * thread_name(void) {
