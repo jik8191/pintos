@@ -194,8 +194,6 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Add to run queue. */
     thread_unblock(t);
 
-    yield_if_needed();
-
     return tid;
 }
 
@@ -231,7 +229,6 @@ void thread_unblock(struct thread *t) {
 
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
-    /*
     struct thread *cur = thread_current();
 
     // TODO: Not sure why we can't yield from the idle_thread.
@@ -244,28 +241,9 @@ void thread_unblock(struct thread *t) {
         }
         }
     }
-    */
 
     intr_set_level(old_level);
 }
-
-/*! Sees if the current thread should yield to any of the ready threads */
-void yield_if_needed(void) {
-    /* TODO: Maybe we want to use sync primitives to access the data below
-       rather than disabling interrupts here. */
-    enum intr_level old_level = intr_disable();
-
-    /* Check if there are any threads in a higher queue that want to run */
-    int i = PRI_MAX;
-    for (; i > thread_current()->priority; i--) {
-        if (!list_empty(&ready_lists[i]))
-            thread_yield();
-    }
-
-    intr_set_level(old_level);
-}
-
-
 
 /*! Returns the name of the running thread. */
 const char * thread_name(void) {
@@ -551,18 +529,13 @@ void thread_schedule_tail(struct thread *prev) {
     It's not safe to call printf() until thread_schedule_tail() has
     completed. */
 static void schedule(void) {
-    volatile struct thread *cur = running_thread();
-    volatile struct thread *next = next_thread_to_run();
+    struct thread *cur = running_thread();
+    struct thread *next = next_thread_to_run();
     struct thread *prev = NULL;
 
     ASSERT(intr_get_level() == INTR_OFF);
     ASSERT(cur->status != THREAD_RUNNING);
     ASSERT(is_thread(next));
-
-    volatile char *unused = cur->name;
-    ASSERT(unused != NULL);
-    unused = next->name;
-    ASSERT(unused != NULL);
 
     if (cur != next)
         prev = switch_threads(cur, next);

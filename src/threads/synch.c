@@ -112,12 +112,11 @@ void sema_up(struct semaphore *sema) {
     ASSERT(sema != NULL);
 
     old_level = intr_disable();
+    sema->value++;
     if (!list_empty(&sema->waiters)) {
         thread_unblock(list_entry(list_pop_front(&sema->waiters),
                                   struct thread, elem));
     }
-    sema->value++;
-    yield_if_needed();
     intr_set_level(old_level);
 }
 
@@ -231,7 +230,7 @@ bool lock_held_by_current_thread(const struct lock *lock) {
 
     return lock->holder == thread_current();
 }
-
+
 /*! One semaphore in a list. */
 struct semaphore_elem {
     struct list_elem elem;              /*!< List element. */
@@ -295,9 +294,11 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(!intr_context ());
     ASSERT(lock_held_by_current_thread (lock));
 
-    if (!list_empty(&cond->waiters))
+    if (!list_empty(&cond->waiters)) {
+        list_sort(&cond->waiters, priority_higher_sema, NULL);
         sema_up(&list_entry(list_pop_front(&cond->waiters),
                             struct semaphore_elem, elem)->semaphore);
+    }
 }
 
 /*! Wakes up all threads, if any, waiting on COND (protected by
@@ -316,9 +317,23 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
 
 /* A function that returns if threads A's priority is less than B's */
 bool priority_higher(const struct list_elem *a, const struct list_elem *b,
-                   void *aux) {
+                   void *aux UNUSED) {
     struct thread *f = list_entry (a, struct thread, elem);
     struct thread *g = list_entry (b, struct thread, elem);
     return f->priority >= g->priority;
+}
+
+/* A function that returns if one semaphore elem has a higher priority than
+ * the other*/
+bool priority_higher_sema(const struct list_elem *a, const struct list_elem *b,
+                          void *aux UNUSED) {
+    struct semaphore *s = &list_entry(a, struct semaphore_elem, elem)->semaphore;
+    struct semaphore *t = &list_entry(b, struct semaphore_elem, elem)->semaphore;
+
+    ASSERT(list_size(&s->waiters) == 1);
+    ASSERT(list_size(&t->waiters) == 1);
+
+    return priority_higher(list_front(&s->waiters), list_front(&t->waiters),
+                           NULL);
 }
 
