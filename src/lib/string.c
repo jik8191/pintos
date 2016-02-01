@@ -156,7 +156,7 @@ char * strrchr(const char *string, int c_) {
     consists of characters in SKIP. */
 size_t strspn(const char *string, const char *skip) {
     size_t length;
-  
+
     for (length = 0; string[length] != '\0'; length++) {
         if (strchr (skip, string[length]) == NULL)
             break;
@@ -223,7 +223,7 @@ char * strstr(const char *haystack, const char *needle) {
 */
 char * strtok_r(char *s, const char *delimiters, char **save_ptr) {
     char *token;
-  
+
     ASSERT(delimiters != NULL);
     ASSERT(save_ptr != NULL);
 
