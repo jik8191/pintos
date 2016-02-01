@@ -20,6 +20,10 @@
     of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/*! List processes in THREAD_BLOCKED state, that is, processes
+    that are blocked because they have been made to sleep. */
+static struct list wait_list;
+
 /*! List of processes in THREAD_READY state, that is, processes
     that are ready to run but not actually running. */
 static struct list ready_lists[PRI_MAX - PRI_MIN + 1];
@@ -85,13 +89,13 @@ void thread_init(void) {
     ASSERT(intr_get_level() == INTR_OFF);
 
     lock_init(&tid_lock);
-
     /* Initialize the array of ready_lists */
     int i = PRI_MIN;
     for (; i <= PRI_MAX; i++) {
         list_init(&ready_lists[i]);
     }
 
+    list_init(&wait_list);
     list_init(&all_list);
 
     /* Set up a thread structure for the running thread. */
@@ -310,6 +314,49 @@ void thread_yield(void) {
     intr_set_level(old_level);
 }
 
+
+/*! Helper function for thread_sleep, return whether thread f should
+    wake up before thread g so the list is in order,
+    with the head having the earliest wake time. */
+static bool awake_earlier (const struct list_elem *a,
+		    const struct list_elem *b, void *aux){
+    struct thread *f = list_entry (a, struct thread, welem);
+    struct thread *g = list_entry (b, struct thread, welem);
+    if (f->ticks_awake != g->ticks_awake){
+	return f->ticks_awake < g->ticks_awake;
+    } else {
+	// check priority
+	return f->priority > g->priority;
+    }
+}
+
+void thread_sleep(struct thread *t){
+    ASSERT(intr_get_level() == INTR_ON);
+    enum intr_level old_level = intr_disable();
+    list_insert_ordered (&wait_list, &(t->welem),
+			 awake_earlier, NULL);
+    intr_set_level(old_level);
+    sema_down(&t->sema_wait);
+}
+
+void threads_wake(int64_t ticks_now){
+    // The wait list has the thread with the earliest
+    // wake time in front, so go over the list until we find a thread
+    // with a later wake up time than the current time,
+    bool cont = 1;
+    while (!list_empty(&wait_list) && cont){
+	struct list_elem *welem_thr = list_front(&wait_list);
+	struct thread *thr = list_entry (welem_thr,
+					 struct thread, welem);
+	if (thr->ticks_awake <= ticks_now){
+	    sema_up(&thr->sema_wait);      // wake this thread
+	    list_pop_front(&wait_list);  // remove it from the list
+	} else {
+	    cont = 0;
+	}
+    }
+}
+
 /*! Invoke function 'func' on all threads, passing along 'aux'.
     This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux) {
@@ -446,6 +493,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
+    sema_init(&(t->sema_wait), 0);  // thread is initially not blocked
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

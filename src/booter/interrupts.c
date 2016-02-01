@@ -159,8 +159,7 @@ void IRQ_clear_mask(unsigned char IRQline) {
 }
 
 
-/* Write len copies of val to dest
- * from JamesM's kernel development tutorials.*/
+/* Fill from start to end with zeros. */
 void memset_zero(uint8_t *start, uint8_t *end) {
     while (start < end) {
         *start = 0;
@@ -176,6 +175,7 @@ void memset_zero(uint8_t *start, uint8_t *end) {
 
 /* Initialize interrupts */
 void init_interrupts(void) {
+
     // Pointer math
     unsigned int size = sizeof(IDT_Descriptor) * NUM_INTERRUPTS;
     uint8_t *start = (uint8_t *) interrupt_descriptor_table;

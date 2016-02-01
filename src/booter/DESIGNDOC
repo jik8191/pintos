@@ -85,6 +85,7 @@ control of the processor to the game program.
 The user presses space to start a game and restart a game. The user uses 'A'
 and 'D' to move the player avatar left and right.
 
+
 ---- DATA STRUCTURES ----
 
 >> A3: Describe any global state that your program manages in order to
@@ -105,13 +106,18 @@ lost, etc.).
 >> Similarly, when a keyboard interrupt occurs, what does your program do
 >> in response?
 
+
 When an timer interrupt occurs, we suspend the program and call the interrupt
 service routine (ISR) from the interrupt descriptor table (IDT). We maintain a
 count and update the map and game time at regular intervals.
 
+When an keyboard interrupt occurs, we suspend the program and call the 
+ISR from the IDT. We again update relevant state variables.
+
 >> A5: Would you say your program relies on polling or busy-waiting anywhere
 >> to accomplish its tasks?  If so, what tasks?
 
+No, we don't rely on polling.
 The program waits for interrupts and performs all necessary tasks when it
 receives the appropriate interrupt.
 
@@ -126,7 +132,8 @@ It was a game one of us had played a lot of before.
 >> if you implemented a scrolling game, did you implement specialized high-
 >> performance video code to scroll the screen?)
 
-No there were on specific implementation details necessary.
+The game is a scrolling game, but did not require anything particularly
+specialized, there were on specific implementation details necessary.
 
 >> A8: Did you run into any technical or resource limitations in the
 >> implementation of your program?  (For example, bootloader didn't fit,
@@ -139,6 +146,7 @@ standard libraries).
 
                  BOOT SECTOR
                  ===========
+
 
 ---- DATA STRUCTURES ----
 
@@ -171,6 +179,7 @@ No
               VIDEO SUBSYSTEM
               ===============
 
+
 ---- DATA STRUCTURES ----
 
 >> C1: What video display mode does your program use?  Is it a text mode
@@ -179,7 +188,8 @@ No
 >> documentation on the video system.)
 
 We used text mode. The video buffer starts from 0xB8000. It is represented
-by two btyes. Where one byte is the char and the second is the color.
+by two bytes, where one byte is the char and the second is the color.
+
 
 >> C2: Does your video code maintain any variables or data structures to
 >> facilitate video output?  Briefly describe these values and their
@@ -240,6 +250,7 @@ No
 >> program's global state?  If so, what steps did you take to ensure that
 >> such situations cannot occur?
 
+
 Yes, two interrupts might try to change the game state at the same time. We
 disable interrupts while one timer interrupt was changing state to make sure
 another wouldn't trigger in that time span. We also tried to make sure that in
@@ -278,8 +289,9 @@ keypresses itself.
 >> information is actually exposed, and how it is derived from scan-codes.
 
 It doesn't expose scan codes to the main program. It proprocesses them and then
-calls functions based n the codee. The information exposed is that the player
+calls functions based on the codee. The information exposed is that the player
 should go right or left or that the game should start.
+
 
 ---- SYNCHRONIZATION ----
 
