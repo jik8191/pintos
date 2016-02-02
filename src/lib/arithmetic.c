@@ -51,12 +51,12 @@ static int nlz(uint32_t x) {
 
     if (x <= 0x0000FFFF) {
         n += 16;
-        x <<= 16; 
+        x <<= 16;
     }
 
     if (x <= 0x00FFFFFF) {
         n += 8;
-        x <<= 8; 
+        x <<= 8;
     }
 
     if (x <= 0x0FFFFFFF) {
@@ -66,7 +66,7 @@ static int nlz(uint32_t x) {
 
     if (x <= 0x3FFFFFFF) {
         n += 2;
-        x <<= 2; 
+        x <<= 2;
     }
 
     if (x <= 0x7FFFFFFF)
@@ -105,10 +105,10 @@ static uint64_t udiv64 (uint64_t n, uint64_t d) {
            Therefore, this code is correct and will not trap. */
         uint64_t b = 1ULL << 32;
         uint32_t n1 = n >> 32;
-        uint32_t n0 = n; 
+        uint32_t n0 = n;
         uint32_t d0 = d;
 
-        return divl(b * (n1 % d0) + n0, d0) + b * (n1 / d0); 
+        return divl(b * (n1 % d0) + n0, d0) + b * (n1 / d0);
     }
     else {
         /* Based on the algorithm and proof available from
@@ -120,7 +120,7 @@ static uint64_t udiv64 (uint64_t n, uint64_t d) {
             uint32_t d1 = d >> 32;
             int s = nlz(d1);
             uint64_t q = divl(n >> 1, (d << s) >> 32) >> (31 - s);
-            return n - (q - 1) * d < d ? q - 1 : q; 
+            return n - (q - 1) * d < d ? q - 1 : q;
         }
     }
 }
