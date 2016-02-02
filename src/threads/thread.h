@@ -10,6 +10,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include "lib/kernel/fixed_point.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -98,6 +99,8 @@ struct thread {
     uint8_t *stack;                     /*!< Saved stack pointer. */
     int priority;                       /*!< Priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
+    fp recent_cpu;                      /*!< The threads recent_cpu */
+    int nice;                           /*!< The threads nice value */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
@@ -161,12 +164,16 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
+void thread_calculate_priority(struct thread *t);
+
 // The number of threads running or ready to run. Not including the
 // idle thread
 int threads_ready(void);
 
 // Returns whether the multi-level feedback queue scheduler is being used
 bool get_mlfqs(void);
+
+struct list *get_all_list(void);
 
 #endif /* threads/thread.h */
 

@@ -12,7 +12,6 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
-#include "lib/kernel/fixed_point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -103,13 +102,18 @@ void thread_init(void) {
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
     init_thread(initial_thread, "main", PRI_DEFAULT);
-    /*init_thread(initial_thread, "main", 16);*/
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
 
     if (thread_mlfqs) {
         // Initializing the load_avg
         init_load_avg();
+        // Setting the inital threads nice value
+        initial_thread->nice = 0;
+        // Setting its recent cpu value
+        initial_thread->recent_cpu = int_to_fp(0);
+        // Setting the priority
+        initial_thread->priority = PRI_MAX;
     }
 }
 
@@ -140,8 +144,13 @@ void thread_tick(void) {
     else if (t->pagedir != NULL)
         user_ticks++;
 #endif
-    else
+    else {
         kernel_ticks++;
+        /* If mlqfs then update recent cpu */
+        if (thread_mlfqs) {
+            t->recent_cpu = int_add(t->recent_cpu, 1);
+        }
+    }
 
     /* Enforce preemption. */
     if (++thread_ticks >= TIME_SLICE)
@@ -186,6 +195,13 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Initialize thread. */
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
+
+    /* Setting up the nice value if mlfqs */
+    if (thread_mlfqs) {
+        t->nice = thread_current()->nice;
+        t->recent_cpu = thread_current()->recent_cpu;
+        thread_calculate_priority(t);
+    }
 
     /* Stack frame for kernel_thread(). */
     kf = alloc_frame(t, sizeof *kf);
@@ -407,13 +423,21 @@ int thread_get_priority(void) {
 
 /*! Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice UNUSED) {
+    /* TODO synchronization issues? */
     /* Not yet implemented. */
+    thread_current()->nice = nice;
+    thread_calculate_priority(thread_current());
+    /* Check if there are any threads in a higher queue that want to run */
+    int i = PRI_MAX;
+    for (; i > thread_current()->priority; i--) {
+        if (!list_empty(&ready_lists[i]))
+            thread_yield();
+    }
 }
 
 /*! Returns the current thread's nice value. */
 int thread_get_nice(void) {
-    /* Not yet implemented. */
-    return 0;
+    return thread_current()->nice;
 }
 
 /*! Returns 100 times the system load average. */
@@ -426,7 +450,26 @@ int thread_get_load_avg(void) {
 /*! Returns 100 times the current thread's recent_cpu value. */
 int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
-    return 0;
+    return fp_to_int(thread_current()->recent_cpu, 1) * 100;
+}
+
+/* Calculates a threads priority */
+void thread_calculate_priority(struct thread *t) {
+    int new_priority = PRI_MAX;
+    new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 1);
+    new_priority = new_priority - (t->nice * 2);
+    if (new_priority < PRI_MIN) {
+        new_priority = PRI_MIN;
+    }
+    if (new_priority > PRI_MAX) {
+        new_priority = PRI_MAX;
+    }
+    t->priority = new_priority;
+    /* TODO probably need an assert here */
+    if (t->status == THREAD_READY) {
+        list_remove(&t->elem);
+        list_push_back(&ready_lists[new_priority], &t->elem);
+    }
 }
 
 /*! Returns the total number of threads that are running */
@@ -448,6 +491,11 @@ int threads_ready(void) {
 // Returns whether the multi-level feedback queue scheduler is being used
 bool get_mlfqs(void) {
     return thread_mlfqs;
+}
+
+/* Returns a list of all threads */
+struct list *get_all_list(void) {
+    return &all_list;
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.

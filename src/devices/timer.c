@@ -31,6 +31,8 @@ static unsigned loops_per_tick;
 
 static intr_handler_func timer_interrupt;
 static void calculate_load_avg(void);
+static void recalculate_recent_cpu(void);
+static void recalculate_priorities(void);
 static bool too_many_loops(unsigned loops);
 static void busy_wait(int64_t loops);
 static void real_time_sleep(int64_t num, int32_t denom);
@@ -160,10 +162,15 @@ void timer_print_stats(void) {
 /*! Timer interrupt handler (interrupt service routine - ISR). */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
-    // Recalculating the load average every second
-    // Only necessary for
+    // Recalculating the load average every second and the recent cpu for all
+    // threads
+    // Only necessary for mlfqs.
     if (get_mlfqs() && timer_ticks() % TIMER_FREQ == 0) {
         calculate_load_avg();
+        recalculate_recent_cpu();
+    }
+    if (get_mlfqs() && timer_ticks() % 4 == 0) {
+        recalculate_priorities();
     }
     thread_tick();
     // Interrupts should be disabled during an ISR
@@ -174,7 +181,7 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
 }
 
 /* Recalculates the load average */
-void calculate_load_avg(void) {
+static void calculate_load_avg(void) {
     // Setting the weight of the old value to be 59/60
     fp old_val_weight = int_to_fp(59);
     old_val_weight = int_divide(old_val_weight, 60);
@@ -187,6 +194,31 @@ void calculate_load_avg(void) {
     load_avg = fp_add(fp_multiply(old_val_weight, load_avg),
                       int_multiply(threads_weight, ready_threads));
 }
+
+/* Recalculates the recent cpu of all threads */
+static void recalculate_recent_cpu(void) {
+    struct list *all_threads = get_all_list();
+    struct list_elem *i = list_front(all_threads);
+    for (; i != list_tail(all_threads); i = i->next) {
+        fp coef;
+        coef = int_multiply(load_avg, 2);
+        coef = fp_divide(coef, int_add(int_multiply(load_avg, 2), 1));
+        struct thread *t = list_entry(i, struct thread, allelem);
+        t->recent_cpu = fp_multiply(coef, t->recent_cpu);
+        t->recent_cpu = int_add(t->recent_cpu, t->nice);
+    }
+}
+
+/* Recalculates the priority of all threads */
+static void recalculate_priorities(void) {
+    struct list *all_threads = get_all_list();
+    struct list_elem *i = list_front(all_threads);
+    for (; i != list_tail(all_threads); i = i->next) {
+        struct thread *t = list_entry(i, struct thread, allelem);
+        thread_calculate_priority(t);
+    }
+}
+
 
 /*! Returns true if LOOPS iterations waits for more than one timer tick,
     otherwise false. */
