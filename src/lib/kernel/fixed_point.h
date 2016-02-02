@@ -3,6 +3,8 @@
 
 #define F 16384 // 2**14
 
-typedef int FP;
+typedef struct {
+    int int_val;
+} fp;
 
 #endif /* lib/kernel/fixed_point.h */
