@@ -103,7 +103,7 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
-    int64_t ticks_awake;                /*!< Tick time to wake up at. */ 
+    int64_t ticks_awake;                /*!< Tick time to wake up at. */
     struct semaphore sema_wait;         /*!< Semaphore for thread waiting. */
     struct list_elem welem;              /*!< List element for waiting list. */
     /**@}*/
@@ -160,6 +160,13 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+// The number of threads running or ready to run. Not including the
+// idle thread
+int threads_ready(void);
+
+// Returns whether the multi-level feedback queue scheduler is being used
+bool get_mlfqs(void);
 
 #endif /* threads/thread.h */
 

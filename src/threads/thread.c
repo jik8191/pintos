@@ -11,6 +11,8 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
+#include "lib/kernel/fixed_point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -104,6 +106,11 @@ void thread_init(void) {
     /*init_thread(initial_thread, "main", 16);*/
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
+
+    if (thread_mlfqs) {
+        // Initializing the load_avg
+        init_load_avg();
+    }
 }
 
 /*! Starts preemptive thread scheduling by enabling interrupts.
@@ -319,7 +326,7 @@ void thread_yield(void) {
     wake up before thread g so the list is in order,
     with the head having the earliest wake time. */
 static bool awake_earlier (const struct list_elem *a,
-		    const struct list_elem *b, void *aux){
+		    const struct list_elem *b, void *aux UNUSED){
     struct thread *f = list_entry (a, struct thread, welem);
     struct thread *g = list_entry (b, struct thread, welem);
     if (f->ticks_awake != g->ticks_awake){
@@ -345,15 +352,15 @@ void threads_wake(int64_t ticks_now){
     // with a later wake up time than the current time,
     bool cont = 1;
     while (!list_empty(&wait_list) && cont){
-	struct list_elem *welem_thr = list_front(&wait_list);
-	struct thread *thr = list_entry (welem_thr,
-					 struct thread, welem);
-	if (thr->ticks_awake <= ticks_now){
-	    sema_up(&thr->sema_wait);      // wake this thread
-	    list_pop_front(&wait_list);  // remove it from the list
-	} else {
-	    cont = 0;
-	}
+	    struct list_elem *welem_thr = list_front(&wait_list);
+	    struct thread *thr = list_entry (welem_thr,
+					                     struct thread, welem);
+	    if (thr->ticks_awake <= ticks_now){
+	        sema_up(&thr->sema_wait);      // wake this thread
+	        list_pop_front(&wait_list);  // remove it from the list
+	    } else {
+	        cont = 0;
+	    }
     }
 }
 
@@ -412,7 +419,8 @@ int thread_get_nice(void) {
 /*! Returns 100 times the system load average. */
 int thread_get_load_avg(void) {
     /* Not yet implemented. */
-    return 0;
+    /*return 10;*/
+    return fp_to_int(get_load_avg(), 1) * 100;
 }
 
 /*! Returns 100 times the current thread's recent_cpu value. */
@@ -420,7 +428,28 @@ int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
     return 0;
 }
-
+
+/*! Returns the total number of threads that are running */
+int threads_ready(void) {
+    // Going through all of the thread queues
+    int thread_total = 0;
+    int i = PRI_MIN;
+    for (; i <= PRI_MAX; i++) {
+        thread_total = thread_total + list_size(&ready_lists[i]);
+    }
+    struct thread *cur = thread_current();
+    // If the current thread isn't the idle thread add it to the count
+    if (cur != idle_thread) {
+        thread_total++;
+    }
+    return thread_total;
+}
+
+// Returns whether the multi-level feedback queue scheduler is being used
+bool get_mlfqs(void) {
+    return thread_mlfqs;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
