@@ -241,9 +241,6 @@ void donate_priority(struct lock *lock, int priority) {
     struct thread *nested_t = lock->holder;
     if (nested_t != NULL && nested_t->priority < priority) {
 
-        // Change the lock holder's priority.
-        /* nested_t->priority = priority; */
-
         // Move the lock holder into a new ready_queue, if it is not running.
         if (nested_t->status == THREAD_READY) {
             thread_reschedule(nested_t, priority);
@@ -291,28 +288,6 @@ void lock_release(struct lock *lock) {
 
     lock->holder = NULL;
     list_remove(&lock->elem);
-
-    /* thread_current()->priority = thread_get_priority(); */
-
-    /*
-    // If the thread is holding any locks, its priority is the highest of any
-    // donated priority from a thread waiting on one of those locks.
-    struct thread *curr = thread_current();
-
-    if (!list_empty(&curr->locks)) {
-        struct lock *max_pri_l = list_entry(
-                list_max(&curr->locks, lock_donated_pri_lower, NULL),
-                struct lock, elem);
-
-        if (max_pri_l->donated_priority > curr->init_priority) {
-            thread_current()->priority = max_pri_l->donated_priority;
-        } else {
-            curr->priority = curr->init_priority;
-        }
-    } else {
-        curr->priority = curr->init_priority;
-    }
-    */
 
     intr_set_level(old_level);
 
@@ -418,7 +393,7 @@ bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
 
     struct thread *f = list_entry (a, struct thread, semaelem);
     struct thread *g = list_entry (b, struct thread, semaelem);
-    /* return f->priority >= g->priority; */
+
     return thread_get_priority_t(f) >= thread_get_priority_t(g);
 }
 

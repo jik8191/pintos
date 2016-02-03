@@ -251,7 +251,6 @@ void thread_unblock(struct thread *t) {
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    /* list_push_back(&ready_lists[t->priority], &t->rdyelem); */
     list_push_back(&ready_lists[thread_get_priority_t(t)], &t->rdyelem);
     t->status = THREAD_READY;
 
@@ -333,9 +332,7 @@ void thread_yield(void) {
         list_push_back(&ready_lists[thread_get_priority()], &cur->rdyelem);
     }
     cur->status = THREAD_READY;
-    /*printf("about to schedule");*/
     schedule();
-    /*printf("scheduled");*/
     intr_set_level(old_level);
 }
 
@@ -459,7 +456,6 @@ void thread_set_nice(int nice UNUSED) {
 
     /* Check if there are any threads in a higher queue that want to run */
     int i = PRI_MAX;
-    /* for (; i > thread_current()->priority; i--) { */
     for (; i > thread_get_priority(); i--) {
         if (!list_empty(&ready_lists[i]))
             thread_yield();
@@ -604,7 +600,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
-    t->init_priority = priority;
     t->magic = THREAD_MAGIC;
 
     sema_init(&(t->sema_wait), 0);  // Thread is initially not blocked

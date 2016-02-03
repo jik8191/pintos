@@ -98,7 +98,6 @@ struct thread {
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
     int priority;                       /*!< Priority (Possible donated). */
-    int init_priority;                  /*!< Initial Priority. */
 
     int nice;                           /*!< The threads nice value. */
     fp recent_cpu;                      /*!< The threads recent_cpu. */
