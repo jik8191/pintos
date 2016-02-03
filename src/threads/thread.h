@@ -98,17 +98,20 @@ struct thread {
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
     int priority;                       /*!< Priority. */
-    struct list_elem allelem;           /*!< List element for all threads list. */
-    fp recent_cpu;                      /*!< The threads recent_cpu */
+
     int nice;                           /*!< The threads nice value */
+    fp recent_cpu;                      /*!< The threads recent_cpu */
+
+    struct list_elem allelem;           /*!< List element for all threads list. */
+    struct list_elem rdyelem;           /*!< List element for the ready lists. */
+    struct list_elem waitelem;          /*!< List element for waiting list. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
-    struct list_elem elem;              /*!< List element. */
     int64_t ticks_awake;                /*!< Tick time to wake up at. */
     struct semaphore sema_wait;         /*!< Semaphore for thread waiting. */
-    struct list_elem welem;              /*!< List element for waiting list. */
+    struct list_elem semaelem;          /*!< List element for the list of semaphore waiters. */
     /**@}*/
 
 #ifdef USERPROG

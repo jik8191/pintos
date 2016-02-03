@@ -45,11 +45,11 @@ void cond_signal(struct condition *, struct lock *);
 void cond_broadcast(struct condition *, struct lock *);
 
 /* A function that returns if threads A's priority is greater than B's */
-bool priority_higher(const struct list_elem *a, const struct list_elem *b,
-                   void *aux);
+bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
+        void *aux);
 
-bool priority_higher_sema(const struct list_elem *a, const struct list_elem *b,
-                          void *aux);
+bool sema_waiters_pri_higher(const struct list_elem *a,
+        const struct list_elem *b, void *aux);
 
 /*! Optimization barrier.
 

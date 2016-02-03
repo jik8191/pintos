@@ -68,11 +68,9 @@ void sema_down(struct semaphore *sema) {
 
     old_level = intr_disable();
     while (sema->value == 0) {
-        /*list_push_back(&sema->waiters, &thread_current()->elem);*/
-        list_insert_ordered(&sema->waiters, &thread_current()->elem,
-                            priority_higher, NULL);
+        list_insert_ordered(&sema->waiters, &thread_current()->semaelem,
+                            waiting_pri_higher, NULL);
         thread_block();
-        /*msg ("(%s) thread was unblocked in sema_down", thread_current()->name);*/
     }
     sema->value--;
     intr_set_level(old_level);
@@ -115,7 +113,7 @@ void sema_up(struct semaphore *sema) {
     sema->value++;
     if (!list_empty(&sema->waiters)) {
         thread_unblock(list_entry(list_pop_front(&sema->waiters),
-                                  struct thread, elem));
+                                  struct thread, semaelem));
     }
     intr_set_level(old_level);
 }
@@ -156,16 +154,16 @@ static void sema_test_helper(void *sema_) {
     is, it is an error for the thread currently holding a lock to
     try to acquire that lock.
 
-   A lock is a specialization of a semaphore with an initial
-   value of 1.  The difference between a lock and such a
-   semaphore is twofold.  First, a semaphore can have a value
-   greater than 1, but a lock can only be owned by a single
-   thread at a time.  Second, a semaphore does not have an owner,
-   meaning that one thread can "down" the semaphore and then
-   another one "up" it, but with a lock the same thread must both
-   acquire and release it.  When these restrictions prove
-   onerous, it's a good sign that a semaphore should be used,
-   instead of a lock. */
+    A lock is a specialization of a semaphore with an initial
+    value of 1.  The difference between a lock and such a
+    semaphore is twofold.  First, a semaphore can have a value
+    greater than 1, but a lock can only be owned by a single
+    thread at a time.  Second, a semaphore does not have an owner,
+    meaning that one thread can "down" the semaphore and then
+    another one "up" it, but with a lock the same thread must both
+    acquire and release it.  When these restrictions prove
+    onerous, it's a good sign that a semaphore should be used,
+    instead of a lock. */
 void lock_init(struct lock *lock) {
     ASSERT(lock != NULL);
 
@@ -295,7 +293,7 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(lock_held_by_current_thread (lock));
 
     if (!list_empty(&cond->waiters)) {
-        list_sort(&cond->waiters, priority_higher_sema, NULL);
+        list_sort(&cond->waiters, sema_waiters_pri_higher, NULL);
         sema_up(&list_entry(list_pop_front(&cond->waiters),
                             struct semaphore_elem, elem)->semaphore);
     }
@@ -315,25 +313,27 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
         cond_signal(cond, lock);
 }
 
-/* A function that returns if threads A's priority is less than B's */
-bool priority_higher(const struct list_elem *a, const struct list_elem *b,
-                   void *aux UNUSED) {
-    struct thread *f = list_entry (a, struct thread, elem);
-    struct thread *g = list_entry (b, struct thread, elem);
+/*! A function that returns if threads A's priority is less than B's */
+bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
+        void *aux UNUSED) {
+
+    struct thread *f = list_entry (a, struct thread, semaelem);
+    struct thread *g = list_entry (b, struct thread, semaelem);
     return f->priority >= g->priority;
 }
 
-/* A function that returns if one semaphore elem has a higher priority than
- * the other*/
-bool priority_higher_sema(const struct list_elem *a, const struct list_elem *b,
-                          void *aux UNUSED) {
-    struct semaphore *s = &list_entry(a, struct semaphore_elem, elem)->semaphore;
-    struct semaphore *t = &list_entry(b, struct semaphore_elem, elem)->semaphore;
+/*! A function that returns if one semaphore's waiter has a higher priority
+    than another's. */
+bool sema_waiters_pri_higher(const struct list_elem *a,
+        const struct list_elem *b, void *aux UNUSED) {
+    struct semaphore *s, *t;
+    s = &list_entry(a, struct semaphore_elem, elem)->semaphore;
+    t = &list_entry(b, struct semaphore_elem, elem)->semaphore;
 
     ASSERT(list_size(&s->waiters) == 1);
     ASSERT(list_size(&t->waiters) == 1);
 
-    return priority_higher(list_front(&s->waiters), list_front(&t->waiters),
-                           NULL);
+    return waiting_pri_higher(list_front(&s->waiters), list_front(&t->waiters),
+                              NULL);
 }
 

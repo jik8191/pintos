@@ -251,7 +251,7 @@ void thread_unblock(struct thread *t) {
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    list_push_back(&ready_lists[t->priority], &t->elem);
+    list_push_back(&ready_lists[t->priority], &t->rdyelem);
     t->status = THREAD_READY;
 
     /* If the current running thread is of lower priority than a new thread
@@ -328,7 +328,7 @@ void thread_yield(void) {
 
     old_level = intr_disable();
     if (cur != idle_thread) {
-        list_push_back(&ready_lists[cur->priority], &cur->elem);
+        list_push_back(&ready_lists[cur->priority], &cur->rdyelem);
     }
     cur->status = THREAD_READY;
     /*printf("about to schedule");*/
@@ -341,23 +341,24 @@ void thread_yield(void) {
 /*! Helper function for thread_sleep, return whether thread f should
     wake up before thread g so the list is in order,
     with the head having the earliest wake time. */
-static bool awake_earlier (const struct list_elem *a,
-		    const struct list_elem *b, void *aux UNUSED){
-    struct thread *f = list_entry (a, struct thread, welem);
-    struct thread *g = list_entry (b, struct thread, welem);
+static bool awake_earlier (const struct list_elem *a, const struct list_elem *b,
+        void *aux UNUSED){
+
+    struct thread *f = list_entry (a, struct thread, waitelem);
+    struct thread *g = list_entry (b, struct thread, waitelem);
+
     if (f->ticks_awake != g->ticks_awake){
-	return f->ticks_awake < g->ticks_awake;
+        return f->ticks_awake < g->ticks_awake;
     } else {
-	// check priority
-	return f->priority > g->priority;
+        // check priority
+        return f->priority > g->priority;
     }
 }
 
 void thread_sleep(struct thread *t){
     ASSERT(intr_get_level() == INTR_ON);
     enum intr_level old_level = intr_disable();
-    list_insert_ordered (&wait_list, &(t->welem),
-			 awake_earlier, NULL);
+    list_insert_ordered(&wait_list, &(t->waitelem), awake_earlier, NULL);
     intr_set_level(old_level);
     sema_down(&t->sema_wait);
 }
@@ -368,15 +369,14 @@ void threads_wake(int64_t ticks_now){
     // with a later wake up time than the current time,
     bool cont = 1;
     while (!list_empty(&wait_list) && cont){
-	    struct list_elem *welem_thr = list_front(&wait_list);
-	    struct thread *thr = list_entry (welem_thr,
-					                     struct thread, welem);
-	    if (thr->ticks_awake <= ticks_now){
-	        sema_up(&thr->sema_wait);      // wake this thread
-	        list_pop_front(&wait_list);  // remove it from the list
-	    } else {
-	        cont = 0;
-	    }
+        struct list_elem *welem_thr = list_front(&wait_list);
+        struct thread *thr = list_entry (welem_thr, struct thread, waitelem);
+        if (thr->ticks_awake <= ticks_now){
+            sema_up(&thr->sema_wait);      // wake this thread
+            list_pop_front(&wait_list);  // remove it from the list
+        } else {
+            cont = 0;
+        }
     }
 }
 
@@ -456,19 +456,24 @@ int thread_get_recent_cpu(void) {
 /* Calculates a threads priority */
 void thread_calculate_priority(struct thread *t) {
     int new_priority = PRI_MAX;
+
     new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 1);
     new_priority = new_priority - (t->nice * 2);
+
     if (new_priority < PRI_MIN) {
         new_priority = PRI_MIN;
     }
+
     if (new_priority > PRI_MAX) {
         new_priority = PRI_MAX;
     }
+
     t->priority = new_priority;
+
     /* TODO probably need an assert here */
     if (t->status == THREAD_READY) {
-        list_remove(&t->elem);
-        list_push_back(&ready_lists[new_priority], &t->elem);
+        list_remove(&t->rdyelem);
+        list_push_back(&ready_lists[new_priority], &t->rdyelem);
     }
 }
 
@@ -595,10 +600,11 @@ static void * alloc_frame(struct thread *t, size_t size) {
 static struct thread * next_thread_to_run(void) {
     int i = PRI_MAX;
     for (; i >= PRI_MIN; i--) {
-        struct list *ready_list = &ready_lists[i];
+        struct list *ready_lst = &ready_lists[i];
 
-        if (!list_empty(ready_list)) {
-            struct thread *next = list_entry(list_pop_front(ready_list), struct thread, elem);
+        if (!list_empty(ready_lst)) {
+            struct thread *next =
+                list_entry(list_pop_front(ready_lst), struct thread, rdyelem);
             return next;
         }
     }
@@ -615,11 +621,12 @@ static struct thread * next_thread_to_run(void) {
     before returning, but the first time a thread is scheduled it is called by
     switch_entry() (see switch.S).
 
-   It's not safe to call printf() until the thread switch is complete.  In
-   practice that means that printf()s should be added at the end of the
-   function.
+    It's not safe to call printf() until the thread switch is complete.  In
+    practice that means that printf()s should be added at the end of the
+    function.
 
-   After this function and its caller returns, the thread switch is complete. */
+    After this function and its caller returns, the thread switch is complete.
+*/
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
 
