@@ -251,21 +251,22 @@ void thread_unblock(struct thread *t) {
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    list_push_back(&ready_lists[t->priority], &t->rdyelem);
+    /* list_push_back(&ready_lists[t->priority], &t->rdyelem); */
+    list_push_back(&ready_lists[thread_get_priority_t(t)], &t->rdyelem);
     t->status = THREAD_READY;
 
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
-    struct thread *cur = thread_current();
+    if (t != idle_thread && thread_get_priority() < t->priority) {
 
-    // TODO: Not sure why we can't yield from the idle_thread.
-    if (t != idle_thread && cur->priority < t->priority) {
-        if (cur != idle_thread || strcmp(t->name, "main") != 0) {
-        // TODO: Not sure if this is 100% correct for all situations. Need to
-        // think about it more.
-        if (!intr_context()) {
-            thread_yield();
-        }
+        // The idle thread can't yield to the main thread for some reason.
+        if (thread_current() != idle_thread || strcmp(t->name, "main") != 0) {
+
+            // TODO: Not sure if this is 100% correct for all situations. Need to
+            // think about it more.
+            if (!intr_context()) {
+                thread_yield();
+            }
         }
     }
 
@@ -328,7 +329,8 @@ void thread_yield(void) {
 
     old_level = intr_disable();
     if (cur != idle_thread) {
-        list_push_back(&ready_lists[cur->priority], &cur->rdyelem);
+        /* list_push_back(&ready_lists[cur->priority], &cur->rdyelem); */
+        list_push_back(&ready_lists[thread_get_priority()], &cur->rdyelem);
     }
     cur->status = THREAD_READY;
     /*printf("about to schedule");*/
@@ -418,7 +420,34 @@ void thread_set_priority(int new_priority) {
 
 /*! Returns the current thread's priority. */
 int thread_get_priority(void) {
-    return thread_current()->priority;
+    return thread_get_priority_t(thread_current());
+}
+
+int thread_get_priority_t(struct thread *t) {
+    int priority = t->priority;
+
+    // If the thread is holding any locks, its priority is the highest of any
+    // donated priority from a thread waiting on one of those locks.
+    if (!list_empty(&t->locks)) {
+        struct lock *max_pri_l = list_entry(
+                list_max(&t->locks, lock_donated_pri_lower, NULL),
+                struct lock, elem);
+
+        if (max_pri_l->donated_priority > priority)
+            return max_pri_l->donated_priority;
+    }
+
+    return priority;
+}
+
+/*! Move a ready thread from its old ready queue to a new one depending on its
+    current priority. */
+void thread_reschedule(struct thread *t, int priority) {
+    struct list_elem *rdyelem = &t->rdyelem;
+    list_remove(rdyelem);
+
+    struct list *ready_list = &ready_lists[priority];
+    list_push_back(ready_list, rdyelem);
 }
 
 /*! Sets the current thread's nice value to NICE. */
@@ -427,9 +456,11 @@ void thread_set_nice(int nice UNUSED) {
     /* Not yet implemented. */
     thread_current()->nice = nice;
     thread_calculate_priority(thread_current());
+
     /* Check if there are any threads in a higher queue that want to run */
     int i = PRI_MAX;
-    for (; i > thread_current()->priority; i--) {
+    /* for (; i > thread_current()->priority; i--) { */
+    for (; i > thread_get_priority(); i--) {
         if (!list_empty(&ready_lists[i]))
             thread_yield();
     }
@@ -485,9 +516,8 @@ int threads_ready(void) {
     for (; i <= PRI_MAX; i++) {
         thread_total = thread_total + list_size(&ready_lists[i]);
     }
-    struct thread *cur = thread_current();
     // If the current thread isn't the idle thread add it to the count
-    if (cur != idle_thread) {
+    if (thread_current() != idle_thread) {
         thread_total++;
     }
     return thread_total;
@@ -574,8 +604,11 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
+    t->init_priority = priority;
     t->magic = THREAD_MAGIC;
-    sema_init(&(t->sema_wait), 0);  // thread is initially not blocked
+
+    sema_init(&(t->sema_wait), 0);  // Thread is initially not blocked
+    list_init(&(t->locks));         // Initialize the list of locks held by the thread
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

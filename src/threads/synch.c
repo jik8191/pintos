@@ -68,8 +68,9 @@ void sema_down(struct semaphore *sema) {
 
     old_level = intr_disable();
     while (sema->value == 0) {
-        list_insert_ordered(&sema->waiters, &thread_current()->semaelem,
-                            waiting_pri_higher, NULL);
+        /* list_insert_ordered(&sema->waiters, &thread_current()->semaelem, */
+        /*                     waiting_pri_higher, NULL); */
+        list_push_back(&sema->waiters, &thread_current()->semaelem);
         thread_block();
     }
     sema->value--;
@@ -112,8 +113,12 @@ void sema_up(struct semaphore *sema) {
     old_level = intr_disable();
     sema->value++;
     if (!list_empty(&sema->waiters)) {
-        thread_unblock(list_entry(list_pop_front(&sema->waiters),
-                                  struct thread, semaelem));
+        /* struct list_elem *e = list_max(&sema->waiters, waiting_pri_higher, NULL); */
+        /* thread_unblock(list_entry(e, struct thread, semaelem)); */
+        list_sort(&sema->waiters, waiting_pri_higher, NULL);
+        thread_unblock(
+            list_entry(
+                list_pop_front(&sema->waiters), struct thread, semaelem));
     }
     intr_set_level(old_level);
 }
@@ -148,7 +153,7 @@ static void sema_test_helper(void *sema_) {
         sema_up(&sema[1]);
     }
 }
-
+
 /*! Initializes LOCK.  A lock can be held by at most a single
     thread at any given time.  Our locks are not "recursive", that
     is, it is an error for the thread currently holding a lock to
@@ -168,6 +173,7 @@ void lock_init(struct lock *lock) {
     ASSERT(lock != NULL);
 
     lock->holder = NULL;
+    lock->donated_priority = PRI_MIN;
     sema_init(&lock->semaphore, 1);
 }
 
@@ -184,8 +190,72 @@ void lock_acquire(struct lock *lock) {
     ASSERT(!intr_context());
     ASSERT(!lock_held_by_current_thread(lock));
 
+    enum intr_level old_level = intr_disable();
+
+    struct thread *t = thread_current();
+
+    // Donate priority to the lock's holder by giving it to the lock.
+    /* donate_priority(lock, t->priority); */
+    donate_priority(lock, thread_get_priority());
+
+    // For now, this thread is waiting on the lock.
+    t->lock_waiton = lock;
+
+    // Now use the underlying semaphore to wait on the lock, if needed.
     sema_down(&lock->semaphore);
-    lock->holder = thread_current();
+
+    // Now the thread has acquired the lock.
+    t->lock_waiton = NULL;
+    lock->holder = t;
+
+    // When the lock is released to this thread, the semaphore should relase it
+    // to the thread with the highest waiting priority, so there should be no
+    // more threads currently waiting with a higher priority that can donate.
+    lock->donated_priority = t->priority;
+
+    // Keep track of all locks held by a thread.
+    list_push_back(&t->locks, &lock->elem);
+
+    // TODO: This might be an issue that hangs the program since we might block
+    // a thread while interrupts are disabled.
+    intr_set_level(old_level);
+}
+
+/*! Donates priority to a lock so that any thread holding that lock can hold a
+    higher priority and release it quicker.
+
+    This should work for nested locks (e.g. if a thread is waiting on a lock
+    that is held by another thread that is waiting on a different lock, then
+    the holder of that final lock should get donated the highest priority). By
+    "parent" thread in the comments below, we would mean any thread that is
+    waiting on a lock that is held by you or any other "parent" thread. */
+void donate_priority(struct lock *lock, int priority) {
+    // Check to see if we can help free the lock faster by donating priority.
+    if (priority > lock->donated_priority) {
+        lock->donated_priority = priority;
+    }
+
+    // Check to see if the holder of the lock we are waiting on is waiting for
+    // a nested lock and a "parent" thread has donated a higher priority than
+    // that nested thread.
+    struct thread *nested_t = lock->holder;
+    if (nested_t != NULL && nested_t->priority < priority) {
+
+        // Change the lock holder's priority.
+        /* nested_t->priority = priority; */
+
+        // Move the lock holder into a new ready_queue, if it is not running.
+        if (nested_t->status == THREAD_READY) {
+            thread_reschedule(nested_t, priority);
+        }
+
+        struct lock *nested_l = nested_t->lock_waiton;
+
+        if (nested_l != NULL) {
+            // Donate the "parent" thread's priority to the nested lock.
+            donate_priority(nested_l, priority);
+        }
+    }
 }
 
 /*! Tries to acquires LOCK and returns true if successful or false
@@ -215,8 +285,37 @@ bool lock_try_acquire(struct lock *lock) {
 void lock_release(struct lock *lock) {
     ASSERT(lock != NULL);
     ASSERT(lock_held_by_current_thread(lock));
+    ASSERT(!intr_context());
+
+    enum intr_level old_level = intr_disable();
 
     lock->holder = NULL;
+    list_remove(&lock->elem);
+
+    /* thread_current()->priority = thread_get_priority(); */
+
+    /*
+    // If the thread is holding any locks, its priority is the highest of any
+    // donated priority from a thread waiting on one of those locks.
+    struct thread *curr = thread_current();
+
+    if (!list_empty(&curr->locks)) {
+        struct lock *max_pri_l = list_entry(
+                list_max(&curr->locks, lock_donated_pri_lower, NULL),
+                struct lock, elem);
+
+        if (max_pri_l->donated_priority > curr->init_priority) {
+            thread_current()->priority = max_pri_l->donated_priority;
+        } else {
+            curr->priority = curr->init_priority;
+        }
+    } else {
+        curr->priority = curr->init_priority;
+    }
+    */
+
+    intr_set_level(old_level);
+
     sema_up(&lock->semaphore);
 }
 
@@ -319,7 +418,8 @@ bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
 
     struct thread *f = list_entry (a, struct thread, semaelem);
     struct thread *g = list_entry (b, struct thread, semaelem);
-    return f->priority >= g->priority;
+    /* return f->priority >= g->priority; */
+    return thread_get_priority_t(f) >= thread_get_priority_t(g);
 }
 
 /*! A function that returns if one semaphore's waiter has a higher priority
@@ -337,3 +437,13 @@ bool sema_waiters_pri_higher(const struct list_elem *a,
                               NULL);
 }
 
+/*! A function that returns true if lock a has a lower donated priority than
+    lock b. */
+bool lock_donated_pri_lower(const struct list_elem *a,
+        const struct list_elem *b, void *aux UNUSED) {
+    struct lock *l, *k;
+    l = list_entry(a, struct lock, elem);
+    k = list_entry(b, struct lock, elem);
+
+    return l->donated_priority < k->donated_priority;
+}

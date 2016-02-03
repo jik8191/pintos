@@ -97,10 +97,11 @@ struct thread {
     enum thread_status status;          /*!< Thread state. */
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
-    int priority;                       /*!< Priority. */
+    int priority;                       /*!< Priority (Possible donated). */
+    int init_priority;                  /*!< Initial Priority. */
 
-    int nice;                           /*!< The threads nice value */
-    fp recent_cpu;                      /*!< The threads recent_cpu */
+    int nice;                           /*!< The threads nice value. */
+    fp recent_cpu;                      /*!< The threads recent_cpu. */
 
     struct list_elem allelem;           /*!< List element for all threads list. */
     struct list_elem rdyelem;           /*!< List element for the ready lists. */
@@ -110,8 +111,12 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     int64_t ticks_awake;                /*!< Tick time to wake up at. */
-    struct semaphore sema_wait;         /*!< Semaphore for thread waiting. */
+
+    struct semaphore sema_wait;         /*!< Semaphore for thread while sleeping. */
     struct list_elem semaelem;          /*!< List element for the list of semaphore waiters. */
+
+    struct list locks;                  /*!< List of locks the thread has acquired. */
+    struct lock *lock_waiton;           /*!< The lock the current thread is waiting on. */
     /**@}*/
 
 #ifdef USERPROG
@@ -160,7 +165,10 @@ typedef void thread_action_func(struct thread *t, void *aux);
 void thread_foreach(thread_action_func *, void *);
 
 int thread_get_priority(void);
+int thread_get_priority_t(struct thread *t);
 void thread_set_priority(int);
+
+void thread_reschedule(struct thread *t, int priority);
 
 int thread_get_nice(void);
 void thread_set_nice(int);
