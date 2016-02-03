@@ -23,10 +23,16 @@
 /*! Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/* The system load average */
+static fp load_avg;
+
 /*! Number of loops per timer tick.  Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
 static intr_handler_func timer_interrupt;
+static void calculate_load_avg(void);
+static void recalculate_recent_cpu(void);
+static void recalculate_priorities(void);
 static bool too_many_loops(unsigned loops);
 static void busy_wait(int64_t loops);
 static void real_time_sleep(int64_t num, int32_t denom);
@@ -37,6 +43,16 @@ static void real_time_delay(int64_t num, int32_t denom);
 void timer_init(void) {
     pit_configure_channel(0, 2, TIMER_FREQ);
     intr_register_ext(0x20, timer_interrupt, "8254 Timer");
+}
+
+/*! Sets the initial load_avg to 0. */
+void init_load_avg(void) {
+    load_avg.int_val = 0;
+}
+
+/* Returns the load average */
+fp get_load_avg(void) {
+    return load_avg;
 }
 
 /*! Calibrates loops_per_tick, used to implement brief delays. */
@@ -78,14 +94,20 @@ int64_t timer_elapsed(int64_t then) {
     return timer_ticks() - then;
 }
 
+
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
-
-    ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks)
-        thread_yield();
+    // int64_t start = timer_ticks();
+    struct thread *t_curr = thread_current();
+    if (ticks > 0) {
+	t_curr->ticks_awake = timer_ticks() + ticks;
+    } else {
+	return;  // ignore negative time
+    }
+    thread_sleep(t_curr);
+    // while (timer_elapsed(start) < ticks)
+    //	  thread_yield();
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
@@ -137,11 +159,66 @@ void timer_print_stats(void) {
     printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
 
-/*! Timer interrupt handler. */
+/*! Timer interrupt handler (interrupt service routine - ISR). */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
+    // Recalculating the load average every second and the recent cpu for all
+    // threads
+    // Only necessary for mlfqs.
+    if (get_mlfqs() && timer_ticks() % TIMER_FREQ == 0) {
+        calculate_load_avg();
+        recalculate_recent_cpu();
+    }
+    if (get_mlfqs() && timer_ticks() % 4 == 0) {
+        recalculate_priorities();
+    }
     thread_tick();
+    // Interrupts should be disabled during an ISR
+    // this will only be called in a timer interrupt
+    int64_t ticks_now = timer_ticks();
+    threads_wake(ticks_now);
+    // if (ticks_now % 10 == 0) printf("\n tick time is %i\n", ticks_now);
 }
+
+/* Recalculates the load average */
+static void calculate_load_avg(void) {
+    // Setting the weight of the old value to be 59/60
+    fp old_val_weight = int_to_fp(59);
+    old_val_weight = int_divide(old_val_weight, 60);
+    // Setting the weight of the ready threads to be 1/60
+    fp threads_weight = int_to_fp(1);
+    threads_weight = int_divide(threads_weight, 60);
+    // The number of threads that are running/ready to run
+    // not including the idle thread
+    int ready_threads = threads_ready();
+    load_avg = fp_add(fp_multiply(old_val_weight, load_avg),
+                      int_multiply(threads_weight, ready_threads));
+}
+
+/* Recalculates the recent cpu of all threads */
+static void recalculate_recent_cpu(void) {
+    struct list *all_threads = get_all_list();
+    struct list_elem *i = list_front(all_threads);
+    for (; i != list_tail(all_threads); i = i->next) {
+        fp coef;
+        coef = int_multiply(load_avg, 2);
+        coef = fp_divide(coef, int_add(int_multiply(load_avg, 2), 1));
+        struct thread *t = list_entry(i, struct thread, allelem);
+        t->recent_cpu = fp_multiply(coef, t->recent_cpu);
+        t->recent_cpu = int_add(t->recent_cpu, t->nice);
+    }
+}
+
+/* Recalculates the priority of all threads */
+static void recalculate_priorities(void) {
+    struct list *all_threads = get_all_list();
+    struct list_elem *i = list_front(all_threads);
+    for (; i != list_tail(all_threads); i = i->next) {
+        struct thread *t = list_entry(i, struct thread, allelem);
+        thread_calculate_priority(t);
+    }
+}
+
 
 /*! Returns true if LOOPS iterations waits for more than one timer tick,
     otherwise false. */

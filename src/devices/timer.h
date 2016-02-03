@@ -3,9 +3,14 @@
 
 #include <round.h>
 #include <stdint.h>
+#include "lib/kernel/fixed_point.h"
 
 /*! Number of timer interrupts per second. */
 #define TIMER_FREQ 100
+
+void init_load_avg(void);
+
+fp get_load_avg(void);
 
 void timer_init(void);
 void timer_calibrate(void);

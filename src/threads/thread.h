@@ -9,6 +9,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
+#include "lib/kernel/fixed_point.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -95,13 +97,25 @@ struct thread {
     enum thread_status status;          /*!< Thread state. */
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
-    int priority;                       /*!< Priority. */
+    int priority;                       /*!< Priority (Possible donated). */
+
+    int nice;                           /*!< The threads nice value. */
+    fp recent_cpu;                      /*!< The threads recent_cpu. */
+
     struct list_elem allelem;           /*!< List element for all threads list. */
+    struct list_elem rdyelem;           /*!< List element for the ready lists. */
+    struct list_elem waitelem;          /*!< List element for waiting list. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
-    struct list_elem elem;              /*!< List element. */
+    int64_t ticks_awake;                /*!< Tick time to wake up at. */
+
+    struct semaphore sema_wait;         /*!< Semaphore for thread while sleeping. */
+    struct list_elem semaelem;          /*!< List element for the list of semaphore waiters. */
+
+    struct list locks;                  /*!< List of locks the thread has acquired. */
+    struct lock *lock_waiton;           /*!< The lock the current thread is waiting on. */
     /**@}*/
 
 #ifdef USERPROG
@@ -141,18 +155,35 @@ const char *thread_name(void);
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
 
+void thread_sleep(struct thread *t);
+void threads_wake(int64_t ticks_now);
+
 /*! Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func(struct thread *t, void *aux);
 
 void thread_foreach(thread_action_func *, void *);
 
 int thread_get_priority(void);
+int thread_get_priority_t(struct thread *t);
 void thread_set_priority(int);
+
+void thread_reschedule(struct thread *t, int priority);
 
 int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+void thread_calculate_priority(struct thread *t);
+
+// The number of threads running or ready to run. Not including the
+// idle thread
+int threads_ready(void);
+
+// Returns whether the multi-level feedback queue scheduler is being used
+bool get_mlfqs(void);
+
+struct list *get_all_list(void);
 
 #endif /* threads/thread.h */
 

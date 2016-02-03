@@ -26,10 +26,14 @@ void sema_self_test(void);
 struct lock {
     struct thread *holder;      /*!< Thread holding lock (for debugging). */
     struct semaphore semaphore; /*!< Binary semaphore controlling access. */
+
+    struct list_elem elem;      /*!< The list elem for a thread's list of locks. */
+    int donated_priority;       /*!< The highest priority donated by a thread. */
 };
 
 void lock_init(struct lock *);
 void lock_acquire(struct lock *);
+void donate_priority(struct lock *, int priority);
 bool lock_try_acquire(struct lock *);
 void lock_release(struct lock *);
 bool lock_held_by_current_thread(const struct lock *);
@@ -43,6 +47,19 @@ void cond_init(struct condition *);
 void cond_wait(struct condition *, struct lock *);
 void cond_signal(struct condition *, struct lock *);
 void cond_broadcast(struct condition *, struct lock *);
+
+/* A function that returns if threads A's priority is greater than B's */
+bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
+        void *aux);
+
+/* A function that returns the semaphore with the highest priority waiting
+   thread. */
+bool sema_waiters_pri_higher(const struct list_elem *a,
+        const struct list_elem *b, void *aux);
+
+/* A function that returns the lock with the lower donated priority. */
+bool lock_donated_pri_lower(const struct list_elem *a,
+        const struct list_elem *b, void *aux);
 
 /*! Optimization barrier.
 
