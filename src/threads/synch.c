@@ -68,8 +68,6 @@ void sema_down(struct semaphore *sema) {
 
     old_level = intr_disable();
     while (sema->value == 0) {
-        /* list_insert_ordered(&sema->waiters, &thread_current()->semaelem, */
-        /*                     waiting_pri_higher, NULL); */
         list_push_back(&sema->waiters, &thread_current()->semaelem);
         thread_block();
     }
@@ -113,8 +111,6 @@ void sema_up(struct semaphore *sema) {
     old_level = intr_disable();
     sema->value++;
     if (!list_empty(&sema->waiters)) {
-        /* struct list_elem *e = list_max(&sema->waiters, waiting_pri_higher, NULL); */
-        /* thread_unblock(list_entry(e, struct thread, semaelem)); */
         list_sort(&sema->waiters, waiting_pri_higher, NULL);
         thread_unblock(
             list_entry(
@@ -195,7 +191,6 @@ void lock_acquire(struct lock *lock) {
     struct thread *t = thread_current();
 
     // Donate priority to the lock's holder by giving it to the lock.
-    /* donate_priority(lock, t->priority); */
     if (!get_mlfqs()) {
         donate_priority(lock, thread_get_priority());
     }
@@ -218,8 +213,6 @@ void lock_acquire(struct lock *lock) {
     // Keep track of all locks held by a thread.
     list_push_back(&t->locks, &lock->elem);
 
-    // TODO: This might be an issue that hangs the program since we might block
-    // a thread while interrupts are disabled.
     intr_set_level(old_level);
 }
 
