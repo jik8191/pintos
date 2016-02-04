@@ -292,6 +292,20 @@ ticks   A   B   C   A   B   C   to run
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
 
+We created a struct wrapper containing an int value rather than using a simple
+int typedef because it allowed for functions to be typechecked properly so that
+we couldn't pass in normal integers to the functrions. This was particularly
+important since we had some functions that accepted one fixed point argument
+and one integer argument and it would be confusing for users of the functions
+if you could put either argument in either place and have the function
+typecheck properly, but get an incorrect result.
+
+Likewise, we wrote functions for the math in order to have clearly defined
+distinctions between fixed point values and integer operations in order to
+reduce any future bugs in using fixed point math. In essence, we enforce strict
+typechecking and functions themselves are self-documenting in a way, especially
+compared to macros.
+
               SURVEY QUESTIONS
               ================
 
