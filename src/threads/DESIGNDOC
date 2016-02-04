@@ -12,7 +12,7 @@ Nicholas    Cho         ncho2@caltech.edu
 Darius      Simmons     darius.simmons05@gmail.com
 Austin      Liu         yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -42,16 +42,17 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick:   25
+   Darius: 25
+   Austin: 30
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick:   Priority Scheduling, Priority Donation,
+           Debugging Advanced Scheduler
+   Darius: Priority Scheduling, Advanced Scheduler
+   Austin: Alarm Clock, Priority Donation
                  ALARM CLOCK
                  ===========
 
@@ -125,11 +126,13 @@ blocking). Each lock also contains a field which is the highest priority of any
 thread that is blocked by that lock.
 
 When a thread tries to acquire a lock (but is blocked), then it donates its
-priority to the *lock* if its priority is higher than any previously donated
-priority. When a thread is unblocked by another thread releasing a lock, then
-the lock's donated priority is set to the newly running thread's priority. This
-works because the lock should be handed off to the highest priority waiting
-thread, so there is no thread that would be able to donate to it.
+priority to the lock, but does not change the priority of the holding thread. If
+the lock already has a higher donated priority, we don't donate.
+
+When a thread is unblocked by another thread releasing a lock, then the lock's
+donated priority is set to the newly running thread's priority. This works
+because the lock should be handed off to the highest priority waiting thread, so
+there is no waiting thread that would be able to donate to it.
 
 When we want to calculate a thread's donated priority, we can look through the
 list of locks that the thread is currently blocking to look for the highest
@@ -180,19 +183,34 @@ Lock 1 and Thread 0 takes over.
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
 
+Semaphores have a list of threads waiting for the semaphore to open up. When an
+opening does become available, we sort the list of waiters based on the
+priorities of the waiting threads (taking into account donation), then give the
+opening to the highest priority thread. Since locks are implemented with a
+semaphore with initial value 1, this same process controls how locks are
+released to the highest priority thread.
+
+For condition variables, we create one semaphore for each thread, then when we
+want to wake up, we sort the list of sempahores based on the priority of the one
+waiting thread, then pop off the first semaphore (with the highest priority
+thread).
+
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
 This is described more in-depth above, but when a lock is acquired, the *lock*
-is given a donated priority. The thread that is currently using the lock
-can have its priority calculated through `thread_get_priority_t` to get a
-priority based on the donated priorities of any of the locks it is holding.
+is given a donated priority. We do not actually change the priority of the
+thread holding the lock; however, when we try to fetch the thread's priority
+through `thread_get_priority_t`, we calculate the threads priority as the
+maximum of its own priority and the donated priorities of any of the locks it is
+holding.
 
-If the lock is held by a thread that is waiting on another lock, the priority of
-the first thread is donated to the other nested lock if the priority of the
-first thread is higher. Then the thread using the nested lock will calculate its
-priority based off of the newly set donated_priority of the lock it's holding,
-so that it can be scheduled higher.
+Say we have a thread T0 waiting on a lock L1 held by a thread T1 that is
+waiting on another lock L2, held by a thread T2. Then if T0 has a higher
+priority that T1, it will donate its priority to L1 (to be used by T1). Then, in
+the process of this donation, since T1 is waiting on another lock, we donate the
+priority of T0 to the other lock, L2 (to be used by T2). This type of nested
+donation can continue indefinitely.
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
@@ -205,10 +223,6 @@ will release the lock to the highest priority waiter.
 >> B6: Describe a potential race in thread_set_priority() and explain
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
-
-******************* TODO: IS THIS RIGHT? **************************************
-******************* TODO: IS THIS RIGHT? **************************************
-******************* TODO: IS THIS RIGHT? **************************************
 
 We could have a race where after setting the new priority, we think there is a
 thread with a higher priority, so we yield; however, that thread's priority
@@ -289,6 +303,11 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> In your opinion, was this assignment, or any of the parts of it, too
 >> easy or too hard?  Did it take too long or too little time?
+
+We actually had one of the mlfqs tests fail because of an implementation choice
+we made that didn't make our scheduler wrong, but affected the time spent on
+initializing a thread. It was fairly difficult to debug this and unfortunate
+since the actual logic for the scheduler was sound.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
