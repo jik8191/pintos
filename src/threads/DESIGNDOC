@@ -88,17 +88,22 @@ to wake up at each timer interrupt.
 
 ---- SYNCHRONIZATION ----
 
-########################### FIX? ##############################
-
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
-Interrupts are disabled when the list of waiting threads is accessed.
+When adding to the list of waiting threads, interupts are disabled. When
+you access the waiting list to see if you can wake any of them up
+you're in an interrupt context so you cannot be interrupted.
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
 
-Timer interrupts are disabled when we call thread_sleep().
+Timer sleep calls thread_sleep. Which inserts the thread into a wait
+list. When it is doing so interrupts are turned off so that it will
+not be interrupted by a timer interrupt. If this were to happen then
+the wait list could change. A lock is not applicable in this situation
+because you cannot have a lock in threads_wake, the function called by
+the timer interrupt to wake up threads.
 
 ---- RATIONALE ----
 
@@ -121,8 +126,6 @@ In struct thread in thread.h:
 struct list_elem semaelem;     /*!< List element for the list of semaphore
                                     waiters. */
 struct list_elem rdyelem;      /*!< List element for the ready lists. */
-int nice;                      /*!< Thre threads nice value. */
-fp recent_cpu;                 /*!< The threads recent_cpu. */
 struct list locks;             /*!< List of locks the thread has acquired. */
 struct lock *lock_waiton;      /*!< The lock the current thread is waiting on. */
 
@@ -131,16 +134,6 @@ static struct lock ready_lock; /*! Lock used for ready_lists */
 /*! List of processes in THREAD_READY state, that is, processes
     that are ready to run but not actually running. */
 static struct list ready_lists[PRI_MAX - PRI_MIN + 1];
-
-
-struct in fixed_point.h
-typedef struct { /*! Struct for fixed point number */
-    int int_val;
-} fp;
-
-In timer.c
-static fp load_avg; /* The systems load average */
-
 
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
@@ -265,6 +258,19 @@ in other parts of code where we were dealing with changing thread priorities.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In struct thread in thread.h:
+int nice;                      /*!< Thre threads nice value. */
+fp recent_cpu;                 /*!< The threads recent_cpu. */
+
+struct in fixed_point.h
+typedef struct { /*! Struct for fixed point number */
+    int int_val;
+} fp;
+
+In timer.c
+static fp load_avg; /* The systems load average */
+
+
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -275,7 +281,7 @@ in other parts of code where we were dealing with changing thread priorities.
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
+ 0      0   0   0
  4
  8
 12
