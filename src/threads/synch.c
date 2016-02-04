@@ -196,7 +196,9 @@ void lock_acquire(struct lock *lock) {
 
     // Donate priority to the lock's holder by giving it to the lock.
     /* donate_priority(lock, t->priority); */
-    donate_priority(lock, thread_get_priority());
+    if (!get_mlfqs()) {
+        donate_priority(lock, thread_get_priority());
+    }
 
     // For now, this thread is waiting on the lock.
     t->lock_waiton = lock;

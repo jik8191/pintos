@@ -162,6 +162,7 @@ void timer_print_stats(void) {
 /*! Timer interrupt handler (interrupt service routine - ISR). */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
+    thread_tick();
     // Recalculating the load average every second and the recent cpu for all
     // threads
     // Only necessary for mlfqs.
@@ -172,7 +173,6 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
     if (get_mlfqs() && timer_ticks() % 4 == 0) {
         recalculate_priorities();
     }
-    thread_tick();
     // Interrupts should be disabled during an ISR
     // this will only be called in a timer interrupt
     int64_t ticks_now = timer_ticks();
