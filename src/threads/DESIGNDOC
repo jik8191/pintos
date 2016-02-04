@@ -49,9 +49,9 @@ which parts.
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick: Priority Scheduling, Priority Donation
+   Darius: Priority Scheduling, Advanced Scheduler
+   Austin: Timer, Priority Donation
                  ALARM CLOCK
                  ===========
 
@@ -62,12 +62,12 @@ which parts.
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 In struct thread in thread.h:
-int64_t ticks_awake;        /*!< Tick time to wake up at. */
-struct semaphore sema_wait;     /*!< Semaphore for thread waiting. */
-struct list_elem welem;         /*!< List element for waiting list. */
+int64_t ticks_awake;           /*!< Tick time to wake up at. */
+struct semaphore sema_wait;    /*!< Semaphore for thread waiting. */
+struct list_elem waitelem;     /*!< List element for waiting list. */
 
 static variable in thread.c
-struct list waitlist;       /*!< List of sleeping threads. */
+struct list wait_list;       /*!< List of sleeping threads. */
 
 ---- ALGORITHMS ----
 
@@ -87,6 +87,8 @@ list of all threads, so we minimize the number of threads to check
 to wake up at each timer interrupt.
 
 ---- SYNCHRONIZATION ----
+
+########################### FIX? ##############################
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
@@ -114,6 +116,31 @@ to all threads.
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+In struct thread in thread.h:
+struct list_elem semaelem;     /*!< List element for the list of semaphore
+                                    waiters. */
+struct list_elem rdyelem;      /*!< List element for the ready lists. */
+int nice;                      /*!< Thre threads nice value. */
+fp recent_cpu;                 /*!< The threads recent_cpu. */
+struct list locks;             /*!< List of locks the thread has acquired. */
+struct lock *lock_waiton;      /*!< The lock the current thread is waiting on. */
+
+static variable in thread.c
+static struct lock ready_lock; /*! Lock used for ready_lists */
+/*! List of processes in THREAD_READY state, that is, processes
+    that are ready to run but not actually running. */
+static struct list ready_lists[PRI_MAX - PRI_MIN + 1];
+
+
+struct in fixed_point.h
+typedef struct { /*! Struct for fixed point number */
+    int int_val;
+} fp;
+
+In timer.c
+static fp load_avg; /* The systems load average */
+
 
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
@@ -214,7 +241,9 @@ We could have a race where after setting the new priority, we think there is a
 thread with a higher priority, so we yield; however, that thread's priority
 might be changed before we actually schedule anyhting, so at best, we've wasted
 time trying to yield. We can lock the ready_lists struct until we've picked the
-next thread to run in order to avoid this.
+next thread to run in order to avoid this. In our implementation we made
+sure to put a lock on ready_lists wherever it was not already in an
+interrupt context.
 
 ---- RATIONALE ----
 

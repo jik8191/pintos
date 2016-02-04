@@ -42,6 +42,7 @@ static struct thread *initial_thread;
 /*! Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/*! Lock used for ready_lists */
 static struct lock ready_lock;
 
 /*! Stack frame for kernel_thread(). */
@@ -60,6 +61,7 @@ static long long user_ticks;    /*!< # of timer ticks in user programs. */
 #define TIME_SLICE 4            /*!< # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /*!< # of timer ticks since last yield. */
 
+/* The number of threads that are ready or running */
 static unsigned num_threads_ready;
 
 /*! If false (default), use round-robin scheduler.
