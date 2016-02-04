@@ -266,7 +266,6 @@ void thread_unblock(struct thread *t) {
 
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
-    /* if (t != idle_thread && thread_get_priority() < t->priority) { */
     if (thread_get_priority() < t->priority) {
 
         // We don't want an interrupt handler to yield.
@@ -335,7 +334,6 @@ void thread_yield(void) {
     old_level = intr_disable();
 
     if (cur != idle_thread) {
-        /* list_push_back(&ready_lists[cur->priority], &cur->rdyelem); */
         list_push_back(&ready_lists[thread_get_priority()], &cur->rdyelem);
         num_threads_ready++;
     }
@@ -364,7 +362,6 @@ static bool awake_earlier (const struct list_elem *a, const struct list_elem *b,
 }
 
 void thread_sleep(struct thread *t){
-    /* TODO could use a lock here */
     ASSERT(intr_get_level() == INTR_ON);
 
     enum intr_level old_level = intr_disable();
@@ -382,10 +379,11 @@ void threads_wake(int64_t ticks_now){
         struct list_elem *welem_thr = list_front(&wait_list);
         struct thread *thr = list_entry (welem_thr, struct thread, waitelem);
 
-        if (thr->ticks_awake <= ticks_now){
+        if (thr->ticks_awake <= ticks_now) {
             sema_up(&thr->sema_wait);      // wake this thread
-            list_pop_front(&wait_list);  // remove it from the list
-        } else {
+            list_pop_front(&wait_list);    // remove it from the list
+        }
+        else {
             break;
         }
     }
@@ -407,8 +405,6 @@ void thread_foreach(thread_action_func *func, void *aux) {
 
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
-    /* TODO: Maybe we want to use sync primitives to access the data below
-       rather than disabling interrupts here. */
     if (thread_mlfqs) {
         return;
     }
@@ -471,8 +467,6 @@ void thread_reschedule(struct thread *t, int priority) {
 
 /*! Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice) {
-    /* TODO synchronization issues? */
-    /* Not yet implemented. */
     enum intr_level old_level = intr_disable();
 
     if (nice > NICE_MAX) {
@@ -516,10 +510,6 @@ int thread_get_recent_cpu(void) {
 /* Calculates a threads priority */
 void thread_calculate_priority(struct thread *t) {
     int new_priority = PRI_MAX;
-    /*fp temp = int_to_fp(PRI_MAX);*/
-    /*temp = fp_subtract(temp, int_divide(t->recent_cpu, 4));*/
-    /*temp = int_subtract(temp, t->nice * 2);*/
-    /*new_priority = fp_to_int(temp, 0);*/
 
     new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 0);
     new_priority = new_priority - (t->nice * 2);

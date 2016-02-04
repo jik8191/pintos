@@ -98,16 +98,14 @@ int64_t timer_elapsed(int64_t then) {
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    // int64_t start = timer_ticks();
     struct thread *t_curr = thread_current();
     if (ticks > 0) {
         t_curr->ticks_awake = timer_ticks() + ticks;
-    } else {
+    }
+    else {
         return;  // ignore negative time
     }
     thread_sleep(t_curr);
-    // while (timer_elapsed(start) < ticks)
-    //	  thread_yield();
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
@@ -162,10 +160,10 @@ void timer_print_stats(void) {
 /*! Timer interrupt handler (interrupt service routine - ISR). */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
+    thread_tick();
     // Recalculating the load average every second and the recent cpu for all
     // threads
     // Only necessary for mlfqs.
-    thread_tick();
     if (get_mlfqs()) {
         if (timer_ticks() % TIMER_FREQ == 0) {
             calculate_load_avg();
@@ -175,9 +173,7 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
             recalculate_priorities();
         }
     }
-    // Interrupts should be disabled during an ISR
-    // this will only be called in a timer interrupt
-    /*int64_t ticks_now = timer_ticks();*/
+    // Waking sleeping threads
     threads_wake(timer_ticks());
 }
 
