@@ -101,9 +101,9 @@ void timer_sleep(int64_t ticks) {
     // int64_t start = timer_ticks();
     struct thread *t_curr = thread_current();
     if (ticks > 0) {
-	t_curr->ticks_awake = timer_ticks() + ticks;
+        t_curr->ticks_awake = timer_ticks() + ticks;
     } else {
-	return;  // ignore negative time
+        return;  // ignore negative time
     }
     thread_sleep(t_curr);
     // while (timer_elapsed(start) < ticks)

@@ -143,6 +143,9 @@ void thread_tick(void) {
 #ifdef USERPROG
     else if (t->pagedir != NULL)
         user_ticks++;
+        if (thread_mlfqs) {
+            t->recent_cpu = int_add(t->recent_cpu, 1);
+        }
 #endif
     else {
         kernel_ticks++;
@@ -355,6 +358,7 @@ static bool awake_earlier (const struct list_elem *a, const struct list_elem *b,
 }
 
 void thread_sleep(struct thread *t){
+    /* TODO could use a lock here */
     ASSERT(intr_get_level() == INTR_ON);
     enum intr_level old_level = intr_disable();
     list_insert_ordered(&wait_list, &(t->waitelem), awake_earlier, NULL);
@@ -397,6 +401,9 @@ void thread_foreach(thread_action_func *func, void *aux) {
 void thread_set_priority(int new_priority) {
     /* TODO: Maybe we want to use sync primitives to access the data below
        rather than disabling interrupts here. */
+    if (thread_mlfqs) {
+        return;
+    }
     enum intr_level old_level = intr_disable();
 
     /* Make sure the value is valid, or it would segfault array access */
@@ -408,8 +415,10 @@ void thread_set_priority(int new_priority) {
     /* Check if there are any threads in a higher queue that want to run */
     int i = PRI_MAX;
     for (; i > new_priority; i--) {
-        if (!list_empty(&ready_lists[i]))
+        if (!list_empty(&ready_lists[i])) {
             thread_yield();
+            break;
+        }
     }
 
     intr_set_level(old_level);
@@ -417,6 +426,9 @@ void thread_set_priority(int new_priority) {
 
 /*! Returns the current thread's priority. */
 int thread_get_priority(void) {
+    if (thread_mlfqs) {
+        return thread_current()->priority;
+    }
     return thread_get_priority_t(thread_current());
 }
 
@@ -448,18 +460,22 @@ void thread_reschedule(struct thread *t, int priority) {
 }
 
 /*! Sets the current thread's nice value to NICE. */
-void thread_set_nice(int nice UNUSED) {
+void thread_set_nice(int nice) {
     /* TODO synchronization issues? */
     /* Not yet implemented. */
+    enum intr_level old_level = intr_disable();
     thread_current()->nice = nice;
     thread_calculate_priority(thread_current());
 
     /* Check if there are any threads in a higher queue that want to run */
     int i = PRI_MAX;
     for (; i > thread_get_priority(); i--) {
-        if (!list_empty(&ready_lists[i]))
+        if (!list_empty(&ready_lists[i])) {
             thread_yield();
+            break;
+        }
     }
+    intr_set_level(old_level);
 }
 
 /*! Returns the current thread's nice value. */
@@ -484,7 +500,7 @@ int thread_get_recent_cpu(void) {
 void thread_calculate_priority(struct thread *t) {
     int new_priority = PRI_MAX;
 
-    new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 1);
+    new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 0);
     new_priority = new_priority - (t->nice * 2);
 
     if (new_priority < PRI_MIN) {
