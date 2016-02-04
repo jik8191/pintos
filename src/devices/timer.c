@@ -165,19 +165,20 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
     // Recalculating the load average every second and the recent cpu for all
     // threads
     // Only necessary for mlfqs.
-    if (get_mlfqs() && timer_ticks() % TIMER_FREQ == 0) {
-        calculate_load_avg();
-        recalculate_recent_cpu();
-    }
-    if (get_mlfqs() && timer_ticks() % 4 == 0) {
-        recalculate_priorities();
-    }
     thread_tick();
+    if (get_mlfqs()) {
+        if (timer_ticks() % TIMER_FREQ == 0) {
+            calculate_load_avg();
+            recalculate_recent_cpu();
+        }
+        if (timer_ticks() % 4 == 0) {
+            recalculate_priorities();
+        }
+    }
     // Interrupts should be disabled during an ISR
     // this will only be called in a timer interrupt
-    int64_t ticks_now = timer_ticks();
-    threads_wake(ticks_now);
-    // if (ticks_now % 10 == 0) printf("\n tick time is %i\n", ticks_now);
+    /*int64_t ticks_now = timer_ticks();*/
+    threads_wake(timer_ticks());
 }
 
 /* Recalculates the load average */
@@ -204,8 +205,10 @@ static void recalculate_recent_cpu(void) {
         coef = int_multiply(load_avg, 2);
         coef = fp_divide(coef, int_add(int_multiply(load_avg, 2), 1));
         struct thread *t = list_entry(i, struct thread, allelem);
-        t->recent_cpu = fp_multiply(coef, t->recent_cpu);
-        t->recent_cpu = int_add(t->recent_cpu, t->nice);
+        if (!is_idle_thread(t)) {
+            t->recent_cpu = fp_multiply(coef, t->recent_cpu);
+            t->recent_cpu = int_add(t->recent_cpu, t->nice);
+        }
     }
 }
 
@@ -215,7 +218,9 @@ static void recalculate_priorities(void) {
     struct list_elem *i = list_front(all_threads);
     for (; i != list_tail(all_threads); i = i->next) {
         struct thread *t = list_entry(i, struct thread, allelem);
-        thread_calculate_priority(t);
+        if (!is_idle_thread(t)) {
+            thread_calculate_priority(t);
+        }
     }
 }
 

@@ -113,7 +113,8 @@ void thread_init(void) {
         // Setting its recent cpu value
         initial_thread->recent_cpu = int_to_fp(0);
         // Setting the priority
-        initial_thread->priority = PRI_MAX;
+        thread_calculate_priority(initial_thread);
+        /*initial_thread->priority = PRI_MAX;*/
     }
 }
 
@@ -486,7 +487,6 @@ int thread_get_nice(void) {
 /*! Returns 100 times the system load average. */
 int thread_get_load_avg(void) {
     /* Not yet implemented. */
-    /*return 10;*/
     return fp_to_int(get_load_avg(), 1) * 100;
 }
 
@@ -499,6 +499,10 @@ int thread_get_recent_cpu(void) {
 /* Calculates a threads priority */
 void thread_calculate_priority(struct thread *t) {
     int new_priority = PRI_MAX;
+    /*fp temp = int_to_fp(PRI_MAX);*/
+    /*temp = fp_subtract(temp, int_divide(t->recent_cpu, 4));*/
+    /*temp = int_subtract(temp, t->nice * 2);*/
+    /*new_priority = fp_to_int(temp, 0);*/
 
     new_priority = new_priority - fp_to_int(int_divide(t->recent_cpu, 4), 0);
     new_priority = new_priority - (t->nice * 2);
@@ -538,6 +542,10 @@ int threads_ready(void) {
 // Returns whether the multi-level feedback queue scheduler is being used
 bool get_mlfqs(void) {
     return thread_mlfqs;
+}
+
+bool is_idle_thread(struct thread *t) {
+    return t == idle_thread;
 }
 
 /* Returns a list of all threads */
