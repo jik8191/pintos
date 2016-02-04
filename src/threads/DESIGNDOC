@@ -9,16 +9,16 @@
 >> Fill in the names and email addresses of your group members.
 
 Nicholas    Cho         ncho2@caltech.edu
-Darius      Simmons     darius.simmons05@gmail.com
+Darius      Simmons     dsimmons@caltech.edu
 Austin      Liu         yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:
+   Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
    commit ...
 
 ---- PRELIMINARIES ----
@@ -42,16 +42,18 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick:   25
+   Darius: 25
+   Austin: 30
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   Nick:
-   Darius:
-   Austin:
+   Nick:   Priority Scheduling, Priority Donation,
+           Debugging Advanced Scheduler
+   Darius: Priority Scheduling, Advanced Scheduler
+   Austin: Alarm Clock, Priority Donation
+
                  ALARM CLOCK
                  ===========
 
@@ -62,12 +64,16 @@ which parts.
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 In struct thread in thread.h:
-int64_t ticks_awake;        /*!< Tick time to wake up at. */
-struct semaphore sema_wait;     /*!< Semaphore for thread waiting. */
-struct list_elem welem;         /*!< List element for waiting list. */
+    int64_t ticks_awake;
+        - The number of ticks to wake up at.
+    struct semaphore sema_wait;
+        - The semaphore used to sleep the thread.
+    struct list_elem waitelem;
+        - List element for the list of sleeping/waiting threads.
 
-static variable in thread.c
-struct list waitlist;       /*!< List of sleeping threads. */
+Static variable in thread.c:
+    struct list wait_list;
+        - List of sleeping threads.
 
 ---- ALGORITHMS ----
 
@@ -91,12 +97,19 @@ to wake up at each timer interrupt.
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
-Interrupts are disabled when the list of waiting threads is accessed.
+When adding to the list of waiting threads, interupts are disabled. When
+you access the waiting list to see if you can wake any of them up
+you're in an interrupt context so you cannot be interrupted.
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
 
-Timer interrupts are disabled when we call thread_sleep().
+Timer sleep calls thread_sleep. Which inserts the thread into a wait
+list. When it is doing so interrupts are turned off so that it will
+not be interrupted by a timer interrupt. If this were to happen then
+the wait list could change. A lock is not applicable in this situation
+because you cannot have a lock in threads_wake, the function called by
+the timer interrupt to wake up threads.
 
 ---- RATIONALE ----
 
@@ -115,6 +128,32 @@ to all threads.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In struct thread in thread.h:
+    struct list_elem semaelem;
+        - List element for the list of waiters for a semaphore.
+    struct list_elem rdyelem;
+        - List element for the list of ready threads.
+    struct list locks;
+        - List of locks being held by the thread, each with donated priority.
+    struct lock *lock_waiton;
+        - Lock that the thread is waiting to be released.
+
+Static variables in thread.c
+    static struct lock ready_lock;
+        - Lock used to control access to the list of ready threads.
+    static struct list ready_lists[PRI_MAX - PRI_MIN + 1];
+        - The array of queues, each of which contains threads that are ready to
+          run with a given priority. The array is indexed by the priority of
+          the threads waiting in a specific queue.
+
+In struct lock in synch.h:
+    struct list_elem elem;
+        - List element for a thread's list of locks.
+    int donated_priority;
+        - For all threads waiting for this lock to be released, this is the
+          highest priority among them. This is used to calculate the priority
+          of the thread that is holding the lock so that it can finish quicker.
+
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
 >> .png file.)
@@ -125,11 +164,13 @@ blocking). Each lock also contains a field which is the highest priority of any
 thread that is blocked by that lock.
 
 When a thread tries to acquire a lock (but is blocked), then it donates its
-priority to the *lock* if its priority is higher than any previously donated
-priority. When a thread is unblocked by another thread releasing a lock, then
-the lock's donated priority is set to the newly running thread's priority. This
-works because the lock should be handed off to the highest priority waiting
-thread, so there is no thread that would be able to donate to it.
+priority to the lock, but does not change the priority of the holding thread. If
+the lock already has a higher donated priority, we don't donate.
+
+When a thread is unblocked by another thread releasing a lock, then the lock's
+donated priority is set to the newly running thread's priority. This works
+because the lock should be handed off to the highest priority waiting thread, so
+there is no waiting thread that would be able to donate to it.
 
 When we want to calculate a thread's donated priority, we can look through the
 list of locks that the thread is currently blocking to look for the highest
@@ -180,19 +221,34 @@ Lock 1 and Thread 0 takes over.
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
 
+Semaphores have a list of threads waiting for the semaphore to open up. When an
+opening does become available, we sort the list of waiters based on the
+priorities of the waiting threads (taking into account donation), then give the
+opening to the highest priority thread. Since locks are implemented with a
+semaphore with initial value 1, this same process controls how locks are
+released to the highest priority thread.
+
+For condition variables, we create one semaphore for each thread, then when we
+want to wake up, we sort the list of sempahores based on the priority of the one
+waiting thread, then pop off the first semaphore (with the highest priority
+thread).
+
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
 This is described more in-depth above, but when a lock is acquired, the *lock*
-is given a donated priority. The thread that is currently using the lock
-can have its priority calculated through `thread_get_priority_t` to get a
-priority based on the donated priorities of any of the locks it is holding.
+is given a donated priority. We do not actually change the priority of the
+thread holding the lock; however, when we try to fetch the thread's priority
+through `thread_get_priority_t`, we calculate the threads priority as the
+maximum of its own priority and the donated priorities of any of the locks it is
+holding.
 
-If the lock is held by a thread that is waiting on another lock, the priority of
-the first thread is donated to the other nested lock if the priority of the
-first thread is higher. Then the thread using the nested lock will calculate its
-priority based off of the newly set donated_priority of the lock it's holding,
-so that it can be scheduled higher.
+Say we have a thread T0 waiting on a lock L1 held by a thread T1 that is
+waiting on another lock L2, held by a thread T2. Then if T0 has a higher
+priority that T1, it will donate its priority to L1 (to be used by T1). Then, in
+the process of this donation, since T1 is waiting on another lock, we donate the
+priority of T0 to the other lock, L2 (to be used by T2). This type of nested
+donation can continue indefinitely.
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
@@ -206,15 +262,13 @@ will release the lock to the highest priority waiter.
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
-******************* TODO: IS THIS RIGHT? **************************************
-******************* TODO: IS THIS RIGHT? **************************************
-******************* TODO: IS THIS RIGHT? **************************************
-
 We could have a race where after setting the new priority, we think there is a
 thread with a higher priority, so we yield; however, that thread's priority
 might be changed before we actually schedule anyhting, so at best, we've wasted
 time trying to yield. We can lock the ready_lists struct until we've picked the
-next thread to run in order to avoid this.
+next thread to run in order to avoid this. In our implementation we made
+sure to put a lock on ready_lists wherever it was not already in an
+interrupt context.
 
 ---- RATIONALE ----
 
@@ -236,6 +290,20 @@ in other parts of code where we were dealing with changing thread priorities.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In struct thread in thread.h:
+    int nice;
+        - A thread's nice value.
+    fp recent_cpu;
+        - The thread's recent CPU usage.
+
+Struct in fixed_point.h:
+    typedef struct { int int_val; } fp;
+        - Struct used for fixed point numbers.
+
+Static variable in timer.c:
+    static fp load_avg;
+        - The systems load average
+
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -243,26 +311,40 @@ in other parts of code where we were dealing with changing thread priorities.
 >> scheduling decision and the priority and recent_cpu values for each
 >> thread after each given number of timer ticks:
 
+I rounded to nearest int for this
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+ 0      0   1   2  63  60  58        A
+ 4      1   3   1  60  60  58        B
+ 8      1   3   3  60  58  58        A
+12      3   3   4  58  58  58        B
+16      4   5   4  58  55  57        A
+20      5   6   5  55  55  57        C
+24      7   7   6  55  55  55        B
+28      8   9   7  55  52  55        C
+32      8   9  10  54  52  52        A
+36     10  12  11  52  52  52        B
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
+The only ambiguities would be how to break ties over priority. In this
+simple simultation I wrote a script and it would have chosen the highest
+it has seen last, would have been better to use the nice values however.
+In our implementation we had a queue for each priority. So the thread
+chose would have been the thread that was added first.
+
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
+
+A lot of the code for scheduling was done in the interupt context. This
+is because a lot of the code for it is done at a specific time as shown
+from the timer interrupt. So at each second things are recalculated for
+each thread, this will slow down performance some. A way to get around this
+would be to just mark that the calculations need to be done and doing them
+outside of the interrupt context but we didn't implement this.
 
 ---- RATIONALE ----
 
@@ -271,12 +353,35 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
+An advantage of our design is that a lof of the heavy computation is done
+in an interrupt context. This makes it simplistic because we didn't have to
+use locks in these areas. The downside to this is of course performance. As
+the number of threads increase it could lead to signifigant system lag but
+at the scale we are working on it appears to be fine. We could make the handler
+as simple as possible and move the code outside of the context. This would
+mean there would have to be more locks and we woul dhave to be more careful
+but it would imporove performance.
+
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
 >> decide to implement it the way you did?  If you created an
 >> abstraction layer for fixed-point math, that is, an abstract data
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
+
+We created a struct wrapper containing an int value rather than using a simple
+int typedef because it allowed for functions to be typechecked properly so that
+we couldn't pass in normal integers to the functrions. This was particularly
+important since we had some functions that accepted one fixed point argument
+and one integer argument and it would be confusing for users of the functions
+if you could put either argument in either place and have the function
+typecheck properly, but get an incorrect result.
+
+Likewise, we wrote functions for the math in order to have clearly defined
+distinctions between fixed point values and integer operations in order to
+reduce any future bugs in using fixed point math. In essence, we enforce strict
+typechecking and functions themselves are self-documenting in a way, especially
+compared to macros.
 
               SURVEY QUESTIONS
               ================
@@ -289,6 +394,11 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> In your opinion, was this assignment, or any of the parts of it, too
 >> easy or too hard?  Did it take too long or too little time?
+
+We actually had one of the mlfqs tests fail because of an implementation choice
+we made that didn't make our scheduler wrong, but affected the time spent on
+initializing a thread. It was fairly difficult to debug this and unfortunate
+since the actual logic for the scheduler was sound.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
