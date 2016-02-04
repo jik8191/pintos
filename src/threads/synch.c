@@ -208,7 +208,7 @@ void lock_acquire(struct lock *lock) {
     t->lock_waiton = NULL;
     lock->holder = t;
 
-    // When the lock is released to this thread, the semaphore should relase it
+    // When the lock is released to this thread, the semaphore should release it
     // to the thread with the highest waiting priority, so there should be no
     // more threads currently waiting with a higher priority that can donate.
     lock->donated_priority = thread_get_priority();
