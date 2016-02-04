@@ -18,7 +18,7 @@ Austin      Liu         yliu@caltech.edu
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:
+   Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
    commit ...
 
 ---- PRELIMINARIES ----
@@ -291,17 +291,18 @@ in other parts of code where we were dealing with changing thread priorities.
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 In struct thread in thread.h:
-int nice;                      /*!< Thre threads nice value. */
-fp recent_cpu;                 /*!< The threads recent_cpu. */
+    int nice;
+        - A thread's nice value.
+    fp recent_cpu;
+        - The thread's recent CPU usage.
 
-struct in fixed_point.h
-typedef struct { /*! Struct for fixed point number */
-    int int_val;
-} fp;
+Struct in fixed_point.h:
+    typedef struct { int int_val; } fp;
+        - Struct used for fixed point numbers.
 
-In timer.c
-static fp load_avg; /* The systems load average */
-
+Static variable in timer.c:
+    static fp load_avg;
+        - The systems load average
 
 ---- ALGORITHMS ----
 
