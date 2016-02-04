@@ -58,6 +58,8 @@ static long long user_ticks;    /*!< # of timer ticks in user programs. */
 #define TIME_SLICE 4            /*!< # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /*!< # of timer ticks since last yield. */
 
+static unsigned num_threads_ready;
+
 /*! If false (default), use round-robin scheduler.
     If true, use multi-level feedback queue scheduler.
     Controlled by kernel command-line option "-o mlfqs". */
@@ -99,6 +101,8 @@ void thread_init(void) {
     list_init(&wait_list);
     list_init(&all_list);
 
+    num_threads_ready = 0;
+
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
     init_thread(initial_thread, "main", PRI_DEFAULT);
@@ -109,7 +113,7 @@ void thread_init(void) {
         // Initializing the load_avg
         init_load_avg();
         // Setting the inital threads nice value
-        initial_thread->nice = 0;
+        initial_thread->nice = NICE_DEFAULT;
         // Setting its recent cpu value
         initial_thread->recent_cpu = int_to_fp(0);
         // Setting the priority
@@ -254,22 +258,20 @@ void thread_unblock(struct thread *t) {
     ASSERT(is_thread(t));
 
     old_level = intr_disable();
+
     ASSERT(t->status == THREAD_BLOCKED);
     list_push_back(&ready_lists[thread_get_priority_t(t)], &t->rdyelem);
+    num_threads_ready++;
     t->status = THREAD_READY;
 
     /* If the current running thread is of lower priority than a new thread
        that is about to be unblocked, then yield the current thread */
-    if (t != idle_thread && thread_get_priority() < t->priority) {
+    /* if (t != idle_thread && thread_get_priority() < t->priority) { */
+    if (thread_get_priority() < t->priority) {
 
-        // The idle thread can't yield to the main thread for some reason.
-        if (thread_current() != idle_thread || strcmp(t->name, "main") != 0) {
-
-            // TODO: Not sure if this is 100% correct for all situations. Need to
-            // think about it more.
-            if (!intr_context()) {
-                thread_yield();
-            }
+        // We don't want an interrupt handler to yield.
+        if (!intr_context()) {
+            thread_yield();
         }
     }
 
@@ -331,12 +333,15 @@ void thread_yield(void) {
     ASSERT(!intr_context());
 
     old_level = intr_disable();
+
     if (cur != idle_thread) {
         /* list_push_back(&ready_lists[cur->priority], &cur->rdyelem); */
         list_push_back(&ready_lists[thread_get_priority()], &cur->rdyelem);
+        num_threads_ready++;
     }
     cur->status = THREAD_READY;
     schedule();
+
     intr_set_level(old_level);
 }
 
@@ -361,9 +366,11 @@ static bool awake_earlier (const struct list_elem *a, const struct list_elem *b,
 void thread_sleep(struct thread *t){
     /* TODO could use a lock here */
     ASSERT(intr_get_level() == INTR_ON);
+
     enum intr_level old_level = intr_disable();
     list_insert_ordered(&wait_list, &(t->waitelem), awake_earlier, NULL);
     intr_set_level(old_level);
+
     sema_down(&t->sema_wait);
 }
 
@@ -371,15 +378,15 @@ void threads_wake(int64_t ticks_now){
     // The wait list has the thread with the earliest
     // wake time in front, so go over the list until we find a thread
     // with a later wake up time than the current time,
-    bool cont = 1;
-    while (!list_empty(&wait_list) && cont){
+    while (!list_empty(&wait_list)){
         struct list_elem *welem_thr = list_front(&wait_list);
         struct thread *thr = list_entry (welem_thr, struct thread, waitelem);
+
         if (thr->ticks_awake <= ticks_now){
             sema_up(&thr->sema_wait);      // wake this thread
             list_pop_front(&wait_list);  // remove it from the list
         } else {
-            cont = 0;
+            break;
         }
     }
 }
@@ -405,6 +412,7 @@ void thread_set_priority(int new_priority) {
     if (thread_mlfqs) {
         return;
     }
+
     enum intr_level old_level = intr_disable();
 
     /* Make sure the value is valid, or it would segfault array access */
@@ -430,6 +438,7 @@ int thread_get_priority(void) {
     if (thread_mlfqs) {
         return thread_current()->priority;
     }
+
     return thread_get_priority_t(thread_current());
 }
 
@@ -465,6 +474,13 @@ void thread_set_nice(int nice) {
     /* TODO synchronization issues? */
     /* Not yet implemented. */
     enum intr_level old_level = intr_disable();
+
+    if (nice > NICE_MAX) {
+        nice = NICE_MAX;
+    } else if (nice < NICE_MIN) {
+        nice = NICE_MIN;
+    }
+
     thread_current()->nice = nice;
     thread_calculate_priority(thread_current());
 
@@ -476,6 +492,7 @@ void thread_set_nice(int nice) {
             break;
         }
     }
+
     intr_set_level(old_level);
 }
 
@@ -515,28 +532,21 @@ void thread_calculate_priority(struct thread *t) {
         new_priority = PRI_MAX;
     }
 
-    t->priority = new_priority;
-
-    /* TODO probably need an assert here */
-    if (t->status == THREAD_READY) {
+    // If the priority changed and the thread was in the ready lists, move it.
+    if (new_priority != t->priority && t->status == THREAD_READY) {
         list_remove(&t->rdyelem);
         list_push_back(&ready_lists[new_priority], &t->rdyelem);
     }
+
+    t->priority = new_priority;
 }
 
 /*! Returns the total number of threads that are running */
 int threads_ready(void) {
-    // Going through all of the thread queues
-    int thread_total = 0;
-    int i = PRI_MIN;
-    for (; i <= PRI_MAX; i++) {
-        thread_total = thread_total + list_size(&ready_lists[i]);
-    }
-    // If the current thread isn't the idle thread add it to the count
-    if (thread_current() != idle_thread) {
-        thread_total++;
-    }
-    return thread_total;
+    if (thread_current() != idle_thread)
+        return num_threads_ready + 1;
+
+    return num_threads_ready;
 }
 
 // Returns whether the multi-level feedback queue scheduler is being used
@@ -593,7 +603,7 @@ static void kernel_thread(thread_func *function, void *aux) {
     function(aux);       /* Execute the thread function. */
     thread_exit();       /* If function() returns, kill the thread. */
 }
-
+
 /*! Returns the running thread. */
 struct thread * running_thread(void) {
     uint32_t *esp;
@@ -627,7 +637,10 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->magic = THREAD_MAGIC;
 
     sema_init(&(t->sema_wait), 0);  // Thread is initially not blocked
-    list_init(&(t->locks));         // Initialize the list of locks held by the thread
+
+    // Initialize the list of locks held by the thread (starts empty).
+    list_init(&(t->locks));
+    t->lock_waiton = NULL;
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
@@ -657,6 +670,7 @@ static struct thread * next_thread_to_run(void) {
         if (!list_empty(ready_lst)) {
             struct thread *next =
                 list_entry(list_pop_front(ready_lst), struct thread, rdyelem);
+            num_threads_ready--;
             return next;
         }
     }
