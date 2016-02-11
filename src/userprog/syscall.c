@@ -10,28 +10,39 @@
 #include "lib/debug.h"
 #include "devices/shutdown.h"
 #include "devices/input.h"
+#include "lib/user/syscall.h"
+#include "userprog/process.h"
 
 /* TODO accessing files is a critical section. Add locks on calls to anything
  * in filesys and do it for process_execute as well. */
 
 struct lock file_lock;
 
+bool debug_mode = true;
+
 /* TODO when they want us to verify a user pointer do we dereference and
  * then verify? */
 
 static void syscall_handler(struct intr_frame *);
+
+/* Checking pointer validity */
 static bool valid_pointer(void **pointer, int size);
-static int addr_to_int(void *addr);
+
+/* Conversion functions */
+static int to_int(void *addr);
+static const char *to_cchar_p(void *addr);
+static unsigned to_unsigned(void *addr);
+static const void *to_cvoid_p(void *addr);
+static void *to_void_p(void *addr);
+
+/* Specific handlers */
 void sys_halt(void);
-void sys_exit(void *arg1, struct intr_frame *f);
-void sys_create(void *arg1, void *arg2, struct intr_frame *f);
-void sys_open(void *arg1, struct intr_frame *f);
-void sys_read(void *arg1, void *arg2, void *arg3, struct intr_frame *f);
-void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f);
-/* NOTE
- * is_user_vaddr returns whether the address is in the user memory from
- * vaddr.h
- */
+void sys_exit(int status);
+pid_t sys_exec(const char *cmd_line);
+bool sys_create(const char *file, unsigned initial_size);
+int sys_open(const char *file);
+int sys_read(int fd, void *buffer, unsigned size);
+int sys_write(int fd, const void *buffer, unsigned size);
 
 void syscall_init(void) {
     lock_init(&file_lock);
@@ -39,37 +50,49 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f) {
+
     /* Getting the callers stack pointer */
+    /* TODO currently assuming that this is valid memory */
     void *caller_esp = f->esp;
-    int call_number = addr_to_int(caller_esp);
-    void *arg1 = f->esp + 4;
-    void *arg2 = f->esp + 8;
-    void *arg3 = f->esp + 12;
-    /*printf("system call!: %d\n", call_number);*/
+    int call_number = to_int(caller_esp);
+
+    /* Getting the args, the calls at most have 3 */
+    /* TODO assuming that these addresses are valid */
+    void *arg0 = f->esp + 4;
+    void *arg1 = f->esp + 8;
+    void *arg2 = f->esp + 12;
+
+    if (debug_mode) {
+        printf("system call!: %d\n", call_number);
+    }
+
+    /* Calling the appropriate handler */
     switch (call_number) {
         case SYS_HALT:
             sys_halt();
             break;
         case SYS_EXIT:
-            sys_exit(arg1, f);
+            sys_exit(to_int(arg0));
+            break;
+        case SYS_EXEC:
+            f->eax = sys_exec(to_cchar_p(arg0));
             break;
         case SYS_CREATE:
-            sys_create(arg1, arg2, f);
+            f->eax = sys_create(to_cchar_p(arg0), to_unsigned(arg1));
             break;
         case SYS_OPEN:
-            sys_open(arg1, f);
+            f->eax = sys_open(to_cchar_p(arg0));
             break;
         case SYS_READ:
-            sys_read(arg1, arg2, arg3, f);
+            f->eax = sys_read(to_int(arg0), to_void_p(arg1), to_unsigned(arg2));
             break;
         case SYS_WRITE:
-            sys_write(arg1, arg2, arg3, f);
+            f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1), to_unsigned(arg2));
             break;
         default:
             printf("Went to default\n");
             thread_exit();
     }
-    /* TODO get the syscall number and the arguments */
 }
 
 /* Returns true if addr to addr + size is valid */
@@ -85,133 +108,148 @@ bool valid_pointer(void **pointer, int size) {
     return true;
 }
 
-/* Gets the integer starting from the given address. Assumes address is
- * valid.*/
-static int addr_to_int(void *addr) {
+/* Gets the integer starting from the given address. */
+static int to_int(void *addr) {
     return * (int *) addr;
 }
 
-/* Gets the pointer starting from the given address */
-static void *addr_to_pointer(void *addr) {
-    if (!valid_pointer(addr, 4)) {
-        return NULL;
+/* Gets a const char * pointer from the given address. Terminates the process
+ * if the pointer is invalid */
+static const char *to_cchar_p(void *addr) {
+    /* Check if the pointer is invalid */
+    if (!valid_pointer(addr, sizeof(const char *))) {
+        thread_exit();
     }
-    return addr;
+    /* Return the pointer */
+    else {
+        return * (const char **) addr;
+    }
+}
+
+/* Gets an unsigned starting from the given address. */
+static unsigned to_unsigned(void *addr) {
+    return * (unsigned *) addr;
+}
+
+/* Gets a void pointer from the given address. */
+static const void*to_cvoid_p(void *addr) {
+    /* Check if the pointer is invalid */
+    if (!valid_pointer(addr, sizeof(const void *))) {
+        thread_exit();
+    }
+    return * (const void **) addr;
+}
+
+/* Gets a void pointer from the given address. */
+static void *to_void_p(void *addr) {
+    /* Check if the pointer is invalid */
+    if (!valid_pointer(addr, sizeof(void *))) {
+        thread_exit();
+    }
+    return * (void **) addr;
 }
 
 void sys_halt(void) {
     shutdown_power_off();
 }
 
-void sys_exit(void *arg1, struct intr_frame *f) {
-    int status = addr_to_int(arg1);
-    printf("Status: %d\n", status);
-    f->eax = status;
+void sys_exit(int status) {
+    /* TODO says to return the status to the kernel, how to? */
+    if (debug_mode)
+        printf("Status: %d\n", status);
     thread_exit();
 }
 
-void sys_create(void *arg1, void *arg2, struct intr_frame *f) {
-    if (!valid_pointer(arg1, 4)) {
-        printf("Invalid pointer\n");
-        thread_exit();
-    }
+pid_t sys_exec(const char *cmd_line) {
+    tid_t tid = process_execute(cmd_line);
+}
 
-    const char *name = * (const char **) arg1;
-    unsigned size = * (unsigned *) arg2;
-
-    bool result = filesys_create(name, size);
-    f->eax = result;
+/* Creating a file with an initial size */
+bool sys_create(const char *file, unsigned initial_size) {
+    return filesys_create(file, initial_size);
 }
 
 /* Opens a file */
-void sys_open(void *arg1, struct intr_frame *f) {
+int sys_open(const char *file) {
 
-    printf("In sys_open\n");
-
-    /* Checking to make sure the argument is valid */
-    if (!valid_pointer(arg1, 4)) {
-        printf("Invalid pointer\n");
-        thread_exit();
-        /* TODO need to signal to the handler */
-        return;
+    if (debug_mode) {
+        printf("In sys_open\n");
+        printf("Filename: %s\n", file);
     }
-
-    /* Casting to get the name of the file */
-    const char *name = * (const char **) arg1;
-    printf("Filename: %s\n", name);
 
     /* Getting the file struct */
     lock_acquire(&file_lock);
-    struct file *file = filesys_open(name);
+    struct file *file_struct = filesys_open(file);
     lock_release(&file_lock);
+
     /* If the file can't be opened then put -1 in eax */
-    if (file == NULL) {
-        printf("File could not be opened\n");
-        f->eax = -1;
-        return;
-    }
-    else {
-        printf("It opened!\n");
+    if (file_struct == NULL) {
+        if (debug_mode)
+            printf("File could not be opened\n");
+        return -1;
     }
 
+    if (debug_mode)
+        printf("It opened!\n");
+
     /* TODO how to get file descripter from the file */
-    int fd = (int) file;
+    int fd = (int) file_struct;
     ASSERT(fd != 0);
     ASSERT(fd != 1);
 
     /* Putting the fd in eax */
-    f->eax = fd;
+    if (debug_mode) {
+        printf("With fd: %d\n", fd);
+    }
+    return fd;
 }
 
-void sys_read(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
+int sys_read(int fd, void *buffer, unsigned size) {
 
-    /*printf("in sys_read\n");*/
-
-    if (!valid_pointer(arg2, 4)) {
-        printf("Invalid pointer\n");
-        thread_exit();
-    }
-
-    int fd = * (int *) arg1;;
-    unsigned size = * (unsigned *) arg3;
+    if (debug_mode)
+        printf("in sys_read\n");
 
     unsigned bytes_read = 0;
 
     if (fd == 0) {
-        char *buffer = * (char **) arg2;
-        while (bytes_read < size) {
+        /* Switching to a char * buffer */
+        char *buffer = (char *) buffer;
+
+        /* Reading in bytes using input_getc() */
+        int i = 0;
+        for(; i * sizeof(char) < size; i++) {
             char key = input_getc();
-            buffer[bytes_read] = key;
-            /* Assuming the size is one byte */
-            bytes_read += 1;
+            buffer[i] = key;
+            bytes_read += sizeof(char);
         }
-        f->eax = bytes_read;
-        return;
+        return bytes_read;
     }
     else {
         /* TODO for general files */
+        return 0;
     }
 }
 
-void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
+int sys_write(int fd, const void *buffer, unsigned size) {
 
-    /*printf("In sys_write\n");*/
+    printf("In sys_write\n");
 
-    /* Checking the arguments then casting */
-    if (!valid_pointer(arg2, 4)) {
-        printf("Invalid pointer\n");
-        thread_exit();
-        /* TODO signal the handler */
-        return;
-    }
-
-    int fd = *(int *) arg1;
-    const void *buffer = * (void **) arg2;
-    unsigned size = * (unsigned *) arg3;
     unsigned bytes_written = 0;
 
     lock_acquire(&file_lock);
-    if (fd == 1) {
+
+    if (fd == 0) {
+        const char *buffer = (const char *) buffer;
+        unsigned i = 0;
+        enum intr_level old_level = intr_disable();
+        for (; i * sizeof(char) < size; i++) {
+            input_putc(buffer[i]);
+            bytes_written += sizeof(char);
+        }
+        intr_set_level(old_level);
+    }
+
+    else if (fd == 1) {
         unsigned i = 0;
         unsigned max_write = 300;
         for (; i < size; i += max_write) {
@@ -227,31 +265,18 @@ void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
             }
 
         }
-
-        f->eax = bytes_written;
-    }
-
-    else if (fd == 0) {
-        const char *buffer = * (void **) arg2;
-        unsigned i = 0;
-        enum intr_level old_level = intr_disable();
-        for (; i * sizeof(char) < size; i++) {
-            input_putc(buffer[i]);
-            bytes_written += sizeof(char);
-        }
-        intr_set_level(old_level);
-
-        f->eax = bytes_written;
     }
 
     else {
         struct file *file = (struct file *) fd;
         if (file == NULL) {
             printf("Could not get file\n");
+            return 0;
         }
-        f->eax = file_write(file, buffer, size);
+        bytes_written = file_write(file, buffer, size);
 
     }
     lock_release(&file_lock);
+    return bytes_written;
 
 }
