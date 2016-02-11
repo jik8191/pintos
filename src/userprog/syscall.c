@@ -8,6 +8,8 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "lib/debug.h"
+#include "devices/shutdown.h"
+#include "devices/input.h"
 
 /* TODO accessing files is a critical section. Add locks on calls to anything
  * in filesys and do it for process_execute as well. */
@@ -20,9 +22,11 @@ struct lock file_lock;
 static void syscall_handler(struct intr_frame *);
 static bool valid_pointer(void **pointer, int size);
 static int addr_to_int(void *addr);
+void sys_halt(void);
 void sys_exit(void *arg1, struct intr_frame *f);
 void sys_create(void *arg1, void *arg2, struct intr_frame *f);
 void sys_open(void *arg1, struct intr_frame *f);
+void sys_read(void *arg1, void *arg2, void *arg3, struct intr_frame *f);
 void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f);
 /* NOTE
  * is_user_vaddr returns whether the address is in the user memory from
@@ -41,8 +45,11 @@ static void syscall_handler(struct intr_frame *f) {
     void *arg1 = f->esp + 4;
     void *arg2 = f->esp + 8;
     void *arg3 = f->esp + 12;
-    printf("system call!: %d\n", call_number);
+    /*printf("system call!: %d\n", call_number);*/
     switch (call_number) {
+        case SYS_HALT:
+            sys_halt();
+            break;
         case SYS_EXIT:
             sys_exit(arg1, f);
             break;
@@ -51,6 +58,9 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         case SYS_OPEN:
             sys_open(arg1, f);
+            break;
+        case SYS_READ:
+            sys_read(arg1, arg2, arg3, f);
             break;
         case SYS_WRITE:
             sys_write(arg1, arg2, arg3, f);
@@ -87,6 +97,10 @@ static void *addr_to_pointer(void *addr) {
         return NULL;
     }
     return addr;
+}
+
+void sys_halt(void) {
+    shutdown_power_off();
 }
 
 void sys_exit(void *arg1, struct intr_frame *f) {
@@ -149,9 +163,39 @@ void sys_open(void *arg1, struct intr_frame *f) {
     f->eax = fd;
 }
 
+void sys_read(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
+
+    /*printf("in sys_read\n");*/
+
+    if (!valid_pointer(arg2, 4)) {
+        printf("Invalid pointer\n");
+        thread_exit();
+    }
+
+    int fd = * (int *) arg1;;
+    unsigned size = * (unsigned *) arg3;
+
+    unsigned bytes_read = 0;
+
+    if (fd == 0) {
+        char *buffer = * (char **) arg2;
+        while (bytes_read < size) {
+            char key = input_getc();
+            buffer[bytes_read] = key;
+            /* Assuming the size is one byte */
+            bytes_read += 1;
+        }
+        f->eax = bytes_read;
+        return;
+    }
+    else {
+        /* TODO for general files */
+    }
+}
+
 void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
 
-    printf("In sys_write\n");
+    /*printf("In sys_write\n");*/
 
     /* Checking the arguments then casting */
     if (!valid_pointer(arg2, 4)) {
@@ -185,11 +229,26 @@ void sys_write(void *arg1, void *arg2, void *arg3, struct intr_frame *f) {
         }
 
         f->eax = bytes_written;
+    }
 
+    else if (fd == 0) {
+        const char *buffer = * (void **) arg2;
+        unsigned i = 0;
+        enum intr_level old_level = intr_disable();
+        for (; i * sizeof(char) < size; i++) {
+            input_putc(buffer[i]);
+            bytes_written += sizeof(char);
+        }
+        intr_set_level(old_level);
+
+        f->eax = bytes_written;
     }
 
     else {
         struct file *file = (struct file *) fd;
+        if (file == NULL) {
+            printf("Could not get file\n");
+        }
         f->eax = file_write(file, buffer, size);
 
     }
