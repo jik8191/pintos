@@ -14,12 +14,14 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
 static thread_func start_process NO_RETURN;
-static bool load(const char *cmdline, void (**eip)(void), void **esp);
+static bool load(const char *program_name, void (**eip) (void), void **esp, 
+                 char **args); 
 
 /*! Starts a new thread running a user program loaded from FILENAME.  The new
     thread may be scheduled (and may even exit) before process_execute()
@@ -36,8 +38,16 @@ tid_t process_execute(const char *file_name) {
         return TID_ERROR;
     strlcpy(fn_copy, file_name, PGSIZE);
 
-    /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+    /* Only take the name of the program, not all the arguments. */
+    char *program_name, *save_ptr;
+    // avoid race with load() by using fn_copy instead of file_name
+    program_name = strtok_r(fn_copy, " ", &save_ptr); 
+    // now save_ptr points to the remaining arguments
+
+    /* Create a new thread to execute PROGRAM_NAME. */
+    /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+     */
+    tid = thread_create(program_name, PRI_DEFAULT, start_process, fn_copy);
     if (tid == TID_ERROR)
         palloc_free_page(fn_copy); 
     return tid;
@@ -49,12 +59,17 @@ static void start_process(void *file_name_) {
     struct intr_frame if_;
     bool success;
 
+    // tokenize and get the program name, remaining arguments in args
+    char *program_name; 
+    char *args_str;
+    program_name = strtok_r(file_name, " ", &args_str); 
+
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof(if_));
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    success = load(file_name, &if_.eip, &if_.esp);
+    success = load(program_name, &if_.eip, &if_.esp, &args_str);
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
@@ -181,16 +196,18 @@ struct Elf32_Phdr {
 #define PF_R 4          /*!< Readable. */
 /*! @} */
 
-static bool setup_stack(void **esp);
+static bool setup_stack(void **esp, const char *program_name, char **args);
 static bool validate_segment(const struct Elf32_Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
                          bool writable);
 
-/*! Loads an ELF executable from FILE_NAME into the current thread.  Stores the
+/*! Loads an ELF executable from PROGRAM_NAME 
+    into the current thread.  Stores the
     executable's entry point into *EIP and its initial stack pointer into *ESP.
     Returns true if successful, false otherwise. */
-bool load(const char *file_name, void (**eip) (void), void **esp) {
+bool load(const char *program_name, void (**eip) (void), void **esp, 
+          char **args) {
     struct thread *t = thread_current();
     struct Elf32_Ehdr ehdr;
     struct file *file = NULL;
@@ -205,9 +222,10 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
-    file = filesys_open(file_name);
+    file = filesys_open(program_name);
+    if (file != NULL) printf("%s\n", program_name);
     if (file == NULL) {
-        printf("load: %s: open failed\n", file_name);
+        printf("load: %s: open failed\n", program_name);
         goto done; 
     }
 
@@ -216,7 +234,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 ||
         ehdr.e_machine != 3 || ehdr.e_version != 1 ||
         ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
-        printf("load: %s: error loading executable\n", file_name);
+        printf("load: %s: error loading executable\n", program_name);
         goto done; 
     }
 
@@ -279,8 +297,8 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         }
     }
 
-    /* Set up stack. */
-    if (!setup_stack(esp))
+    /* Set up stack with arguments passed in. */
+    if (!setup_stack(esp, program_name, args))
         goto done;
 
     /* Start address. */
@@ -293,7 +311,7 @@ done:
     file_close(file);
     return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page(void *upage, void *kpage, bool writable);
@@ -395,8 +413,9 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /*! Create a minimal stack by mapping a zeroed page at the top of
-    user virtual memory. */
-static bool setup_stack(void **esp) {
+    user virtual memory. Do stack initialization as 
+    outlined in Pintos Documentation 5.5.1 */
+static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
@@ -404,10 +423,61 @@ static bool setup_stack(void **esp) {
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success)
-            *esp = PHYS_BASE;
+            *esp = PHYS_BASE;  // start at top of user address space
         else
             palloc_free_page(kpage);
     }
+
+    // *esp stores the initial stack pointer
+    // malloc a certain amount first.
+    // TODO: impose a limit on how many arguments/ how long the arguments are
+    int NUM_ARGS_MAX = 64;
+    char **argv = malloc(NUM_ARGS_MAX*sizeof(char *));  // argument vector
+    int i = 0;
+    int argc; // argument count
+    char *arg; // each argument string as we iterate
+    size_t size_arg; // length of an argument string
+
+    // pass args_remain to strtok_r to get our arguments one at a time
+    // reverse order so that we can iterate easily later
+    for (arg = (char *) program_name; arg != NULL;
+         arg = strtok_r(NULL, " ", args)) {
+        if (i >= NUM_ARGS_MAX-1) break;
+        argv[i] = arg;
+        i++;
+    }
+    argc = i;
+    // argv[argc] points to NULL 
+    argv[argc] = NULL;
+    // push arguments onto stack    
+    for (i=argc-1; i>=0; i--){
+        size_arg = strlen(argv[i]) + 1; 
+        // stack grows towards smaller memory addresses
+        *esp -= size_arg; 
+        // copy argument to stack, Pintos is little endian
+        memcpy(*esp, &argv[i], size_arg);  
+        argv[i] = *esp;   // change where we point to in memory
+    }
+    // want word-aligned access, so round stack pointer to multiple of 4
+    *esp = (void *) ((int) *esp & ~0x03);
+    size_t size_charptr = sizeof(char *);
+    // Now put argv[i] on stack
+    for (i=argc; i>=0; i--){  // start at argv[argc] = NULL
+        *esp -= size_charptr;
+        memcpy(*esp, &argv[i], size_charptr);
+    }
+    // and argv
+    *esp -= sizeof(char**);
+    memcpy(*esp, *esp + sizeof(char**), sizeof(char**));
+    // and argc
+    *esp -= sizeof(int);
+    memcpy(*esp, &argv[i], sizeof(int));
+    // fake return address
+    *esp -= sizeof(void *);
+    memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL
+    hex_dump(0, *esp, 64, 1); 
+    // free argv
+    free(argv);
     return success;
 }
 
