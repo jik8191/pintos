@@ -19,7 +19,7 @@
 
 struct lock file_lock;
 
-bool debug_mode = true;
+bool debug_mode = false;
 
 /* TODO when they want us to verify a user pointer do we dereference and
  * then verify? */
@@ -91,7 +91,7 @@ static void syscall_handler(struct intr_frame *f) {
             f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1), to_unsigned(arg2));
             break;
         default:
-            printf("Went to default\n");
+            printf("Call: %d Went to default\n", call_number);
             thread_exit();
     }
 }
@@ -205,20 +205,13 @@ int sys_open(const char *file) {
         printf("It opened!\n");
 
     /* Figure out what fd to give the file */
-    int num_fds = list_size(&thread_current()->fd_list);
-
-    int fd = num_fds + 2;
+    int fd = thread_current()->max_fd + 1;
+    thread_current()->max_fd++;
 
     struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
     new_fd->fd = fd;
     new_fd->file_struct = file_struct;
     list_push_back(&thread_current()->fd_list, &new_fd->elem);
-
-
-    /* TODO how to get file descripter from the file */
-    /*int fd = (int) file_struct;*/
-    /*ASSERT(fd != 0);*/
-    /*ASSERT(fd != 1);*/
 
     /* Putting the fd in eax */
     if (debug_mode) {
@@ -233,29 +226,39 @@ int sys_read(int fd, void *buffer, unsigned size) {
         printf("in sys_read\n");
 
     unsigned bytes_read = 0;
+    lock_acquire(&file_lock);
 
     if (fd == 0) {
         /* Switching to a char * buffer */
-        char *buffer = (char *) buffer;
+        char *buff = (char *) buffer;
 
         /* Reading in bytes using input_getc() */
         int i = 0;
         for(; i * sizeof(char) < size; i++) {
             char key = input_getc();
-            buffer[i] = key;
+            buff[i] = key;
             bytes_read += sizeof(char);
         }
-        return bytes_read;
     }
     else {
-        /* TODO for general files */
-        return 0;
+        struct list_elem *e = list_begin(&thread_current()->fd_list);
+        /* Going through the fd's */
+        for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
+            struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+            if (curr_fd->fd == fd) {
+                struct file *file = curr_fd->file_struct;
+                bytes_read = file_read(file, buffer, size);
+            }
+        }
     }
+    lock_release(&file_lock);
+    return bytes_read;
 }
 
 int sys_write(int fd, const void *buffer, unsigned size) {
 
-    printf("In sys_write\n");
+    if (debug_mode)
+        printf("In sys_write\n");
 
     unsigned bytes_written = 0;
 
@@ -295,24 +298,14 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
             struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
             if (curr_fd->fd == fd) {
-                printf("It has fd: %d\n", curr_fd->fd);
                 struct file *file = curr_fd->file_struct;
                 bytes_written = file_write(file, buffer, size);
-                printf("won't get heere\n");
             }
         }
         if (bytes_written == 0) {
-            printf("Doesn't seem like anything wrote...");
+            if (debug_mode)
+                printf("Doesn't seem like anything wrote...");
         }
-        /*
-        struct file *file = (struct file *) fd;
-        if (file == NULL) {
-            printf("Could not get file\n");
-            return 0;
-        }
-        bytes_written = file_write(file, buffer, size);
-        */
-
     }
     lock_release(&file_lock);
     return bytes_written;
