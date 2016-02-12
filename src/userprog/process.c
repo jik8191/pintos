@@ -36,10 +36,28 @@ tid_t process_execute(const char *file_name) {
         return TID_ERROR;
     strlcpy(fn_copy, file_name, PGSIZE);
 
+    struct semaphore child_sema;
+    sema_init(&child_sema, 0);
+
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-    if (tid == TID_ERROR)
+
+    if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
+    }
+    else {
+        struct thread *t = get_thread(tid);
+        if (t != NULL) {
+            t->child_sema = &child_sema;;
+            sema_down(&child_sema);
+            if (t->load_status == 0) {
+                tid = -1;
+            }
+        }
+        else {
+            /* TODO the child had to of died by this point... */
+        }
+    }
     return tid;
 }
 
@@ -55,6 +73,12 @@ static void start_process(void *file_name_) {
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
     success = load(file_name, &if_.eip, &if_.esp);
+
+#ifdef USERPROG
+    thread_current()->load_status = success;
+    sema_up(&*thread_current()->child_sema);
+#endif
+
 
     /* If load failed, quit. */
     palloc_free_page(file_name);

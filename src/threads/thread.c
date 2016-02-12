@@ -565,6 +565,22 @@ struct list *get_all_list(void) {
     return &all_list;
 }
 
+/* A function that returns a thread pointer given a tid */
+struct thread *get_thread(tid_t tid) {
+    struct list_elem *e = list_begin(&all_list);
+
+    for (; e != list_end(&all_list); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+
+        if (t->tid == tid) {
+            return t;
+        }
+
+    }
+
+    return NULL;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -645,6 +661,9 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->lock_waiton = NULL;
     /* Initialize the list of file descripters held by the thread */
     list_init(&(t->fd_list));
+
+    /* The max fd starts off at 1 */
+    t->max_fd = 1;
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
