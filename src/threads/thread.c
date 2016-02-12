@@ -643,6 +643,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     // Initialize the list of locks held by the thread (starts empty).
     list_init(&(t->locks));
     t->lock_waiton = NULL;
+    /* Initialize the list of file descripters held by the thread */
+    list_init(&(t->fd_list));
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

@@ -12,6 +12,7 @@
 #include "devices/input.h"
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
+#include "threads/malloc.h"
 
 /* TODO accessing files is a critical section. Add locks on calls to anything
  * in filesys and do it for process_execute as well. */
@@ -162,12 +163,23 @@ void sys_exit(int status) {
 
 pid_t sys_exec(const char *cmd_line) {
     tid_t tid = process_execute(cmd_line);
+    if (tid == -1) {
+        if (debug_mode)
+            printf("Could not create thread\n");
+        return -1;
+    }
 }
 
 /* Creating a file with an initial size */
 bool sys_create(const char *file, unsigned initial_size) {
     return filesys_create(file, initial_size);
 }
+
+struct fd_elem {
+    struct list_elem elem;
+    int fd;
+    struct file *file_struct;
+};
 
 /* Opens a file */
 int sys_open(const char *file) {
@@ -192,10 +204,21 @@ int sys_open(const char *file) {
     if (debug_mode)
         printf("It opened!\n");
 
+    /* Figure out what fd to give the file */
+    int num_fds = list_size(&thread_current()->fd_list);
+
+    int fd = num_fds + 2;
+
+    struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
+    new_fd->fd = fd;
+    new_fd->file_struct = file_struct;
+    list_push_back(&thread_current()->fd_list, &new_fd->elem);
+
+
     /* TODO how to get file descripter from the file */
-    int fd = (int) file_struct;
-    ASSERT(fd != 0);
-    ASSERT(fd != 1);
+    /*int fd = (int) file_struct;*/
+    /*ASSERT(fd != 0);*/
+    /*ASSERT(fd != 1);*/
 
     /* Putting the fd in eax */
     if (debug_mode) {
@@ -268,12 +291,27 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     }
 
     else {
+        struct list_elem *e = list_begin(&thread_current()->fd_list);
+        for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
+            struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+            if (curr_fd->fd == fd) {
+                printf("It has fd: %d\n", curr_fd->fd);
+                struct file *file = curr_fd->file_struct;
+                bytes_written = file_write(file, buffer, size);
+                printf("won't get heere\n");
+            }
+        }
+        if (bytes_written == 0) {
+            printf("Doesn't seem like anything wrote...");
+        }
+        /*
         struct file *file = (struct file *) fd;
         if (file == NULL) {
             printf("Could not get file\n");
             return 0;
         }
         bytes_written = file_write(file, buffer, size);
+        */
 
     }
     lock_release(&file_lock);

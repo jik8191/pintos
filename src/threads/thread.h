@@ -126,6 +126,7 @@ struct thread {
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
+    struct list fd_list;                /*!< List of file descripters */
     /**@{*/
 #endif
 
