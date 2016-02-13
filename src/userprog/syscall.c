@@ -19,7 +19,7 @@
 
 struct lock file_lock;
 
-bool debug_mode = false;
+bool debug_mode = true;
 
 /* TODO when they want us to verify a user pointer do we dereference and
  * then verify? */
@@ -40,6 +40,7 @@ static void *to_void_p(void *addr);
 void sys_halt(void);
 void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
+int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initial_size);
 int sys_open(const char *file);
 int sys_read(int fd, void *buffer, unsigned size);
@@ -77,6 +78,9 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         case SYS_EXEC:
             f->eax = sys_exec(to_cchar_p(arg0));
+            break;
+        case SYS_WAIT:
+            f->eax = sys_wait(to_int(arg0));
             break;
         case SYS_CREATE:
             f->eax = sys_create(to_cchar_p(arg0), to_unsigned(arg1));
@@ -168,6 +172,21 @@ pid_t sys_exec(const char *cmd_line) {
             printf("Could not create thread\n");
         return -1;
     }
+    return (int) get_thread(tid);
+}
+
+int sys_wait(pid_t pid) {
+    struct list *threads = get_all_list();
+    struct list_elem *e = list_begin(threads);
+        /* Going through the fd's */
+        for (; e != list_end(threads); e = list_next(e)) {
+            struct thread *t = list_entry(e, struct thread, allelem);
+            if (t->pid == pid) {
+                return process_wait(t->tid);
+            }
+        }
+
+    return -1;
 }
 
 /* Creating a file with an initial size */

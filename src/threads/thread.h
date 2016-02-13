@@ -131,6 +131,7 @@ struct thread {
     struct semaphore *child_sema;        /*!< A semaphore for a child to communicate
                                              with their parent */
     int load_status;                  /*!< The return status of the thread */
+    int pid;
     /**@{*/
 #endif
 
