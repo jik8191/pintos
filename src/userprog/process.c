@@ -42,8 +42,10 @@ tid_t process_execute(const char *file_name) {
     char *program_name, *save_ptr;
     // avoid race with load() by using fn_copy instead of file_name
     program_name = strtok_r(fn_copy, " ", &save_ptr); 
+    // recopy because we changed fn_copy in str_tok
+    strlcpy(fn_copy, file_name, PGSIZE);   
     // now save_ptr points to the remaining arguments
-
+    printf("Create thread to run %s\n", program_name);
     /* Create a new thread to execute PROGRAM_NAME. */
     /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
      */
@@ -63,6 +65,9 @@ static void start_process(void *file_name_) {
     char *program_name; 
     char *args_str;
     program_name = strtok_r(file_name, " ", &args_str); 
+    printf("Start thread to run %s\n", program_name);
+    printf("Arguments %s\n", args_str);
+    printf("Arguments pointer %x\n", (unsigned int) &args_str);
 
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof(if_));
@@ -223,7 +228,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
     /* Open executable file. */
     file = filesys_open(program_name);
-    if (file != NULL) printf("%s\n", program_name);
+    if (file != NULL) printf("load: opened %s\n", program_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", program_name);
         goto done; 
@@ -419,6 +424,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
+    printf("Setting up stack.\n");
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -427,7 +433,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         else
             palloc_free_page(kpage);
     }
-
+    
     // *esp stores the initial stack pointer
     // malloc a certain amount first.
     // TODO: impose a limit on how many arguments/ how long the arguments are
@@ -447,36 +453,44 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         i++;
     }
     argc = i;
-    // argv[argc] points to NULL 
+    // argv[argc] points to NULL
     argv[argc] = NULL;
-    // push arguments onto stack    
+    printf("esp is: %x\n", (unsigned int) *esp);
+    // push arguments onto stack
     for (i=argc-1; i>=0; i--){
-        size_arg = strlen(argv[i]) + 1; 
+        size_arg = strlen(argv[i]) + 1;
         // stack grows towards smaller memory addresses
-        *esp -= size_arg; 
+        *esp -= size_arg;
         // copy argument to stack, Pintos is little endian
-        memcpy(*esp, &argv[i], size_arg);  
+        memcpy(*esp, argv[i], size_arg);
+        printf("argv[%d] was at: %x\n", i, (unsigned int) &argv[i]);
         argv[i] = *esp;   // change where we point to in memory
+        printf("argv[%d] is: %s\n", i, argv[i]);
+        printf("argv[%d] is at: %x\n", i, (unsigned int) &argv[i]);
+        printf("*esp is at: %x\n", (unsigned int) *esp);
     }
     // want word-aligned access, so round stack pointer to multiple of 4
     *esp = (void *) ((int) *esp & ~0x03);
-    size_t size_charptr = sizeof(char *);
+
     // Now put argv[i] on stack
+    size_t size_charptr = sizeof(char *);
     for (i=argc; i>=0; i--){  // start at argv[argc] = NULL
         *esp -= size_charptr;
         memcpy(*esp, &argv[i], size_charptr);
     }
     // and argv
+    arg = *esp;
     *esp -= sizeof(char**);
-    memcpy(*esp, *esp + sizeof(char**), sizeof(char**));
+    memcpy(*esp, &arg, sizeof(char**));
     // and argc
     *esp -= sizeof(int);
-    memcpy(*esp, &argv[i], sizeof(int));
+    memcpy(*esp, &argc, sizeof(int));
     // fake return address
     *esp -= sizeof(void *);
     memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL
-    hex_dump(0, *esp, 64, 1); 
-    // free argv
+    // TODO; Probably still not calling this right...
+    // hex_dump(0xbfffff00, *esp, 512, 1);
+    
     free(argv);
     return success;
 }
