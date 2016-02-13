@@ -19,7 +19,7 @@
 
 struct lock file_lock;
 
-bool debug_mode = true;
+bool debug_mode = false;
 
 /* TODO when they want us to verify a user pointer do we dereference and
  * then verify? */
@@ -172,6 +172,7 @@ pid_t sys_exec(const char *cmd_line) {
             printf("Could not create thread\n");
         return -1;
     }
+    /* TODO probably need a better way of giving out pid's */
     return (int) get_thread(tid);
 }
 
