@@ -42,9 +42,13 @@ void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initial_size);
+bool sys_remove(const char *file);
 int sys_open(const char *file);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
+
+/* Helper functions */
+struct file *get_file(int fd);
 
 void syscall_init(void) {
     lock_init(&file_lock);
@@ -84,6 +88,9 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         case SYS_CREATE:
             f->eax = sys_create(to_cchar_p(arg0), to_unsigned(arg1));
+            break;
+        case SYS_REMOVE:
+            f->eax = sys_remove(to_cchar_p(arg0));
             break;
         case SYS_OPEN:
             f->eax = sys_open(to_cchar_p(arg0));
@@ -160,6 +167,7 @@ void sys_halt(void) {
 
 void sys_exit(int status) {
     /* TODO says to return the status to the kernel, how to? */
+    /* Have to close all fds */
     if (debug_mode)
         printf("Status: %d\n", status);
     thread_exit();
@@ -173,26 +181,57 @@ pid_t sys_exec(const char *cmd_line) {
         return -1;
     }
     /* TODO probably need a better way of giving out pid's */
-    return (int) get_thread(tid);
+    return tid;
+    /*return (int) get_thread(tid);*/
 }
 
 int sys_wait(pid_t pid) {
     struct list *threads = get_all_list();
     struct list_elem *e = list_begin(threads);
-        /* Going through the fd's */
-        for (; e != list_end(threads); e = list_next(e)) {
-            struct thread *t = list_entry(e, struct thread, allelem);
-            if (t->pid == pid) {
-                return process_wait(t->tid);
-            }
+    /* Going through the fd's */
+    for (; e != list_end(threads); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+        if (t->pid == pid) {
+            return process_wait(t->tid);
         }
-
+    }
     return -1;
 }
 
 /* Creating a file with an initial size */
 bool sys_create(const char *file, unsigned initial_size) {
-    return filesys_create(file, initial_size);
+    bool return_value;
+    lock_acquire(&file_lock);
+    return_value = filesys_create(file, initial_size);
+    lock_release(&file_lock);
+    return return_value;
+}
+
+/* Removes a file */
+bool sys_remove(const char *file) {
+    bool return_value;
+    lock_acquire(&file_lock);
+    return_value = filesys_remove(file);
+    lock_release(&file_lock);
+    return return_value;
+}
+
+/* Gets the size of a file in bytes */
+int sys_filesize(int fd) {
+    int size;
+    /* TODO are we ensured the file is open? */
+    lock_acquire(&file_lock);
+    /* Getting the file struct from the fd */
+    struct file *file = get_file(fd);
+    if (file == NULL) {
+        size = 0;
+    }
+    else {
+        size = file_length(file);
+    }
+    lock_release(&file_lock);
+    return size;
+
 }
 
 struct fd_elem {
@@ -261,14 +300,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
-        struct list_elem *e = list_begin(&thread_current()->fd_list);
-        /* Going through the fd's */
-        for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
-            struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
-            if (curr_fd->fd == fd) {
-                struct file *file = curr_fd->file_struct;
-                bytes_read = file_read(file, buffer, size);
-            }
+        struct file *file = get_file(fd);
+        if (file != NULL) {
+            bytes_read = file_read(file, buffer, size);
         }
     }
     lock_release(&file_lock);
@@ -314,13 +348,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     }
 
     else {
-        struct list_elem *e = list_begin(&thread_current()->fd_list);
-        for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
-            struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
-            if (curr_fd->fd == fd) {
-                struct file *file = curr_fd->file_struct;
-                bytes_written = file_write(file, buffer, size);
-            }
+        struct file *file = get_file(fd);
+        if (file != NULL) {
+            bytes_written = file_write(file, buffer, size);
         }
         if (bytes_written == 0) {
             if (debug_mode)
@@ -330,4 +360,16 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     lock_release(&file_lock);
     return bytes_written;
 
+}
+
+/* Returns the file struct for a given fd */
+struct file *get_file(int fd) {
+    struct list_elem *e = list_begin(&thread_current()->fd_list);
+    for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
+        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+        if (curr_fd->fd == fd) {
+            return curr_fd->file_struct;
+        }
+    }
+    return NULL;
 }

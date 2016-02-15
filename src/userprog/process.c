@@ -45,7 +45,7 @@ tid_t process_execute(const char *file_name) {
     // recopy because we changed fn_copy in str_tok
     strlcpy(fn_copy, file_name, PGSIZE);
     // now save_ptr points to the remaining arguments
-    printf("Create thread to run %s\n", program_name);
+    /*printf("Create thread to run %s\n", program_name);*/
     /* Create a new thread to execute PROGRAM_NAME. */
     /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
      */
@@ -69,6 +69,7 @@ tid_t process_execute(const char *file_name) {
         }
         else {
             /* TODO the child had to of died by this point... */
+            /* Need a way to retrive its exit status */
         }
     }
     return tid;
@@ -84,9 +85,9 @@ static void start_process(void *file_name_) {
     char *program_name;
     char *args_str;
     program_name = strtok_r(file_name, " ", &args_str);
-    printf("Start thread to run %s\n", program_name);
-    printf("Arguments %s\n", args_str);
-    printf("Arguments pointer %x\n", (unsigned int) &args_str);
+    /*printf("Start thread to run %s\n", program_name);*/
+    /*printf("Arguments %s\n", args_str);*/
+    /*printf("Arguments pointer %x\n", (unsigned int) &args_str);*/
 
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof(if_));
@@ -451,7 +452,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    printf("Setting up stack.\n");
+    /*printf("Setting up stack.\n");*/
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -482,7 +483,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     argc = i;
     // argv[argc] points to NULL
     argv[argc] = NULL;
-    printf("esp is: %x\n", (unsigned int) *esp);
+    /*printf("esp is: %x\n", (unsigned int) *esp);*/
     // push arguments onto stack
     for (i=argc-1; i>=0; i--){
         size_arg = strlen(argv[i]) + 1;
@@ -490,11 +491,11 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         *esp -= size_arg;
         // copy argument to stack, Pintos is little endian
         memcpy(*esp, argv[i], size_arg);
-        printf("argv[%d] was at: %x\n", i, (unsigned int) &argv[i]);
+        /*printf("argv[%d] was at: %x\n", i, (unsigned int) &argv[i]);*/
         argv[i] = *esp;   // change where we point to in memory
-        printf("argv[%d] is: %s\n", i, argv[i]);
-        printf("argv[%d] is at: %x\n", i, (unsigned int) &argv[i]);
-        printf("*esp is at: %x\n", (unsigned int) *esp);
+        /*printf("argv[%d] is: %s\n", i, argv[i]);*/
+        /*printf("argv[%d] is at: %x\n", i, (unsigned int) &argv[i]);*/
+        /*printf("*esp is at: %x\n", (unsigned int) *esp);*/
     }
     // want word-aligned access, so round stack pointer to multiple of 4
     *esp = (void *) ((int) *esp & ~0x03);
