@@ -128,9 +128,9 @@ struct thread {
     uint32_t *pagedir;                  /*!< Page directory. */
     struct   list fd_list;              /*!< List of file descripters */
     int      max_fd;                    /*!< Max fd the thread has */
-    struct semaphore *child_sema;        /*!< A semaphore for a child to communicate
+    struct semaphore *child_sema;       /*!< A semaphore for a child to communicate
                                              with their parent */
-    int load_status;                  /*!< The return status of the thread */
+    int load_status;                    /*!< The return status of the thread */
     int pid;
     /**@{*/
 #endif
