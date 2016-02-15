@@ -37,7 +37,7 @@ struct dir * dir_open(struct inode *inode) {
     else {
         inode_close(inode);
         free(dir);
-        return NULL; 
+        return NULL;
     }
 }
 
@@ -133,7 +133,7 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
     /* Set OFS to offset of free slot.
        If there are no free slots, then it will be set to the
        current end-of-file.
-     
+
        inode_read_at() will only return a short read at end of file.
        Otherwise, we'd need to verify that we didn't get a short
        read due to something intermittent such as low memory. */
@@ -197,7 +197,7 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
         if (e.in_use) {
             strlcpy(name, e.name, NAME_MAX + 1);
             return true;
-        } 
+        }
     }
     return false;
 }

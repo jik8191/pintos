@@ -126,6 +126,12 @@ struct thread {
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
+    struct   list fd_list;              /*!< List of file descripters */
+    int      max_fd;                    /*!< Max fd the thread has */
+    struct semaphore *child_sema;        /*!< A semaphore for a child to communicate
+                                             with their parent */
+    int load_status;                  /*!< The return status of the thread */
+    int pid;
     /**@{*/
 #endif
 
@@ -189,6 +195,9 @@ int threads_ready(void);
 bool get_mlfqs(void);
 
 struct list *get_all_list(void);
+
+/* A function that returns a thread pointer given a tid */
+struct thread *get_thread(tid_t tid);
 
 #endif /* threads/thread.h */
 

@@ -20,8 +20,8 @@
 #include "threads/vaddr.h"
 
 static thread_func start_process NO_RETURN;
-static bool load(const char *program_name, void (**eip) (void), void **esp, 
-                 char **args); 
+static bool load(const char *program_name, void (**eip) (void), void **esp,
+                 char **args);
 
 /*! Starts a new thread running a user program loaded from FILENAME.  The new
     thread may be scheduled (and may even exit) before process_execute()
@@ -41,17 +41,36 @@ tid_t process_execute(const char *file_name) {
     /* Only take the name of the program, not all the arguments. */
     char *program_name, *save_ptr;
     // avoid race with load() by using fn_copy instead of file_name
-    program_name = strtok_r(fn_copy, " ", &save_ptr); 
+    program_name = strtok_r(fn_copy, " ", &save_ptr);
     // recopy because we changed fn_copy in str_tok
-    strlcpy(fn_copy, file_name, PGSIZE);   
+    strlcpy(fn_copy, file_name, PGSIZE);
     // now save_ptr points to the remaining arguments
     printf("Create thread to run %s\n", program_name);
     /* Create a new thread to execute PROGRAM_NAME. */
     /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
      */
-    tid = thread_create(program_name, PRI_DEFAULT, start_process, fn_copy);
-    if (tid == TID_ERROR)
-        palloc_free_page(fn_copy); 
+    struct semaphore child_sema;
+    sema_init(&child_sema, 0);
+
+    /* Create a new thread to execute FILE_NAME. */
+    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+
+    if (tid == TID_ERROR) {
+        palloc_free_page(fn_copy);
+    }
+    else {
+        struct thread *t = get_thread(tid);
+        if (t != NULL) {
+            t->child_sema = &child_sema;;
+            sema_down(&child_sema);
+            if (t->load_status == 0) {
+                tid = -1;
+            }
+        }
+        else {
+            /* TODO the child had to of died by this point... */
+        }
+    }
     return tid;
 }
 
@@ -62,9 +81,9 @@ static void start_process(void *file_name_) {
     bool success;
 
     // tokenize and get the program name, remaining arguments in args
-    char *program_name; 
+    char *program_name;
     char *args_str;
-    program_name = strtok_r(file_name, " ", &args_str); 
+    program_name = strtok_r(file_name, " ", &args_str);
     printf("Start thread to run %s\n", program_name);
     printf("Arguments %s\n", args_str);
     printf("Arguments pointer %x\n", (unsigned int) &args_str);
@@ -76,9 +95,15 @@ static void start_process(void *file_name_) {
     if_.eflags = FLAG_IF | FLAG_MBS;
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
 
+#ifdef USERPROG
+    thread_current()->load_status = success;
+    sema_up(&*thread_current()->child_sema);
+#endif
+
+
     /* If load failed, quit. */
     palloc_free_page(file_name);
-    if (!success) 
+    if (!success)
         thread_exit();
 
     /* Start the user process by simulating a return from an
@@ -100,6 +125,8 @@ static void start_process(void *file_name_) {
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
 int process_wait(tid_t child_tid UNUSED) {
+    while (1) {
+    }
     return -1;
 }
 
@@ -207,11 +234,11 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
                          bool writable);
 
-/*! Loads an ELF executable from PROGRAM_NAME 
+/*! Loads an ELF executable from PROGRAM_NAME
     into the current thread.  Stores the
     executable's entry point into *EIP and its initial stack pointer into *ESP.
     Returns true if successful, false otherwise. */
-bool load(const char *program_name, void (**eip) (void), void **esp, 
+bool load(const char *program_name, void (**eip) (void), void **esp,
           char **args) {
     struct thread *t = thread_current();
     struct Elf32_Ehdr ehdr;
@@ -222,7 +249,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
     /* Allocate and activate page directory. */
     t->pagedir = pagedir_create();
-    if (t->pagedir == NULL) 
+    if (t->pagedir == NULL)
         goto done;
     process_activate();
 
@@ -231,7 +258,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
     if (file != NULL) printf("load: opened %s\n", program_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", program_name);
-        goto done; 
+        goto done;
     }
 
     /* Read and verify executable header. */
@@ -240,7 +267,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
         ehdr.e_machine != 3 || ehdr.e_version != 1 ||
         ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
         printf("load: %s: error loading executable\n", program_name);
-        goto done; 
+        goto done;
     }
 
     /* Read program headers. */
@@ -325,8 +352,8 @@ static bool install_page(void *upage, void *kpage, bool writable);
     FILE and returns true if so, false otherwise. */
 static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
     /* p_offset and p_vaddr must have the same page offset. */
-    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK)) 
-        return false; 
+    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK))
+        return false;
 
     /* p_offset must point within FILE. */
     if (phdr->p_offset > (Elf32_Off) file_length(file))
@@ -334,12 +361,12 @@ static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
 
     /* p_memsz must be at least as big as p_filesz. */
     if (phdr->p_memsz < phdr->p_filesz)
-        return false; 
+        return false;
 
     /* The segment must not be empty. */
     if (phdr->p_memsz == 0)
         return false;
-  
+
     /* The virtual memory region must both start and end within the
        user address space range. */
     if (!is_user_vaddr((void *) phdr->p_vaddr))
@@ -406,7 +433,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
             palloc_free_page(kpage);
-            return false; 
+            return false;
         }
 
         /* Advance. */
@@ -418,7 +445,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /*! Create a minimal stack by mapping a zeroed page at the top of
-    user virtual memory. Do stack initialization as 
+    user virtual memory. Do stack initialization as
     outlined in Pintos Documentation 5.5.1 */
 static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
@@ -433,7 +460,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         else
             palloc_free_page(kpage);
     }
-    
+
     // *esp stores the initial stack pointer
     // malloc a certain amount first.
     // TODO: impose a limit on how many arguments/ how long the arguments are
@@ -490,7 +517,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL
     // TODO; Probably still not calling this right...
     // hex_dump(0xbfffff00, *esp, 512, 1);
-    
+
     free(argv);
     return success;
 }
