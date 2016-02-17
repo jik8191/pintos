@@ -314,6 +314,9 @@ void thread_exit(void) {
     ASSERT(!intr_context());
 
 #ifdef USERPROG
+    // Allow parent waiting to run.
+    sema_up(&thread_current()->child_wait);
+
     process_exit();
 #endif
 
@@ -323,12 +326,6 @@ void thread_exit(void) {
     intr_disable();
     list_remove(&thread_current()->allelem);
     thread_current()->status = THREAD_DYING;
-
-#ifdef USERPROG
-    // Allow any parents waiting to run.
-    sema_up(&thread_current()->child_wait);
-#endif
-
     schedule();
     NOT_REACHED();
 }

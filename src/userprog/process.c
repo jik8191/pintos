@@ -59,23 +59,28 @@ tid_t process_execute(const char *file_name) {
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
     } else {
+        // Add the thread to the children of the current thread.
+        struct childinfo *ci = malloc(sizeof(struct childinfo));
+        ci->tid = tid;
+        ci->terminated = false;
+        ci->return_status = -1;
+
+        /* printf( "Created one child process\n" ); */
+        list_push_back(&thread_current()->children, &ci->elem);
+
+
         struct thread *t = get_thread(tid);
+
         if (t != NULL) {
-            t->child_sema = &child_sema;
-            sema_down(&child_sema);
-            if (t->load_status == 0) {
-                tid = -1;
-            }
-
-            // Add the thread to the children of the current thread.
-            struct childinfo *ci = malloc(sizeof(struct childinfo));
-            ci->terminated = false;
-            ci->return_status = -1;
-
             // Set the info for the child, so it can set the return status.
             t->info = ci;
 
-            list_push_back(&thread_current()->children, ci);
+            t->child_sema = &child_sema;
+            sema_down(&child_sema);
+
+            if (t->load_status == 0) {
+                tid = -1;
+            }
         } else {
             /* TODO the child had to of died by this point... */
             /* Need a way to retrive its exit status */
@@ -134,7 +139,7 @@ static void start_process(void *file_name_) {
 
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
-int process_wait(tid_t child_tid UNUSED) {
+int process_wait(tid_t child_tid) {
     struct thread *parent = thread_current();
     struct childinfo *ci;
 
@@ -155,12 +160,18 @@ int process_wait(tid_t child_tid UNUSED) {
         return -1;
     }
 
+    // Since ci is valid, remove it from the list, so we can't call wait on it
+    // again.
+    list_remove(&ci->elem);
+
     // If the child thread has not terminated yet, we need to block until it
     // does.
     if (ci->terminated == false) {
         struct thread *child = get_thread(child_tid);
         sema_down(&child->child_wait);
     }
+
+    // printf("Wait returned with status %d, so can run\n", ci->return_status);
 
     return ci->return_status;
 }
@@ -173,7 +184,7 @@ void process_exit(void) {
     // Clear all the children info structs.
     struct list_elem *e = list_begin(&cur->children);
     for (; e != list_end(&cur->children); e = list_next(e)) {
-        free( list_entry(e, struct childinfo, elem) );
+        /* free( list_entry(e, struct childinfo, elem) ); */
     }
 
     /* Destroy the current process's page directory and switch back
