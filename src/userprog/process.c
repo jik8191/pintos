@@ -64,7 +64,6 @@ tid_t process_execute(const char *file_name) {
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(program_name, PRI_DEFAULT, start_process, fn_copy);
 
-
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
     } else {
@@ -83,6 +82,7 @@ tid_t process_execute(const char *file_name) {
         if (t != NULL) {
             // Set the info for the child, so it can set the return status.
             t->info = ci;
+            t->userprog = true;
 
             t->child_sema = &child_sema;
             sema_down(&child_sema);

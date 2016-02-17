@@ -137,6 +137,9 @@ struct thread {
     struct list children;                /*!< List of child process info */
     struct semaphore child_wait;
     struct childinfo *info;
+
+    int return_status;
+    bool userprog;
     /**@{*/
 #endif
 

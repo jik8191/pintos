@@ -312,10 +312,15 @@ tid_t thread_tid(void) {
     returns to the caller. */
 void thread_exit(void) {
     ASSERT(!intr_context());
+    struct thread *cur = thread_current();
 
 #ifdef USERPROG
+    if (cur->userprog) {
+        printf("%s: exit(%d)\n", cur->name, cur->return_status);
+    }
+
     // Allow parent waiting to run.
-    sema_up(&thread_current()->child_wait);
+    sema_up(&cur->child_wait);
 
     process_exit();
 #endif
@@ -324,7 +329,7 @@ void thread_exit(void) {
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     intr_disable();
-    list_remove(&thread_current()->allelem);
+    list_remove(&cur->allelem);
     thread_current()->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
@@ -672,6 +677,9 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 
     // Initialize the semaphore used to wait on children.
     sema_init(&(t->child_wait), 0);
+
+    t->return_status = -1;
+    t->userprog = false;
 #endif
 
     /* The max fd starts off at 1 */

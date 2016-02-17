@@ -125,8 +125,7 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
-            /* thread_exit(); */
-            sys_exit(-1);
+            thread_exit();
     }
 }
 
@@ -146,8 +145,7 @@ bool valid_pointer(void **pointer, int size) {
 /* Gets the integer starting from the given address. */
 static int to_int(void *addr) {
     if (!valid_pointer(addr, sizeof(int))) {
-        /* thread_exit(); */
-        sys_exit(-1);
+        thread_exit();
     } else {
         return * (int *) addr;
     }
@@ -158,8 +156,7 @@ static int to_int(void *addr) {
 static const char *to_cchar_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(const char *))) {
-        /* thread_exit(); */
-        sys_exit(-1);
+        thread_exit();
     }
     /* Return the pointer */
     else {
@@ -176,8 +173,7 @@ static unsigned to_unsigned(void *addr) {
 static const void*to_cvoid_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(const void *))) {
-        /* thread_exit(); */
-        sys_exit(-1);
+        thread_exit();
     }
     return * (const void **) addr;
 }
@@ -186,8 +182,7 @@ static const void*to_cvoid_p(void *addr) {
 static void *to_void_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(void *))) {
-        /* thread_exit(); */
-        sys_exit(-1);
+        thread_exit();
     }
     return * (void **) addr;
 }
@@ -203,7 +198,7 @@ void sys_exit(int status) {
         printf("Status: %d\n", status);
 
     struct thread *t = thread_current();
-    printf("%s: exit(%d)\n", t->name, status);
+    t->return_status = status;
 
     t->info->return_status = status;
     t->info->terminated = true;
