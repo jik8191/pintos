@@ -43,12 +43,22 @@ pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
+int sys_filesize(int fd);
 int sys_open(const char *file);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
+void sys_seek(int fd, unsigned position);
+unsigned sys_tell(int fd);
+void sys_close(int fd);
+
+struct fd_elem {
+    struct list_elem elem;
+    int fd;
+    struct file *file_struct;
+};
 
 /* Helper functions */
-struct file *get_file(int fd);
+struct fd_elem *get_file(int fd);
 
 void syscall_init(void) {
     lock_init(&file_lock);
@@ -92,6 +102,9 @@ static void syscall_handler(struct intr_frame *f) {
         case SYS_REMOVE:
             f->eax = sys_remove(to_cchar_p(arg0));
             break;
+        case SYS_FILESIZE:
+            f->eax = sys_filesize(to_int(arg0));
+            break;
         case SYS_OPEN:
             f->eax = sys_open(to_cchar_p(arg0));
             break;
@@ -100,6 +113,15 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         case SYS_WRITE:
             f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1), to_unsigned(arg2));
+            break;
+        case SYS_SEEK:
+            sys_seek(to_int(arg0), to_unsigned(arg1));
+            break;
+        case SYS_TELL:
+            f->eax = sys_tell(to_int(arg0));
+            break;
+        case SYS_CLOSE:
+            sys_close(to_int(arg0));
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -170,6 +192,15 @@ void sys_exit(int status) {
     /* Have to close all fds */
     if (debug_mode)
         printf("Status: %d\n", status);
+    /* Closing all of the fds */
+    if (debug_mode)
+        printf("Removing %d fds\n", list_size(&thread_current()->fd_list));
+    struct list_elem *e = list_begin(&thread_current()->fd_list);
+    while (e != list_end(&thread_current()->fd_list)) {
+        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+        e = list_next(e);
+        sys_close(curr_fd->fd);
+    }
     thread_exit();
 }
 
@@ -222,7 +253,7 @@ int sys_filesize(int fd) {
     /* TODO are we ensured the file is open? */
     lock_acquire(&file_lock);
     /* Getting the file struct from the fd */
-    struct file *file = get_file(fd);
+    struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
         size = 0;
     }
@@ -234,11 +265,6 @@ int sys_filesize(int fd) {
 
 }
 
-struct fd_elem {
-    struct list_elem elem;
-    int fd;
-    struct file *file_struct;
-};
 
 /* Opens a file */
 int sys_open(const char *file) {
@@ -300,7 +326,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
-        struct file *file = get_file(fd);
+        struct file *file = get_file(fd)->file_struct;
         if (file != NULL) {
             bytes_read = file_read(file, buffer, size);
         }
@@ -348,7 +374,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     }
 
     else {
-        struct file *file = get_file(fd);
+        struct file *file = get_file(fd)->file_struct;
         if (file != NULL) {
             bytes_written = file_write(file, buffer, size);
         }
@@ -362,13 +388,43 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
 }
 
+/* Changes the next byte to be read to position */
+void sys_seek(int fd, unsigned position) {
+    lock_acquire(&file_lock);
+    struct file *file = get_file(fd)->file_struct;
+    file_seek(file, position);
+    lock_release(&file_lock);
+}
+
+/* Returns the position of the next byte to read */
+unsigned sys_tell(int fd) {
+    off_t return_value;
+    lock_acquire(&file_lock);
+    struct file *file = get_file(fd)->file_struct;
+    return_value = file_tell(file);
+    lock_release(&file_lock);
+    return return_value;
+}
+
+/* Closes a given file */
+void sys_close(int fd) {
+    if (debug_mode)
+        printf("In sys close! Removing: %d\n", fd);
+    lock_acquire(&file_lock);
+    struct fd_elem *file_info = get_file(fd);
+    list_remove(&file_info->elem);
+    file_close(file_info->file_struct);
+    free(file_info);
+    lock_release(&file_lock);
+}
+
 /* Returns the file struct for a given fd */
-struct file *get_file(int fd) {
+struct fd_elem *get_file(int fd) {
     struct list_elem *e = list_begin(&thread_current()->fd_list);
     for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {
         struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
         if (curr_fd->fd == fd) {
-            return curr_fd->file_struct;
+            return curr_fd;
         }
     }
     return NULL;

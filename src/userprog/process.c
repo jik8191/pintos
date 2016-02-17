@@ -126,8 +126,8 @@ static void start_process(void *file_name_) {
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
 int process_wait(tid_t child_tid UNUSED) {
-    while (1) {
-    }
+    /*while (1) {*/
+    /*}*/
     return -1;
 }
 
@@ -256,7 +256,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
     /* Open executable file. */
     file = filesys_open(program_name);
-    if (file != NULL) printf("load: opened %s\n", program_name);
+    /*if (file != NULL) printf("load: opened %s\n", program_name);*/
     if (file == NULL) {
         printf("load: %s: open failed\n", program_name);
         goto done;
