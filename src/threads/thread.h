@@ -130,6 +130,7 @@ struct thread {
     int max_fd;                         /*!< Max fd the thread has */
     struct semaphore *child_sema;       /*!< A semaphore for a child to
                                              communicate with their parent */
+
     int load_status;                    /*!< The return status of the thread */
     int pid;
 
