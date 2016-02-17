@@ -118,6 +118,7 @@ static void start_process(void *file_name_) {
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
+    /* TODO uses the file system to open the file */
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
 
 #ifdef USERPROG
@@ -401,6 +402,9 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
 done:
     /* We arrive here whether the load is successful or not. */
+    /*file_deny_write(file);*/
+    /* TODO basically copying code from open, is there a better way? */
+    /* TODO no longer closing the file here so we have to close it elsewhere */
     file_close(file);
     return success;
 }
