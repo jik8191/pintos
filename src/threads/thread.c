@@ -323,6 +323,12 @@ void thread_exit(void) {
     intr_disable();
     list_remove(&thread_current()->allelem);
     thread_current()->status = THREAD_DYING;
+
+#ifdef USERPROG
+    // Allow any parents waiting to run.
+    sema_up(&thread_current()->child_wait);
+#endif
+
     schedule();
     NOT_REACHED();
 }
@@ -659,8 +665,17 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     // Initialize the list of locks held by the thread (starts empty).
     list_init(&(t->locks));
     t->lock_waiton = NULL;
-    /* Initialize the list of file descripters held by the thread */
+
+    // Initialize the list of file descripters held by the thread.
     list_init(&(t->fd_list));
+
+#ifdef USERPROG
+    // Initialize the list of child process information.
+    list_init(&(t->children));
+
+    // Initialize the semaphore used to wait on children.
+    sema_init(&(t->child_wait), 0);
+#endif
 
     /* The max fd starts off at 1 */
     t->max_fd = 1;

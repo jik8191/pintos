@@ -55,23 +55,33 @@ tid_t process_execute(const char *file_name) {
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
 
+
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
-    }
-    else {
+    } else {
         struct thread *t = get_thread(tid);
         if (t != NULL) {
-            t->child_sema = &child_sema;;
+            t->child_sema = &child_sema;
             sema_down(&child_sema);
             if (t->load_status == 0) {
                 tid = -1;
             }
-        }
-        else {
+
+            // Add the thread to the children of the current thread.
+            struct childinfo *ci = malloc(sizeof(struct childinfo));
+            ci->terminated = false;
+            ci->return_status = -1;
+
+            // Set the info for the child, so it can set the return status.
+            t->info = ci;
+
+            list_push_back(&thread_current()->children, ci);
+        } else {
             /* TODO the child had to of died by this point... */
             /* Need a way to retrive its exit status */
         }
     }
+
     return tid;
 }
 
@@ -101,7 +111,6 @@ static void start_process(void *file_name_) {
     sema_up(&*thread_current()->child_sema);
 #endif
 
-
     /* If load failed, quit. */
     palloc_free_page(file_name);
     if (!success)
@@ -126,15 +135,46 @@ static void start_process(void *file_name_) {
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
 int process_wait(tid_t child_tid UNUSED) {
-    while (1) {
+    struct thread *parent = thread_current();
+    struct childinfo *ci;
+
+    // TODO: Maybe add ifdef USERPROG guards since children list only exists
+    // for USERPROG threads.
+
+    // Look through the list of children for the specified child.
+    struct list_elem *e = list_begin(&parent->children);
+    for (; e != list_end(&parent->children); e = list_next(e)) {
+        ci = list_entry(e, struct childinfo, elem);
+
+        if (ci->tid == child_tid) break;
     }
-    return -1;
+
+    // If we looked through all the children and the tid's are not equal, this
+    // thread is not a child of this parent.
+    if (ci == NULL || ci->tid != child_tid) {
+        return -1;
+    }
+
+    // If the child thread has not terminated yet, we need to block until it
+    // does.
+    if (ci->terminated == false) {
+        struct thread *child = get_thread(child_tid);
+        sema_down(&child->child_wait);
+    }
+
+    return ci->return_status;
 }
 
 /*! Free the current process's resources. */
 void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
+
+    // Clear all the children info structs.
+    struct list_elem *e = list_begin(&cur->children);
+    for (; e != list_end(&cur->children); e = list_next(e)) {
+        free( list_entry(e, struct childinfo, elem) );
+    }
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
@@ -164,7 +204,7 @@ void process_activate(void) {
     /* Set thread's kernel stack for use in processing interrupts. */
     tss_update();
 }
-
+
 /*! We load ELF binaries.  The following definitions are taken
     from the ELF specification, [ELF1], more-or-less verbatim.  */
 

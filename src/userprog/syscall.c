@@ -170,6 +170,12 @@ void sys_exit(int status) {
     /* Have to close all fds */
     if (debug_mode)
         printf("Status: %d\n", status);
+
+    struct thread *t = thread_current();
+
+    t->info->return_status = status;
+    t->info->terminated = true;
+
     thread_exit();
 }
 
@@ -186,16 +192,7 @@ pid_t sys_exec(const char *cmd_line) {
 }
 
 int sys_wait(pid_t pid) {
-    struct list *threads = get_all_list();
-    struct list_elem *e = list_begin(threads);
-    /* Going through the fd's */
-    for (; e != list_end(threads); e = list_next(e)) {
-        struct thread *t = list_entry(e, struct thread, allelem);
-        if (t->pid == pid) {
-            return process_wait(t->tid);
-        }
-    }
-    return -1;
+    return process_wait(pid);
 }
 
 /* Creating a file with an initial size */

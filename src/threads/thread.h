@@ -126,12 +126,16 @@ struct thread {
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
-    struct   list fd_list;              /*!< List of file descripters */
-    int      max_fd;                    /*!< Max fd the thread has */
-    struct semaphore *child_sema;        /*!< A semaphore for a child to communicate
-                                             with their parent */
-    int load_status;                  /*!< The return status of the thread */
+    struct list fd_list;                /*!< List of file descripters */
+    int max_fd;                         /*!< Max fd the thread has */
+    struct semaphore *child_sema;       /*!< A semaphore for a child to
+                                             communicate with their parent */
+    int load_status;                    /*!< The return status of the thread */
     int pid;
+
+    struct list children;                /*!< List of child process info */
+    struct semaphore child_wait;
+    struct childinfo *info;
     /**@{*/
 #endif
 
