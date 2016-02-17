@@ -28,7 +28,7 @@ static bool load(const char *program_name, void (**eip) (void), void **esp,
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
 tid_t process_execute(const char *file_name) {
-    char *fn_copy;
+    char *fn_copy, *program_name;
     tid_t tid;
 
     /* Make a copy of FILE_NAME.
@@ -39,11 +39,20 @@ tid_t process_execute(const char *file_name) {
     strlcpy(fn_copy, file_name, PGSIZE);
 
     /* Only take the name of the program, not all the arguments. */
-    char *program_name, *save_ptr;
+    char *save_ptr;
+
     // avoid race with load() by using fn_copy instead of file_name
-    program_name = strtok_r(fn_copy, " ", &save_ptr);
+    strtok_r(fn_copy, " ", &save_ptr);
+
+    // Save the program name by itself
+    program_name = palloc_get_page(0);
+    if (program_name == NULL)
+        return TID_ERROR;
+    strlcpy(program_name, fn_copy, PGSIZE);
+
     // recopy because we changed fn_copy in str_tok
     strlcpy(fn_copy, file_name, PGSIZE);
+
     // now save_ptr points to the remaining arguments
     /*printf("Create thread to run %s\n", program_name);*/
     /* Create a new thread to execute PROGRAM_NAME. */
@@ -53,7 +62,7 @@ tid_t process_execute(const char *file_name) {
     sema_init(&child_sema, 0);
 
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+    tid = thread_create(program_name, PRI_DEFAULT, start_process, fn_copy);
 
 
     if (tid == TID_ERROR) {

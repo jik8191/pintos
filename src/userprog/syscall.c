@@ -125,13 +125,14 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
-            thread_exit();
+            /* thread_exit(); */
+            sys_exit(-1);
     }
 }
 
 /* Returns true if addr to addr + size is valid */
 bool valid_pointer(void **pointer, int size) {
-    void *addr = *pointer;
+    void *addr = pointer;
     if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
         return false;
     }
@@ -144,7 +145,12 @@ bool valid_pointer(void **pointer, int size) {
 
 /* Gets the integer starting from the given address. */
 static int to_int(void *addr) {
-    return * (int *) addr;
+    if (!valid_pointer(addr, sizeof(int))) {
+        /* thread_exit(); */
+        sys_exit(-1);
+    } else {
+        return * (int *) addr;
+    }
 }
 
 /* Gets a const char * pointer from the given address. Terminates the process
@@ -152,7 +158,8 @@ static int to_int(void *addr) {
 static const char *to_cchar_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(const char *))) {
-        thread_exit();
+        /* thread_exit(); */
+        sys_exit(-1);
     }
     /* Return the pointer */
     else {
@@ -169,7 +176,8 @@ static unsigned to_unsigned(void *addr) {
 static const void*to_cvoid_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(const void *))) {
-        thread_exit();
+        /* thread_exit(); */
+        sys_exit(-1);
     }
     return * (const void **) addr;
 }
@@ -178,7 +186,8 @@ static const void*to_cvoid_p(void *addr) {
 static void *to_void_p(void *addr) {
     /* Check if the pointer is invalid */
     if (!valid_pointer(addr, sizeof(void *))) {
-        thread_exit();
+        /* thread_exit(); */
+        sys_exit(-1);
     }
     return * (void **) addr;
 }
@@ -194,6 +203,7 @@ void sys_exit(int status) {
         printf("Status: %d\n", status);
 
     struct thread *t = thread_current();
+    printf("%s: exit(%d)\n", t->name, status);
 
     t->info->return_status = status;
     t->info->terminated = true;
