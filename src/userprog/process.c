@@ -73,9 +73,7 @@ tid_t process_execute(const char *file_name) {
         ci->terminated = false;
         ci->return_status = -1;
 
-        /* printf( "Created one child process\n" ); */
         list_push_back(&thread_current()->children, &ci->elem);
-
 
         struct thread *t = get_thread(tid);
 
@@ -123,7 +121,7 @@ static void start_process(void *file_name_) {
 
 #ifdef USERPROG
     thread_current()->load_status = success;
-    sema_up(&*thread_current()->child_sema);
+    sema_up(thread_current()->child_sema);
 #endif
 
     /* If load failed, quit. */
