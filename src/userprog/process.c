@@ -557,6 +557,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     int argc; // argument count
     char *arg; // each argument string as we iterate
     size_t size_arg; // length of an argument string
+    size_t size_total = strlen(program_name) + strlen(*args);
 
     // pass args_remain to strtok_r to get our arguments one at a time
     // reverse order so that we can iterate easily later
@@ -569,6 +570,18 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     argc = i;
     // argv[argc] points to NULL
     argv[argc] = NULL;
+    // check that we dont overflow the stack page
+    // argc, +1 for null at argv[argc], +1 for rounding, +1 for argv, 
+    // +1 for argc, +1 for fake return address
+    size_total += argc + 5;
+    while (size_total > PGSIZE){
+        // remove an argument
+        i--;
+        argc--;
+        size_total -= strlen(argv[i]);
+        argv[i] = NULL;
+    }
+
     /*printf("esp is: %x\n", (unsigned int) *esp);*/
     // push arguments onto stack
     for (i=argc-1; i>=0; i--){

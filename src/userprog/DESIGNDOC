@@ -69,7 +69,11 @@ multiple of four. The elements of argv[] are pushed in
 reverse order, starting from argv[argc] which is set to NULL (see 
 5.5.1 program startup details).
 
-TODO: check that we do not overflow the stack page.
+To prevent overflowing the stack page, we check the length of the 
+command string (which must be less than the page size based on 
+the initial strcpy() call) and the total number of arguments to determine 
+the number of bytes that will be occupied. We then ignore arguments 
+as necessary until the remainder fits on the stack.
 
 ---- RATIONALE ----
 
