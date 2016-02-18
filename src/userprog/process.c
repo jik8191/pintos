@@ -19,6 +19,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#include "userprog/syscall.h"
+
 static thread_func start_process NO_RETURN;
 static bool load(const char *program_name, void (**eip) (void), void **esp,
                  char **args);
@@ -85,9 +87,10 @@ tid_t process_execute(const char *file_name) {
             t->child_sema = &child_sema;
             sema_down(&child_sema);
 
-            if (t->load_status == 0) {
+            if (!t->load_status) {
                 tid = -1;
             }
+
         } else {
             /* TODO the child had to of died by this point... */
             /* Need a way to retrive its exit status */
@@ -117,7 +120,9 @@ static void start_process(void *file_name_) {
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
     /* TODO uses the file system to open the file */
+    lock_acquire(&file_lock);
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
+    lock_release(&file_lock);
 
 #ifdef USERPROG
     thread_current()->load_status = success;
@@ -400,10 +405,21 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
 done:
     /* We arrive here whether the load is successful or not. */
-    /*file_deny_write(file);*/
+    if (success) {
+        file_deny_write(file);
+        /* Figure out what fd to give the file */
+        int fd = thread_current()->max_fd + 1;
+        t->max_fd++;
+
+        struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
+        new_fd->fd = fd;
+        new_fd->file_struct = file;
+        list_push_back(&t->fd_list, &new_fd->elem);
+    }
+
     /* TODO basically copying code from open, is there a better way? */
     /* TODO no longer closing the file here so we have to close it elsewhere */
-    file_close(file);
+    /*file_close(file);*/
     return success;
 }
 

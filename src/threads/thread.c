@@ -14,6 +14,7 @@
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /*! Random value for struct thread's `magic' member.
@@ -317,6 +318,14 @@ void thread_exit(void) {
 #ifdef USERPROG
     if (cur->userprog) {
         printf("%s: exit(%d)\n", cur->name, cur->return_status);
+    }
+
+    /* Cleaning up the file descriptors */
+    struct list_elem *e = list_begin(&cur->fd_list);
+    while (e != list_end(&cur->fd_list)) {
+        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+        e = list_next(e);
+        sys_close(curr_fd->fd);
     }
 
     // Allow parent waiting to run.
