@@ -195,18 +195,6 @@ void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
 
-    // Clear all the children info structs.
-    struct list_elem *e = list_begin(&cur->children);
-    for (; e != list_end(&cur->children); e = list_next(e)) {
-        struct childinfo *ci = list_entry(e, struct childinfo, elem);
-
-        // Set this to null so the child doesn't try to write to its info.
-        if (ci->t != NULL)
-            ci->t->info = NULL;
-
-        free(ci);
-    }
-
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
     pd = cur->pagedir;

@@ -27,7 +27,7 @@ static void syscall_handler(struct intr_frame *);
 
 /* Checking pointer validity */
 static bool valid_pointer(void **pointer, int size);
-static bool valid_address(void *addr, int size);
+static bool valid_numeric(void *addr, int size);
 
 /* Conversion functions */
 static int to_int(void *addr);
@@ -137,7 +137,7 @@ bool valid_pointer(void **pointer, int size) {
 }
 
 /* Returns true if addr to addr + size is valid */
-bool valid_address(void *addr, int size) {
+bool valid_numeric(void *addr, int size) {
     if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
         return false;
     }
@@ -151,7 +151,7 @@ bool valid_address(void *addr, int size) {
 
 /* Gets the integer starting from the given address. */
 static int to_int(void *addr) {
-    if (!valid_address(addr, sizeof(int))) {
+    if (!valid_numeric(addr, sizeof(int))) {
         thread_exit();
     } else {
         return * (int *) addr;
@@ -173,7 +173,7 @@ static const char *to_cchar_p(void *addr) {
 /* Gets an unsigned starting from the given address. */
 static unsigned to_unsigned(void *addr) {
     /* Check if the pointer is invalid */
-    if (!valid_address(addr, sizeof(unsigned))) {
+    if (!valid_numeric(addr, sizeof(unsigned))) {
         thread_exit();
     }
     else {

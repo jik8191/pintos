@@ -26,9 +26,14 @@ Austin      Liu         yliu@caltech.edu
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
 
+Different amounts of tested passed based on whether we were using
+qemu or bochs. We debugged using bochs.
+
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+None
 
                USER PROGRAMS
                =============
@@ -41,9 +46,15 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+    Austin Liu: 15
+    Darius Simmons: 25
+    Nicholas Cho: 18
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+    Austin Liu: Argument parsing
+    Darius Simmons: syscall structure and syscalls
+    Nicholas Cho: syscalls
 
                            ARGUMENT PASSING
                            ================
@@ -108,14 +119,59 @@ has to process.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In syscall.h:
+    struct fd_elem: So we can put file descriptors in a list
+    struct lock file_lock: So we can make filesys code a critical section
+
+In syscall.c:
+    bool debug_mode: For debugging purposes
+
+In thread.h:
+    struct list fd_list: List of file descriptors the thread owns
+    int max_fd: The max fd the thread has given out, next fd is max + 1
+    struct semaphore *child_sema: A semaphore for a child to communicate with
+        their parent
+    int *load_status: address to write 0 or 1 based on whether the
+        executable loaded
+    int pid: The pid of this threads process
+
+    struct list children: The children info structs to keep track of
+        child return statuses and termination statuses.
+    struct semaphore child_wait: The semaphore used by a parent to
+        wait on a child
+
+    struct childinfo *info: A struct keeping track of child return
+        status and termination status that the child writes into upon
+        termination.
+
+    int return_status: The return status of a thread, defaulting to
+        -1, to use when writing the exit message. It will be changed
+        for any valid return, and defaults to -1 for error returns.
+    bool userprog: Whether or not the thread was spawned as a user
+        program, used to decide whether or not to print the exit
+        message.
+
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+They are unique within a single process. You can have the same processes
+with the same fd's but the difference is the actual file struct that is
+associated with them. This is the reason you can remove a file yet still
+have it open in a different process.
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+To do this we have functions that take the data and dereference it
+after making sure that it is valid. To make sure that it is valid we
+used two functions valid_pointer and valid_numeric. These functions
+rely on is_user_vaddr and page_dir_get_page to verify. If the pointers
+are not valid the threads will immediatly exit. Otherwise the data is
+dereferenced and returned.
+
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -164,6 +220,19 @@ process, if any, that is waiting on it.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+The arguments get checked before they are given to the syscall handlers.
+And if they are not valid they will immediatly exit. This helps keep all
+the handlers very simple and clean beause the arguments they take are of
+the correct type and they do not have to do any error checking or
+conversions on their own.
+
+When an error is detected thread exit is called. We changed thread exit such
+that if it is a userprogram to deallocate what we allocated. This is robust
+because any way that a thread can fail or close, it goes through thread_exit.
+
+For example we had to clean up the list of file descriptors. The way we do
+this is to go through this list and free all the memory that we allocated.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
@@ -185,13 +254,40 @@ of the child's load status.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+When P calls wait(C) before C exits, it sema_down's on a semaphore
+owned by C, so that it gets blocked until C exits and calls sema_up
+after it has already set its return status in its child info struct.
+
+If C has already exited, it has told its parent that it has terminated
+and it has set its return status, so the parent can just fetch the
+value of its return status and return immediately.
+
+If C exits first, it just frees all of its internal resources and
+doesn't have to worry about anything else. If P terminates first, then
+it frees up all the child info structs it allocated to keeping track
+of its children's statuses.
+
+There are not any special cases.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+I wanted to make the type conversions the interface at which the validity was
+tested. So if you want to get a char * from user space you simply call
+to_cchar_p. This function will first check to make sure its a valid pointer
+and then dereference. This makes it simple to do any sort of conversions.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+We kept track of the max file descriptor and always allocated based off
+of the max + 1. An advantage of this is that we do not have a small limit
+of file descriptors. And because the size of an int is so large its nearly
+impossible that the hard limit would ever be reaced by a process. In an ideal
+world however we should reset the max at some point so that there would
+be an infinite number of fds.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
