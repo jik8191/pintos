@@ -90,7 +90,11 @@ void shutdown_power_off(void) {
     /* This is a special power-off sequence supported by Bochs and
        QEMU, but not by physical hardware. */
     for (p = s; *p != '\0'; p++)
+        // Bochs
         outb(0x8900, *p);
+
+        // QEMU
+        outw(0xB004, 0x2000);
 
     /* This will power off a VMware VM if "gui.exitOnCLIHLT = TRUE"
        is set in its configuration file.  (The "pintos" script does
