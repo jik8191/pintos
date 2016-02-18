@@ -124,13 +124,13 @@ static void start_process(void *file_name_) {
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
     lock_release(&file_lock);
 
-    /* If load failed, quit. */
-    palloc_free_page(file_name);
-
 #ifdef USERPROG
     thread_current()->load_status = success;
     sema_up(thread_current()->child_sema);
 #endif
+
+    /* If load failed, quit. */
+    palloc_free_page(file_name);
 
     if (!success) {
 #ifdef USERPROG
@@ -604,8 +604,8 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     }
     // and argv
     arg = *esp;
-    *esp -= sizeof(char**);
-    memcpy(*esp, &arg, sizeof(char**));
+    *esp -= sizeof(char *);
+    memcpy(*esp, &arg, sizeof(char *));
     // and argc
     *esp -= sizeof(int);
     memcpy(*esp, &argc, sizeof(int));
