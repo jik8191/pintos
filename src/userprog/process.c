@@ -43,7 +43,7 @@ tid_t process_execute(const char *file_name) {
     /* Only take the name of the program, not all the arguments. */
     char *save_ptr;
 
-    // avoid race with load() by using fn_copy instead of file_name
+    // Avoid race with load() by using fn_copy instead of file_name
     strtok_r(fn_copy, " ", &save_ptr);
 
     // Save the program name by itself
@@ -52,7 +52,7 @@ tid_t process_execute(const char *file_name) {
         return TID_ERROR;
     strlcpy(program_name, fn_copy, PGSIZE);
 
-    // recopy because we changed fn_copy in str_tok
+    // Recopy because we changed fn_copy in str_tok
     strlcpy(fn_copy, file_name, PGSIZE);
 
     // now save_ptr points to the remaining arguments
@@ -124,18 +124,17 @@ static void start_process(void *file_name_) {
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
     lock_release(&file_lock);
 
+    /* If load failed, quit. */
+    palloc_free_page(file_name);
+
 #ifdef USERPROG
     thread_current()->load_status = success;
     sema_up(thread_current()->child_sema);
 #endif
 
-    /* If load failed, quit. */
-    palloc_free_page(file_name);
-
     if (!success) {
-
-        // Don't print the exit message for failed load.
 #ifdef USERPROG
+        // Don't print the exit message for a failed load.
         thread_current()->userprog = false;
 #endif
 
