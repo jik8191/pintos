@@ -66,6 +66,8 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+None
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
@@ -97,7 +99,6 @@ followed by a thread B, another call to strtok() by thread A will pick
 up the third token instead will get the third element in the list, not
 the second.  strtok_r() avoids this problem by making the thread save
 the save_ptr where it left off.
-
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
@@ -161,6 +162,7 @@ They are unique within a single process. You can have the same processes
 with the same fd's but the difference is the actual file struct that is
 associated with them. This is the reason you can remove a file yet still
 have it open in a different process.
+
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
