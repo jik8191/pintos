@@ -55,11 +55,7 @@ tid_t process_execute(const char *file_name) {
     // Recopy because we changed fn_copy in str_tok
     strlcpy(fn_copy, file_name, PGSIZE);
 
-    // now save_ptr points to the remaining arguments
-    /*printf("Create thread to run %s\n", program_name);*/
     /* Create a new thread to execute PROGRAM_NAME. */
-    /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-     */
     struct semaphore child_sema;
     sema_init(&child_sema, 0);
 
@@ -91,9 +87,6 @@ tid_t process_execute(const char *file_name) {
                 tid = -1;
             }
 
-        } else {
-            /* TODO the child had to of died by this point... */
-            /* Need a way to retrive its exit status */
         }
     }
 
@@ -119,7 +112,7 @@ static void start_process(void *file_name_) {
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    /* TODO uses the file system to open the file */
+
     lock_acquire(&file_lock);
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
     lock_release(&file_lock);
@@ -162,9 +155,6 @@ static void start_process(void *file_name_) {
 int process_wait(tid_t child_tid) {
     struct thread *parent = thread_current();
     struct childinfo *ci = NULL;
-
-    // TODO: Maybe add ifdef USERPROG guards since children list only exists
-    // for USERPROG threads.
 
     // Look through the list of children for the specified child.
     struct list_elem *e = list_begin(&parent->children);
@@ -411,6 +401,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 done:
     /* We arrive here whether the load is successful or not. */
     if (success) {
+        /* Handling dennying writes to executables */
         file_deny_write(file);
         /* Figure out what fd to give the file */
         int fd = thread_current()->max_fd + 1;
@@ -422,9 +413,6 @@ done:
         list_push_back(&t->fd_list, &new_fd->elem);
     }
 
-    /* TODO basically copying code from open, is there a better way? */
-    /* TODO no longer closing the file here so we have to close it elsewhere */
-    /*file_close(file);*/
     return success;
 }
 

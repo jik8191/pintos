@@ -14,14 +14,7 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 
-/* TODO accessing files is a critical section. Add locks on calls to anything
- * in filesys and do it for process_execute as well. */
-
-
 bool debug_mode = false;
-
-/* TODO when they want us to verify a user pointer do we dereference and
- * then verify? */
 
 static void syscall_handler(struct intr_frame *);
 
@@ -60,12 +53,10 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f) {
 
     /* Getting the callers stack pointer */
-    /* TODO currently assuming that this is valid memory */
     void *caller_esp = f->esp;
     int call_number = to_int(caller_esp);
 
     /* Getting the args, the calls at most have 3 */
-    /* TODO assuming that these addresses are valid */
     void *arg0 = f->esp + 4;
     void *arg1 = f->esp + 8;
     void *arg2 = f->esp + 12;
@@ -153,7 +144,8 @@ bool valid_numeric(void *addr, int size) {
 static int to_int(void *addr) {
     if (!valid_numeric(addr, sizeof(int))) {
         thread_exit();
-    } else {
+    }
+    else {
         return * (int *) addr;
     }
 }
@@ -204,7 +196,6 @@ void sys_halt(void) {
 }
 
 void sys_exit(int status) {
-    /* TODO says to return the status to the kernel, how to? */
     /* Have to close all fds */
     if (debug_mode)
         printf("Status: %d\n", status);
@@ -214,20 +205,6 @@ void sys_exit(int status) {
 
     t->info->return_status = status;
     t->info->terminated = true;
-
-
-/*
-    if (debug_mode)
-        printf("Removing %d fds\n", list_size(&thread_current()->fd_list));
-
-    struct list_elem *e = list_begin(&thread_current()->fd_list);
-    while (e != list_end(&thread_current()->fd_list)) {
-        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
-        e = list_next(e);
-
-        sys_close(curr_fd->fd);
-    }
-*/
 
     thread_exit();
 }
@@ -239,7 +216,7 @@ pid_t sys_exec(const char *cmd_line) {
             printf("Could not create thread\n");
         return -1;
     }
-    /* TODO probably need a better way of giving out pid's */
+
     return tid;
     /*return (int) get_thread(tid);*/
 }
@@ -254,7 +231,7 @@ bool sys_create(const char *file, unsigned initial_size) {
         printf("In sys_create\n");
     bool return_value;
     lock_acquire(&file_lock);
-    /* TODO should this be covered before here? */
+
     if (file == NULL) {
         lock_release(&file_lock);
         thread_exit();
@@ -276,7 +253,6 @@ bool sys_remove(const char *file) {
 /* Gets the size of a file in bytes */
 int sys_filesize(int fd) {
     int size;
-    /* TODO are we ensured the file is open? */
     lock_acquire(&file_lock);
     /* Getting the file struct from the fd */
     struct file *file = get_file(fd)->file_struct;
@@ -368,9 +344,8 @@ int sys_read(int fd, void *buffer, unsigned size) {
             thread_exit();
         }
     }
-    /*printf("About to release lock with thread: %d\n", thread_current()->tid);*/
+
     lock_release(&file_lock);
-    /*printf("And it has been released\n");*/
     return bytes_read;
 }
 
@@ -382,19 +357,6 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
     if (debug_mode)
         printf("in sys_write with thread: %d\n", thread_current()->tid);
-
-/*
-    if (fd == 0) {
-        const char *buffer = (const char *) buffer;
-        unsigned i = 0;
-        enum intr_level old_level = intr_disable();
-        for (; i * sizeof(char) < size; i++) {
-            input_putc(buffer[i]);
-            bytes_written += sizeof(char);
-        }
-        intr_set_level(old_level);
-    }
-*/
 
     if (fd == 1) {
         unsigned i = 0;
@@ -425,9 +387,8 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             thread_exit();
         }
     }
-    /*printf("About to release lock with thread: %d\n", thread_current()->tid);*/
+
     lock_release(&file_lock);
-    /*printf("And it has been released\n");*/
     return bytes_written;
 
 }
