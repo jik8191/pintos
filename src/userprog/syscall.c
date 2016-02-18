@@ -17,7 +17,6 @@
 /* TODO accessing files is a critical section. Add locks on calls to anything
  * in filesys and do it for process_execute as well. */
 
-struct lock file_lock;
 
 bool debug_mode = false;
 
@@ -45,18 +44,10 @@ int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
 int sys_filesize(int fd);
-int sys_open(const char *file);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
-void sys_close(int fd);
-
-struct fd_elem {
-    struct list_elem elem;
-    int fd;
-    struct file *file_struct;
-};
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
@@ -224,7 +215,8 @@ void sys_exit(int status) {
     t->info->return_status = status;
     t->info->terminated = true;
 
-    /* Closing all of the fds */
+
+/*
     if (debug_mode)
         printf("Removing %d fds\n", list_size(&thread_current()->fd_list));
 
@@ -235,6 +227,7 @@ void sys_exit(int status) {
 
         sys_close(curr_fd->fd);
     }
+*/
 
     thread_exit();
 }
@@ -307,13 +300,15 @@ int sys_open(const char *file) {
 
     /* Getting the file struct */
     lock_acquire(&file_lock);
+    if (debug_mode)
+        printf("Opening file in thread: %s\n", thread_current()->name);
     struct file *file_struct = filesys_open(file);
-    lock_release(&file_lock);
 
     /* If the file can't be opened then put -1 in eax */
     if (file_struct == NULL) {
         if (debug_mode)
             printf("File could not be opened\n");
+        lock_release(&file_lock);
         return -1;
     }
 
@@ -328,6 +323,7 @@ int sys_open(const char *file) {
     new_fd->fd = fd;
     new_fd->file_struct = file_struct;
     list_push_back(&thread_current()->fd_list, &new_fd->elem);
+    lock_release(&file_lock);
 
     /* Putting the fd in eax */
     if (debug_mode) {
@@ -455,7 +451,7 @@ unsigned sys_tell(int fd) {
 /* Closes a given file */
 void sys_close(int fd) {
     if (debug_mode)
-        printf("In sys close! Removing: %d\n", fd);
+        printf("In sys close! Closing: %d\n", fd);
     lock_acquire(&file_lock);
     struct fd_elem *file_info = get_file(fd);
     if (file_info == NULL) {
