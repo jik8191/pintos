@@ -12,19 +12,22 @@ Nicholas    Cho         ncho2@caltech.edu
 Darius      Simmons     dsimmons@caltech.edu
 Austin      Liu         yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment:
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL:
    commit ...
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
+
+Different amounts of tested passed based on whether we were using
+qemu or bochs. We debugged using bochs.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -41,9 +44,15 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+    Austin Liu: 15
+    Darius Simmons: 25
+    Nicholas Cho: 18
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+    Austin Liu: Argument parsing
+    Darius Simmons: syscall structure and syscalls
+    Nicholas Cho: syscalls
 
                            ARGUMENT PASSING
                            ================
@@ -60,30 +69,30 @@ which parts.
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
-Argument parsing was done with strtok_r(). In setup_stack() of 
-process.c, we tokenize the command string into an array of arguments and 
+Argument parsing was done with strtok_r(). In setup_stack() of
+process.c, we tokenize the command string into an array of arguments and
 the string which is the name of the program. The number of calls to strtok_r()
 gives us the number of arguments. The arguments are then pushed onto the stack
-using memcpy(), and we then round the stack pointer down to the nearest 
-multiple of four. The elements of argv[] are pushed in 
-reverse order, starting from argv[argc] which is set to NULL (see 
+using memcpy(), and we then round the stack pointer down to the nearest
+multiple of four. The elements of argv[] are pushed in
+reverse order, starting from argv[argc] which is set to NULL (see
 5.5.1 program startup details).
 
-To prevent overflowing the stack page, we check the length of the 
-command string (which must be less than the page size based on 
-the initial strcpy() call) and the total number of arguments to determine 
-the number of bytes that will be occupied. We then ignore arguments 
+To prevent overflowing the stack page, we check the length of the
+command string (which must be less than the page size based on
+the initial strcpy() call) and the total number of arguments to determine
+the number of bytes that will be occupied. We then ignore arguments
 as necessary until the remainder fits on the stack.
 
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
-As outlined in the manual page on strtok(), strtok() uses a static 
-buffer while parsing, so if a thread A initially calls strtok(), followed by a 
-thread B, another call to strtok() by thread A will pick up the third 
-token instead will get the third element in the list, not the second. 
-strtok_r() avoids this problem by making the thread save the save_ptr 
+As outlined in the manual page on strtok(), strtok() uses a static
+buffer while parsing, so if a thread A initially calls strtok(), followed by a
+thread B, another call to strtok() by thread A will pick up the third
+token instead will get the third element in the list, not the second.
+strtok_r() avoids this problem by making the thread save the save_ptr
 where it left off.
 
 
@@ -91,12 +100,12 @@ where it left off.
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
 
-The executable name and arguments have separate uses and so 
-separating this in the shell is cleaner and avoids the need for the 
+The executable name and arguments have separate uses and so
+separating this in the shell is cleaner and avoids the need for the
 kernel to manipulate the entire command string.
 
-Additionally, this should make it easier to handle large numbers of arguments, 
-since the kernel can know beforehand how many arguments 
+Additionally, this should make it easier to handle large numbers of arguments,
+since the kernel can know beforehand how many arguments
 it has to process.
 
                              SYSTEM CALLS
@@ -108,14 +117,47 @@ it has to process.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In syscall.h:
+    struct fd_elem: So we can put file descriptors in a list
+    struct lock file_lock: So we can make filesys code a critical section
+
+In syscall.c:
+    bool debug_mode: For debugging purposes
+
+In thread.h:
+    struct list fd_list: List of file descriptors the thread owns
+    int max_fd: The max fd the thread has given out, next fd is max + 1
+    struct semaphore *child_sema: A semaphore for a child to communicate with
+        their parent
+    int load_status: 0 or 1 based on whether the executable loaded
+    int pid: The pid of this threads process
+    struct list children:
+    struct semaphore child_wait:
+    struct childinfo *info:
+    int return_status:
+    bool userprog:
+
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+They are unique within a single process. You can have the same processes
+with the same fd's but the difference is the actual file struct that is
+associated with them. This is the reason you can remove a file yet still
+have it open in a different process.
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+To do this we have functions that take the data and dereference it after
+making sure that it is valid. To make sure that it is valid we used two functions
+valid_pointer and valid_numeric. These functions rely on
+is_user_vaddr and page_dir_get_page to verify. If the pointers are not
+valid the threads will immediatly exit. Otherwise the data is dereferenced
+and returned.
+
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -141,6 +183,19 @@ it has to process.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+The arguments get checked before they are given to the syscall handlers.
+And if they are not valid they will immediatly exit. This helps keep all
+the handlers very simple and clean beause the arguments they take are of
+the correct type and they do not have to do any error checking or
+conversions on their own.
+
+When an error is detected thread exit is called. We changed thread exit such
+that if it is a userprogram to deallocate what we allocated. This is robust
+because any way that a thread can fail or close, it goes through thread_exit.
+
+For example we had to clean up the list of file descriptors. The way we do
+this is to go through this list and free all the memory that we allocated.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
@@ -160,8 +215,19 @@ it has to process.
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+I wanted to make the type conversions the interface at which the validity was
+tested. So if you want to get a char * from user space you simply call
+to_cchar_p. This function will first check to make sure its a valid pointer
+and then dereference. This makes it simple to do any sort of conversions.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+We kept track of the max file descriptor and always allocated based off
+of the max + 1. An advantage of this is that we do not have a small limit
+of file descriptors. And because the size of an int is so large its nearly
+impossible that the hard limit would ever be reaced by a process. In an ideal
+world however we should reset the max at some point so that there would
+be an infinite number of fds.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?

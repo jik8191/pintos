@@ -131,7 +131,8 @@ struct thread {
     struct semaphore *child_sema;       /*!< A semaphore for a child to
                                              communicate with their parent */
 
-    int load_status;                    /*!< The return status of the thread */
+    int load_status;                    /*!< To keep track if the executable
+                                             loaded */
     int pid;
 
     struct list children;                /*!< List of child process info */
