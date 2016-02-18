@@ -180,6 +180,15 @@ dereferenced and returned.
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+This depends on how the data is stored and whether of not the data is
+all on a single page. If its on a single page then you could simply
+ensure that the start was mapped but if you do not have this insurance its
+more complicated. And you could possibly have to check byte by byte. The
+max number for 2 would be 2 depending once again if they are on the
+same page or not. Ideally it would be done with one call. It depends
+whether the data is contigous in memory. If it is then you could possibly
+also just pass in a length parameter.
+
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
@@ -291,6 +300,8 @@ be an infinite number of fds.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We did not change it.
 
               SURVEY QUESTIONS
               ================

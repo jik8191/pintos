@@ -55,7 +55,7 @@ tid_t process_execute(const char *file_name) {
     /* Recopy because we changed fn_copy in str_tok */
     strlcpy(fn_copy, file_name, PGSIZE);
 
-    /* now save_ptr points to the remaining arguments */
+    /* Create a new thread to execute PROGRAM_NAME. */
     struct semaphore child_sema;
     sema_init(&child_sema, 0);
 
@@ -93,9 +93,6 @@ tid_t process_execute(const char *file_name) {
                 tid = -1;
             }
 
-        } else {
-            /* TODO the child had to of died by this point... */
-            /* Need a way to retrive its exit status */
         }
     }
 
@@ -401,6 +398,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 done:
     /* We arrive here whether the load is successful or not. */
     if (success) {
+        /* Handling dennying writes to executables */
         file_deny_write(file);
         /* Figure out what fd to give the file */
         int fd = thread_current()->max_fd + 1;
@@ -412,9 +410,6 @@ done:
         list_push_back(&t->fd_list, &new_fd->elem);
     }
 
-    /* TODO basically copying code from open, is there a better way? */
-    /* TODO no longer closing the file here so we have to close it elsewhere */
-    /*file_close(file);*/
     return success;
 }
 
