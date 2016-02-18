@@ -325,7 +325,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
     /* Open executable file. */
     file = filesys_open(program_name);
-    /*if (file != NULL) printf("load: opened %s\n", program_name);*/
+
     if (file == NULL) {
         printf("load: %s: open failed\n", program_name);
         goto done;
@@ -535,7 +535,6 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    /*printf("Setting up stack.\n");*/
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -545,55 +544,56 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
             palloc_free_page(kpage);
     }
 
-    // *esp stores the initial stack pointer
-    // malloc a certain amount first.
-    // TODO: impose a limit on how many arguments/ how long the arguments are
+    // Malloc a certain amount first.
     int NUM_ARGS_MAX = 64;
-    char **argv = malloc(NUM_ARGS_MAX*sizeof(char *));  // argument vector
+    char **argv = malloc(NUM_ARGS_MAX * sizeof(char *));  // argument vector
+
     int i = 0;
     int argc; // argument count
     char *arg; // each argument string as we iterate
     size_t size_arg; // length of an argument string
-    size_t size_total = strlen(program_name) + strlen(*args);
+    size_t size_total = strlen(program_name) + 1; // + strlen(*args) + 1;
 
-    // pass args_remain to strtok_r to get our arguments one at a time
-    // reverse order so that we can iterate easily later
+    // Pass args_remain to strtok_r to get our arguments one at a time.
+    // Reverse order so that we can iterate easily later
     for (arg = (char *) program_name; arg != NULL;
          arg = strtok_r(NULL, " ", args)) {
         if (i >= NUM_ARGS_MAX-1) break;
         argv[i] = arg;
+        size_total += strlen(arg) + 1;
         i++;
     }
+
     argc = i;
+
     // argv[argc] points to NULL
     argv[argc] = NULL;
-    // check that we dont overflow the stack page
-    // argc, +1 for null at argv[argc], +1 for rounding, +1 for argv,
-    // +1 for argc, +1 for fake return address
-    size_total += argc + 5;
+
+    // Check that we dont overflow the stack page
+    //  +1 for rounding, +4 for argv, +4 for argc, +4 for fake return address
+    size_total += 1 + sizeof(int) + sizeof(char *) + sizeof(int);
     while (size_total > PGSIZE){
-        // remove an argument
+        // Remove an argument
         i--;
         argc--;
         size_total -= strlen(argv[i]);
         argv[i] = NULL;
     }
 
-    /*printf("esp is: %x\n", (unsigned int) *esp);*/
-    // push arguments onto stack
-    for (i=argc-1; i>=0; i--){
+    // Push arguments onto stack
+    for (i = argc-1; i >= 0; i--){
         size_arg = strlen(argv[i]) + 1;
-        // stack grows towards smaller memory addresses
+
+        // Stack grows towards smaller memory addresses
         *esp -= size_arg;
-        // copy argument to stack, Pintos is little endian
+
+        // Copy argument to stack, Pintos is little endian
         memcpy(*esp, argv[i], size_arg);
-        /*printf("argv[%d] was at: %x\n", i, (unsigned int) &argv[i]);*/
+
         argv[i] = *esp;   // change where we point to in memory
-        /*printf("argv[%d] is: %s\n", i, argv[i]);*/
-        /*printf("argv[%d] is at: %x\n", i, (unsigned int) &argv[i]);*/
-        /*printf("*esp is at: %x\n", (unsigned int) *esp);*/
     }
-    // want word-aligned access, so round stack pointer to multiple of 4
+
+    // Want word-aligned access, so round stack pointer to multiple of 4
     *esp = (void *) ((int) *esp & ~0x03);
 
     // Now put argv[i] on stack
@@ -602,18 +602,18 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         *esp -= size_charptr;
         memcpy(*esp, &argv[i], size_charptr);
     }
+
     // and argv
-    arg = *esp;
-    *esp -= sizeof(char *);
-    memcpy(*esp, &arg, sizeof(char *));
+    *esp -= sizeof(char **);
+    *((char **) *esp) = *esp + sizeof(char **);
+
     // and argc
     *esp -= sizeof(int);
-    memcpy(*esp, &argc, sizeof(int));
+    *((int *) *esp) = argc;
+
     // fake return address
     *esp -= sizeof(void *);
-    memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL
-    // TODO; Probably still not calling this right...
-    // hex_dump(0xbfffff00, *esp, 512, 1);
+    *((void **) *esp) = 0;
 
     free(argv);
     return success;
