@@ -462,15 +462,19 @@ unsigned sys_tell(int fd) {
 void sys_close(int fd) {
     if (debug_mode)
         printf("In sys close! Closing: %d\n", fd);
+
     lock_acquire(&file_lock);
+
     struct fd_elem *file_info = get_file(fd);
     if (file_info == NULL) {
         lock_release(&file_lock);
         thread_exit();
     }
+
     list_remove(&file_info->elem);
     file_close(file_info->file_struct);
     free(file_info);
+
     lock_release(&file_lock);
 }
 
