@@ -325,7 +325,7 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
 
     /* Open executable file. */
     file = filesys_open(program_name);
-    /*if (file != NULL) printf("load: opened %s\n", program_name);*/
+
     if (file == NULL) {
         printf("load: %s: open failed\n", program_name);
         goto done;
@@ -545,7 +545,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
             palloc_free_page(kpage);
     }
 
-    // *esp stores the initial stack pointer
+    // *esp stores the initial stack pointer.
     // malloc a certain amount first.
     // TODO: impose a limit on how many arguments/ how long the arguments are
     int NUM_ARGS_MAX = 64;
@@ -581,7 +581,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
 
     /*printf("esp is: %x\n", (unsigned int) *esp);*/
     // push arguments onto stack
-    for (i=argc-1; i>=0; i--){
+    for (i = argc-1; i >= 0; i--){
         size_arg = strlen(argv[i]) + 1;
         // stack grows towards smaller memory addresses
         *esp -= size_arg;
@@ -602,16 +602,23 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         *esp -= size_charptr;
         memcpy(*esp, &argv[i], size_charptr);
     }
+
     // and argv
     arg = *esp;
-    *esp -= sizeof(char *);
-    memcpy(*esp, &arg, sizeof(char *));
+    *esp -= sizeof(char **);
+    /* memcpy(*esp, &arg, sizeof(char *)); */
+    *((char **) *esp) = *esp + sizeof(char **);
+
     // and argc
     *esp -= sizeof(int);
-    memcpy(*esp, &argc, sizeof(int));
+    /* memcpy(*esp, &argc, sizeof(int)); */
+    *((int *) *esp) = argc;
+
     // fake return address
     *esp -= sizeof(void *);
-    memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL
+    /* memcpy(*esp, &argv[argc], sizeof(void *));  // argv[argc] = NULL */
+    *((void **) *esp) = 0;
+
     // TODO; Probably still not calling this right...
     // hex_dump(0xbfffff00, *esp, 512, 1);
 
