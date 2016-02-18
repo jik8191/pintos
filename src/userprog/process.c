@@ -131,9 +131,16 @@ static void start_process(void *file_name_) {
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
-    if (!success)
+
+    if (!success) {
+
+        // Don't print the exit message for failed load.
+#ifdef USERPROG
         thread_current()->userprog = false;
+#endif
+
         thread_exit();
+    }
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
