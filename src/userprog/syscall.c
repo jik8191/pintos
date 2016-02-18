@@ -28,6 +28,7 @@ static void syscall_handler(struct intr_frame *);
 
 /* Checking pointer validity */
 static bool valid_pointer(void **pointer, int size);
+static bool valid_address(void *addr, int size);
 
 /* Conversion functions */
 static int to_int(void *addr);
@@ -131,7 +132,9 @@ static void syscall_handler(struct intr_frame *f) {
 
 /* Returns true if addr to addr + size is valid */
 bool valid_pointer(void **pointer, int size) {
-    void *addr = pointer;
+    /*printf("Pointer %p\n", pointer);*/
+    void *addr = *pointer;
+    /*printf("Pointer %p\n", addr);*/
     if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
         return false;
     }
@@ -142,9 +145,22 @@ bool valid_pointer(void **pointer, int size) {
     return true;
 }
 
+/* Returns true if addr to addr + size is valid */
+bool valid_address(void *addr, int size) {
+    if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
+        return false;
+    }
+    if (pagedir_get_page(thread_current()->pagedir, addr) == NULL ||
+        pagedir_get_page(thread_current()->pagedir, addr + size) == NULL) {
+        return false;
+    }
+    return true;
+}
+
+
 /* Gets the integer starting from the given address. */
 static int to_int(void *addr) {
-    if (!valid_pointer(addr, sizeof(int))) {
+    if (!valid_address(addr, sizeof(int))) {
         thread_exit();
     } else {
         return * (int *) addr;
@@ -158,7 +174,6 @@ static const char *to_cchar_p(void *addr) {
     if (!valid_pointer(addr, sizeof(const char *))) {
         thread_exit();
     }
-    /* Return the pointer */
     else {
         return * (const char **) addr;
     }
@@ -166,7 +181,13 @@ static const char *to_cchar_p(void *addr) {
 
 /* Gets an unsigned starting from the given address. */
 static unsigned to_unsigned(void *addr) {
-    return * (unsigned *) addr;
+    /* Check if the pointer is invalid */
+    if (!valid_address(addr, sizeof(unsigned))) {
+        thread_exit();
+    }
+    else {
+        return * (unsigned *) addr;
+    }
 }
 
 /* Gets a void pointer from the given address. */
@@ -236,8 +257,13 @@ int sys_wait(pid_t pid) {
 
 /* Creating a file with an initial size */
 bool sys_create(const char *file, unsigned initial_size) {
+    if (debug_mode)
+        printf("In sys_create\n");
     bool return_value;
     lock_acquire(&file_lock);
+    /* TODO should this be covered before here? */
+    if (file == NULL)
+        thread_exit();
     return_value = filesys_create(file, initial_size);
     lock_release(&file_lock);
     return return_value;
@@ -331,9 +357,14 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
-        struct file *file = get_file(fd)->file_struct;
-        if (file != NULL) {
+        struct fd_elem *file_info= get_file(fd);
+        if (file_info != NULL) {
+            struct file *file = file_info->file_struct;
             bytes_read = file_read(file, buffer, size);
+        }
+        else {
+            lock_release(&file_lock);
+            thread_exit();
         }
     }
     lock_release(&file_lock);
@@ -348,7 +379,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     unsigned bytes_written = 0;
 
     lock_acquire(&file_lock);
-
+/*
     if (fd == 0) {
         const char *buffer = (const char *) buffer;
         unsigned i = 0;
@@ -359,8 +390,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         }
         intr_set_level(old_level);
     }
+*/
 
-    else if (fd == 1) {
+    if (fd == 1) {
         unsigned i = 0;
         unsigned max_write = 300;
         for (; i < size; i += max_write) {
@@ -379,13 +411,14 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     }
 
     else {
-        struct file *file = get_file(fd)->file_struct;
-        if (file != NULL) {
+        struct fd_elem *file_info = get_file(fd);
+        if (file_info != NULL) {
+            struct file *file = file_info->file_struct;
             bytes_written = file_write(file, buffer, size);
         }
-        if (bytes_written == 0) {
-            if (debug_mode)
-                printf("Doesn't seem like anything wrote...");
+        else {
+            lock_release(&file_lock);
+            thread_exit();
         }
     }
     lock_release(&file_lock);
@@ -397,6 +430,10 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 void sys_seek(int fd, unsigned position) {
     lock_acquire(&file_lock);
     struct file *file = get_file(fd)->file_struct;
+    if (file == NULL) {
+        lock_release(&file_lock);
+        thread_exit();
+    }
     file_seek(file, position);
     lock_release(&file_lock);
 }
@@ -406,6 +443,10 @@ unsigned sys_tell(int fd) {
     off_t return_value;
     lock_acquire(&file_lock);
     struct file *file = get_file(fd)->file_struct;
+    if (file == NULL) {
+        lock_acquire(&file_lock);
+        thread_exit();
+    }
     return_value = file_tell(file);
     lock_release(&file_lock);
     return return_value;
@@ -417,6 +458,10 @@ void sys_close(int fd) {
         printf("In sys close! Removing: %d\n", fd);
     lock_acquire(&file_lock);
     struct fd_elem *file_info = get_file(fd);
+    if (file_info == NULL) {
+        lock_release(&file_lock);
+        thread_exit();
+    }
     list_remove(&file_info->elem);
     file_close(file_info->file_struct);
     free(file_info);
