@@ -295,13 +295,13 @@ int sys_open(const char *file) {
 
     if (debug_mode) {
         printf("In sys_open\n");
-        printf("Filename: %s\n", file);
+        printf("Filename: %s and thread: %d\n", file, thread_current()->tid);
     }
 
     /* Getting the file struct */
     lock_acquire(&file_lock);
     if (debug_mode)
-        printf("Opening file in thread: %s\n", thread_current()->name);
+        printf("Opening file in thread: %d\n", thread_current()->tid);
     struct file *file_struct = filesys_open(file);
 
     /* If the file can't be opened then put -1 in eax */
@@ -334,11 +334,12 @@ int sys_open(const char *file) {
 
 int sys_read(int fd, void *buffer, unsigned size) {
 
-    if (debug_mode)
-        printf("in sys_read\n");
-
     unsigned bytes_read = 0;
     lock_acquire(&file_lock);
+
+    if (debug_mode)
+        printf("in sys_read with thread: %d\n", thread_current()->tid);
+
 
     if (fd == 0) {
         /* Switching to a char * buffer */
@@ -359,22 +360,27 @@ int sys_read(int fd, void *buffer, unsigned size) {
             bytes_read = file_read(file, buffer, size);
         }
         else {
+            if (debug_mode)
+                printf("The file struct was null\n");
             lock_release(&file_lock);
             thread_exit();
         }
     }
+    /*printf("About to release lock with thread: %d\n", thread_current()->tid);*/
     lock_release(&file_lock);
+    /*printf("And it has been released\n");*/
     return bytes_read;
 }
 
 int sys_write(int fd, const void *buffer, unsigned size) {
 
-    if (debug_mode)
-        printf("In sys_write\n");
-
     unsigned bytes_written = 0;
 
     lock_acquire(&file_lock);
+
+    if (debug_mode)
+        printf("in sys_write with thread: %d\n", thread_current()->tid);
+
 /*
     if (fd == 0) {
         const char *buffer = (const char *) buffer;
@@ -417,7 +423,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             thread_exit();
         }
     }
+    /*printf("About to release lock with thread: %d\n", thread_current()->tid);*/
     lock_release(&file_lock);
+    /*printf("And it has been released\n");*/
     return bytes_written;
 
 }
