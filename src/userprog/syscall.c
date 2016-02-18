@@ -255,8 +255,10 @@ bool sys_create(const char *file, unsigned initial_size) {
     bool return_value;
     lock_acquire(&file_lock);
     /* TODO should this be covered before here? */
-    if (file == NULL)
+    if (file == NULL) {
+        lock_release(&file_lock);
         thread_exit();
+    }
     return_value = filesys_create(file, initial_size);
     lock_release(&file_lock);
     return return_value;
