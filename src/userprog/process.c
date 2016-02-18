@@ -161,7 +161,7 @@ static void start_process(void *file_name_) {
     nothing. */
 int process_wait(tid_t child_tid) {
     struct thread *parent = thread_current();
-    struct childinfo *ci;
+    struct childinfo *ci = NULL;
 
     // TODO: Maybe add ifdef USERPROG guards since children list only exists
     // for USERPROG threads.
@@ -190,8 +190,6 @@ int process_wait(tid_t child_tid) {
         struct thread *child = get_thread(child_tid);
         sema_down(&child->child_wait);
     }
-
-    // printf("Wait returned with status %d, so can run\n", ci->return_status);
 
     return ci->return_status;
 }
@@ -570,7 +568,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     // argv[argc] points to NULL
     argv[argc] = NULL;
     // check that we dont overflow the stack page
-    // argc, +1 for null at argv[argc], +1 for rounding, +1 for argv, 
+    // argc, +1 for null at argv[argc], +1 for rounding, +1 for argv,
     // +1 for argc, +1 for fake return address
     size_total += argc + 5;
     while (size_total > PGSIZE){
