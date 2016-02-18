@@ -148,7 +148,7 @@ void compare_bytes(const void *read_data_, const void *expected_data_,
 
     if (!memcmp(read_data, expected_data, size))
         return;
-  
+
     for (i = 0; i < size; i++) {
         if (read_data[i] != expected_data[i])
             break;

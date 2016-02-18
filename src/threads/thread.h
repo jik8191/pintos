@@ -126,6 +126,25 @@ struct thread {
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
+    struct list fd_list;                /*!< List of file descripters */
+    int max_fd;                         /*!< Max fd the thread has */
+    struct semaphore *child_sema;       /*!< A semaphore for a child to
+                                             communicate with their parent */
+
+    int *load_status;                   /*!< The location to write the return
+                                             status of the thread */
+    int pid;
+
+    /* These are used for system wait calls */
+    struct list children;               /*!< List of child process info */
+    struct semaphore child_wait;        /*!< Semaphore used to wait for child */
+    struct childinfo *info;             /*!< Info struct to put return status
+                                             into upon termination */
+
+    /* These are used for printing the exit message on termination */
+    int return_status;                  /*!< The return status upon exiting */
+    bool userprog;                      /*!< Whether or not this is a user
+                                             spawned program. */
     /**@{*/
 #endif
 
@@ -189,6 +208,9 @@ int threads_ready(void);
 bool get_mlfqs(void);
 
 struct list *get_all_list(void);
+
+/* A function that returns a thread pointer given a tid */
+struct thread *get_thread(tid_t tid);
 
 #endif /* threads/thread.h */
 

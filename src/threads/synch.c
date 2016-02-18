@@ -389,7 +389,7 @@ bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
     struct thread *f = list_entry (a, struct thread, semaelem);
     struct thread *g = list_entry (b, struct thread, semaelem);
 
-    return thread_get_priority_t(f) >= thread_get_priority_t(g);
+    return thread_get_priority_t(f) > thread_get_priority_t(g);
 }
 
 /*! A function that returns if one semaphore's waiter has a higher priority

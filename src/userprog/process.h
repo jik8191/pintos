@@ -8,5 +8,15 @@ int process_wait(tid_t);
 void process_exit(void);
 void process_activate(void);
 
+struct childinfo {
+    tid_t tid;
+    bool terminated;
+    int return_status;
+
+    struct thread *t;
+
+    struct list_elem elem;
+};
+
 #endif /* userprog/process.h */
 

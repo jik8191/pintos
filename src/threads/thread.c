@@ -14,6 +14,7 @@
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /*! Random value for struct thread's `magic' member.
@@ -312,8 +313,24 @@ tid_t thread_tid(void) {
     returns to the caller. */
 void thread_exit(void) {
     ASSERT(!intr_context());
+    struct thread *cur = thread_current();
 
 #ifdef USERPROG
+    if (cur->userprog) {
+        printf("%s: exit(%d)\n", cur->name, cur->return_status);
+    }
+
+    /* Cleaning up the file descriptors */
+    struct list_elem *e = list_begin(&cur->fd_list);
+    while (e != list_end(&cur->fd_list)) {
+        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
+        e = list_next(e);
+        sys_close(curr_fd->fd);
+    }
+
+    // Allow parent waiting to run.
+    sema_up(&cur->child_wait);
+
     process_exit();
 #endif
 
@@ -321,7 +338,7 @@ void thread_exit(void) {
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     intr_disable();
-    list_remove(&thread_current()->allelem);
+    list_remove(&cur->allelem);
     thread_current()->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
@@ -565,6 +582,22 @@ struct list *get_all_list(void) {
     return &all_list;
 }
 
+/* A function that returns a thread pointer given a tid */
+struct thread *get_thread(tid_t tid) {
+    struct list_elem *e = list_begin(&all_list);
+
+    for (; e != list_end(&all_list); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+
+        if (t->tid == tid) {
+            return t;
+        }
+
+    }
+
+    return NULL;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -643,6 +676,23 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     // Initialize the list of locks held by the thread (starts empty).
     list_init(&(t->locks));
     t->lock_waiton = NULL;
+
+    // Initialize the list of file descripters held by the thread.
+    list_init(&(t->fd_list));
+
+#ifdef USERPROG
+    // Initialize the list of child process information.
+    list_init(&(t->children));
+
+    // Initialize the semaphore used to wait on children.
+    sema_init(&(t->child_wait), 0);
+
+    t->return_status = -1;
+    t->userprog = false;
+#endif
+
+    /* The max fd starts off at 1 */
+    t->max_fd = 1;
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

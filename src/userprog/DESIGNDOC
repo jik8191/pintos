@@ -1,0 +1,335 @@
+                     +--------------------------+
+                     |          CS 124          |
+                     | PROJECT 4: USER PROGRAMS |
+                     |     DESIGN DOCUMENT      |
+                     +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Nicholas    Cho         ncho2@caltech.edu
+Darius      Simmons     dsimmons@caltech.edu
+Austin      Liu         yliu@caltech.edu
+
+>> Specify how many late tokens you are using on this assignment:
+
+>> What is the Git repository and commit hash for your submission?
+   (You only need to include the commit-hash in the file you submit
+   on Moodle.)
+
+   Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
+   commit ...
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+We had problems running some tests in QEMU as they would page fault,
+even though they ran in Bochs. We had all our tests running using
+Bochs.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course instructors.
+
+None
+
+               USER PROGRAMS
+               =============
+
+---- LOGISTICS ----
+
+These questions will help us to keep track of the difficulty level of
+assignments, as well as keeping track of which team members worked on
+which parts.
+
+>> L1: How many hours did each team member spend on this assignment?
+   Make sure that each member's total time is listed.
+    Austin Liu: 15
+    Darius Simmons: 25
+    Nicholas Cho: 18
+
+>> L2: What did each team member focus on for this assignment?  Keep
+   descriptions to 25-30 words or less.
+    Austin Liu: Argument parsing
+    Darius Simmons: syscall structure and syscalls
+    Nicholas Cho: syscalls
+
+                           ARGUMENT PASSING
+                           ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+None
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+Argument parsing was done with strtok_r(). In setup_stack() of
+process.c, we tokenize the command string into an array of arguments
+and the string which is the name of the program. The number of calls
+to strtok_r() gives us the number of arguments. The arguments are then
+pushed onto the stack using memcpy(), and we then round the stack
+pointer down to the nearest multiple of four. The elements of argv[]
+are pushed in reverse order, starting from argv[argc] which is set to
+NULL (see 5.5.1 program startup details).
+
+To prevent overflowing the stack page, we check the length of the
+command string (which must be less than the page size based on the
+initial strcpy() call) and the total number of arguments to determine
+the number of bytes that will be occupied. We then ignore arguments as
+necessary until the remainder fits on the stack.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+As outlined in the manual page on strtok(), strtok() uses a static
+buffer while parsing, so if a thread A initially calls strtok(),
+followed by a thread B, another call to strtok() by thread A will pick
+up the third token instead will get the third element in the list, not
+the second.  strtok_r() avoids this problem by making the thread save
+the save_ptr where it left off.
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+The executable name and arguments have separate uses and so separating
+this in the shell is cleaner and avoids the need for the kernel to
+manipulate the entire command string.
+
+Additionally, this should make it easier to handle large numbers of
+arguments, since the kernel can know beforehand how many arguments it
+has to process.
+
+                             SYSTEM CALLS
+                             ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+In syscall.h:
+    struct fd_elem: So we can put file descriptors in a list
+    struct lock file_lock: So we can make filesys code a critical section
+
+In syscall.c:
+    bool debug_mode: For debugging purposes
+
+In thread.h:
+    struct list fd_list: List of file descriptors the thread owns
+    int max_fd: The max fd the thread has given out, next fd is max + 1
+    struct semaphore *child_sema: A semaphore for a child to communicate with
+        their parent
+    int *load_status: address to write 0 or 1 based on whether the
+        executable loaded
+    int pid: The pid of this threads process
+
+    struct list children: The children info structs to keep track of
+        child return statuses and termination statuses.
+    struct semaphore child_wait: The semaphore used by a parent to
+        wait on a child
+
+    struct childinfo *info: A struct keeping track of child return
+        status and termination status that the child writes into upon
+        termination.
+
+    int return_status: The return status of a thread, defaulting to
+        -1, to use when writing the exit message. It will be changed
+        for any valid return, and defaults to -1 for error returns.
+    bool userprog: Whether or not the thread was spawned as a user
+        program, used to decide whether or not to print the exit
+        message.
+
+
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+They are unique within a single process. You can have the same processes
+with the same fd's but the difference is the actual file struct that is
+associated with them. This is the reason you can remove a file yet still
+have it open in a different process.
+
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+To do this we have functions that take the data and dereference it
+after making sure that it is valid. To make sure that it is valid we
+used two functions valid_pointer and valid_numeric. These functions
+rely on is_user_vaddr and page_dir_get_page to verify. If the pointers
+are not valid the threads will immediatly exit. Otherwise the data is
+dereferenced and returned.
+
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel.  What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g. calls to pagedir_get_page()) that might result?  What about
+>> for a system call that only copies 2 bytes of data?  Is there room
+>> for improvement in these numbers, and how much?
+
+This depends on how the data is stored and whether of not the data is
+all on a single page. If its on a single page then you could simply
+ensure that the start was mapped but if you do not have this insurance its
+more complicated. And you could possibly have to check byte by byte. The
+max number for 2 would be 2 depending once again if they are on the
+same page or not. Ideally it would be done with one call. It depends
+whether the data is contigous in memory. If it is then you could possibly
+also just pass in a length parameter.
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+When a process is created, the parent (spawning the child) creates a
+child info struct (that the child will put its return status into) and
+gives a pointer to that struct to its child. It then places this child
+info struct into a list it maintains.
+
+When wait is called, first we make sure that the tid that we called to
+wait on is a child by looking through the list of child info structs,
+which contain tid's. Then, if it is, first we remove the child info
+struct from the list, so that we can only ever call wait on a process
+once. Then, we get the child thread by its tid, and we check whether
+the child has already terminated, which we know because we have a
+`terminated` field in the child info struct that the child sets when
+it terminates. If the child has not terminated, we sema_down on the
+`child_wait` semaphore, which is initialized with a value of 0, so
+that the parent is blocked. If the child has terminated, we simply
+retrieve its return value and return from wait.
+
+Finally, when the child thread terminates, it sets its return value in
+the child info struct contained by its parent, and sets that it has
+been terminated. When the thread is just about to exit, it then calls
+sema_up on the `child_wait` semaphore, thus freeing up the parent
+process, if any, that is waiting on it.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value.  Such accesses must cause the
+>> process to be terminated.  System calls are fraught with such
+>> accesses, e.g. a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point.  This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling?  Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed?  In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues.  Give an example.
+
+The arguments get checked before they are given to the syscall handlers.
+And if they are not valid they will immediatly exit. This helps keep all
+the handlers very simple and clean beause the arguments they take are of
+the correct type and they do not have to do any error checking or
+conversions on their own.
+
+When an error is detected thread exit is called. We changed thread exit such
+that if it is a userprogram to deallocate what we allocated. This is robust
+because any way that a thread can fail or close, it goes through thread_exit.
+
+For example we had to clean up the list of file descriptors. The way we do
+this is to go through this list and free all the memory that we allocated.
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading.  How does your code ensure this?  How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+The thread that calls exec calls sema_down on a semaphore in the new
+thread, so that it gets blocked until the new thread starts running.
+The new thread will start, then upon attempting a load of the
+executable, will set its load status, then sema_up on the semaphore,
+allowing the parent thread to continue, now knowing the correct value
+of the child's load status.
+
+>> B8: Consider parent process P with child process C.  How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits?  After C exits?  How do you ensure
+>> that all resources are freed in each case?  How about when P
+>> terminates without waiting, before C exits?  After C exits?  Are
+>> there any special cases?
+
+When P calls wait(C) before C exits, it sema_down's on a semaphore
+owned by C, so that it gets blocked until C exits and calls sema_up
+after it has already set its return status in its child info struct.
+
+If C has already exited, it has told its parent that it has terminated
+and it has set its return status, so the parent can just fetch the
+value of its return status and return immediately.
+
+If C exits first, it just frees all of its internal resources and
+doesn't have to worry about anything else. If P terminates first, then
+it frees up all the child info structs it allocated to keeping track
+of its children's statuses.
+
+There are not any special cases.
+
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+I wanted to make the type conversions the interface at which the validity was
+tested. So if you want to get a char * from user space you simply call
+to_cchar_p. This function will first check to make sure its a valid pointer
+and then dereference. This makes it simple to do any sort of conversions.
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+We kept track of the max file descriptor and always allocated based off
+of the max + 1. An advantage of this is that we do not have a small limit
+of file descriptors. And because the size of an int is so large its nearly
+impossible that the hard limit would ever be reaced by a process. In an ideal
+world however we should reset the max at some point so that there would
+be an infinite number of fds.
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+
+We did not change it.
+
+              SURVEY QUESTIONS
+              ================
+
+Answering these questions is optional, but it will help us improve the
+course in future years.  Feel free to tell us anything you want - these
+questions are just to spur your thoughts.  Also, feel free to be completely
+honest if there are issues with the assignment or the course - you won't be
+penalized.  We can't fix things until we know about them.  :-)
+
+>> In your opinion, was this assignment, or any of the parts of it, too
+>> easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Were there any parts of the assignment that you felt were unnecessarily
+>> tedious or pointless?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the instructor and/or TAs to more
+>> effectively assist students, either for future quarters or the remaining
+>> projects?
+
+>> Any other comments?
+
