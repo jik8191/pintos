@@ -43,23 +43,19 @@ tid_t process_execute(const char *file_name) {
     /* Only take the name of the program, not all the arguments. */
     char *save_ptr;
 
-    // Avoid race with load() by using fn_copy instead of file_name
+    /* Avoid race with load() by using fn_copy instead of file_name */
     strtok_r(fn_copy, " ", &save_ptr);
 
-    // Save the program name by itself
+    /* Save the program name by itself */
     program_name = palloc_get_page(0);
     if (program_name == NULL)
         return TID_ERROR;
     strlcpy(program_name, fn_copy, PGSIZE);
 
-    // Recopy because we changed fn_copy in str_tok
+    /* Recopy because we changed fn_copy in str_tok */
     strlcpy(fn_copy, file_name, PGSIZE);
 
-    // now save_ptr points to the remaining arguments
-    /*printf("Create thread to run %s\n", program_name);*/
-    /* Create a new thread to execute PROGRAM_NAME. */
-    /* tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-     */
+    /* now save_ptr points to the remaining arguments */
     struct semaphore child_sema;
     sema_init(&child_sema, 0);
 
@@ -69,7 +65,7 @@ tid_t process_execute(const char *file_name) {
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
     } else {
-        // Add the thread to the children of the current thread.
+        /* Add the thread to the children of the current thread. */
         struct childinfo *ci = malloc(sizeof(struct childinfo));
         ci->tid = tid;
         ci->terminated = false;
@@ -79,15 +75,21 @@ tid_t process_execute(const char *file_name) {
 
         struct thread *t = get_thread(tid);
 
+        /* Set the child thread pointer. */
+        ci->t = t;
+
+        int load_status;
+        t->load_status = &load_status;
+
         if (t != NULL) {
-            // Set the info for the child, so it can set the return status.
+            /* Set the info for the child, so it can set the return status. */
             t->info = ci;
             t->userprog = true;
 
             t->child_sema = &child_sema;
             sema_down(&child_sema);
 
-            if (!t->load_status) {
+            if (!load_status) {
                 tid = -1;
             }
 
@@ -106,26 +108,23 @@ static void start_process(void *file_name_) {
     struct intr_frame if_;
     bool success;
 
-    // tokenize and get the program name, remaining arguments in args
+    /* Tokenize and get the program name, remaining arguments in args */
     char *program_name;
     char *args_str;
     program_name = strtok_r(file_name, " ", &args_str);
-    /*printf("Start thread to run %s\n", program_name);*/
-    /*printf("Arguments %s\n", args_str);*/
-    /*printf("Arguments pointer %x\n", (unsigned int) &args_str);*/
 
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof(if_));
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    /* TODO uses the file system to open the file */
+
     lock_acquire(&file_lock);
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
     lock_release(&file_lock);
 
 #ifdef USERPROG
-    thread_current()->load_status = success;
+    *thread_current()->load_status = success;
     sema_up(thread_current()->child_sema);
 #endif
 
@@ -134,7 +133,7 @@ static void start_process(void *file_name_) {
 
     if (!success) {
 #ifdef USERPROG
-        // Don't print the exit message for a failed load.
+        /* Don't print the exit message for a failed load. */
         thread_current()->userprog = false;
 #endif
 
@@ -162,9 +161,6 @@ static void start_process(void *file_name_) {
 int process_wait(tid_t child_tid) {
     struct thread *parent = thread_current();
     struct childinfo *ci = NULL;
-
-    // TODO: Maybe add ifdef USERPROG guards since children list only exists
-    // for USERPROG threads.
 
     // Look through the list of children for the specified child.
     struct list_elem *e = list_begin(&parent->children);
@@ -202,7 +198,13 @@ void process_exit(void) {
     // Clear all the children info structs.
     struct list_elem *e = list_begin(&cur->children);
     for (; e != list_end(&cur->children); e = list_next(e)) {
-        /* free( list_entry(e, struct childinfo, elem) ); */
+        struct childinfo *ci = list_entry(e, struct childinfo, elem);
+
+        // Set this to null so the child doesn't try to write to its info.
+        if (ci->t != NULL)
+            ci->t->info = NULL;
+
+        free(ci);
     }
 
     /* Destroy the current process's page directory and switch back

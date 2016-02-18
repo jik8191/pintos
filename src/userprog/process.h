@@ -13,6 +13,8 @@ struct childinfo {
     bool terminated;
     int return_status;
 
+    struct thread *t;
+
     struct list_elem elem;
 };
 

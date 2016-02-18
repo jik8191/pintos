@@ -131,15 +131,20 @@ struct thread {
     struct semaphore *child_sema;       /*!< A semaphore for a child to
                                              communicate with their parent */
 
-    int load_status;                    /*!< The return status of the thread */
+    int *load_status;                   /*!< The location to write the return
+                                             status of the thread */
     int pid;
 
-    struct list children;                /*!< List of child process info */
-    struct semaphore child_wait;
-    struct childinfo *info;
+    /* These are used for system wait calls */
+    struct list children;               /*!< List of child process info */
+    struct semaphore child_wait;        /*!< Semaphore used to wait for child */
+    struct childinfo *info;             /*!< Info struct to put return status
+                                             into upon termination */
 
-    int return_status;
-    bool userprog;
+    /* These are used for printing the exit message on termination */
+    int return_status;                  /*!< The return status upon exiting */
+    bool userprog;                      /*!< Whether or not this is a user
+                                             spawned program. */
     /**@{*/
 #endif
 

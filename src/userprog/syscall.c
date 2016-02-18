@@ -212,22 +212,10 @@ void sys_exit(int status) {
     struct thread *t = thread_current();
     t->return_status = status;
 
-    t->info->return_status = status;
-    t->info->terminated = true;
-
-
-/*
-    if (debug_mode)
-        printf("Removing %d fds\n", list_size(&thread_current()->fd_list));
-
-    struct list_elem *e = list_begin(&thread_current()->fd_list);
-    while (e != list_end(&thread_current()->fd_list)) {
-        struct fd_elem *curr_fd = list_entry(e, struct fd_elem, elem);
-        e = list_next(e);
-
-        sys_close(curr_fd->fd);
+    if (t->info != NULL) {
+        t->info->return_status = status;
+        t->info->terminated = true;
     }
-*/
 
     thread_exit();
 }

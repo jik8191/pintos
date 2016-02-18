@@ -12,13 +12,13 @@ Nicholas    Cho         ncho2@caltech.edu
 Darius      Simmons     dsimmons@caltech.edu
 Austin      Liu         yliu@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment:
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL:
    commit ...
 
 ---- PRELIMINARIES ----
@@ -30,8 +30,8 @@ Austin      Liu         yliu@caltech.edu
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
-			   USER PROGRAMS
-			   =============
+               USER PROGRAMS
+               =============
 
 ---- LOGISTICS ----
 
@@ -60,44 +60,44 @@ which parts.
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
-Argument parsing was done with strtok_r(). In setup_stack() of 
-process.c, we tokenize the command string into an array of arguments and 
-the string which is the name of the program. The number of calls to strtok_r()
-gives us the number of arguments. The arguments are then pushed onto the stack
-using memcpy(), and we then round the stack pointer down to the nearest 
-multiple of four. The elements of argv[] are pushed in 
-reverse order, starting from argv[argc] which is set to NULL (see 
-5.5.1 program startup details).
+Argument parsing was done with strtok_r(). In setup_stack() of
+process.c, we tokenize the command string into an array of arguments
+and the string which is the name of the program. The number of calls
+to strtok_r() gives us the number of arguments. The arguments are then
+pushed onto the stack using memcpy(), and we then round the stack
+pointer down to the nearest multiple of four. The elements of argv[]
+are pushed in reverse order, starting from argv[argc] which is set to
+NULL (see 5.5.1 program startup details).
 
-To prevent overflowing the stack page, we check the length of the 
-command string (which must be less than the page size based on 
-the initial strcpy() call) and the total number of arguments to determine 
-the number of bytes that will be occupied. We then ignore arguments 
-as necessary until the remainder fits on the stack.
+To prevent overflowing the stack page, we check the length of the
+command string (which must be less than the page size based on the
+initial strcpy() call) and the total number of arguments to determine
+the number of bytes that will be occupied. We then ignore arguments as
+necessary until the remainder fits on the stack.
 
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
-As outlined in the manual page on strtok(), strtok() uses a static 
-buffer while parsing, so if a thread A initially calls strtok(), followed by a 
-thread B, another call to strtok() by thread A will pick up the third 
-token instead will get the third element in the list, not the second. 
-strtok_r() avoids this problem by making the thread save the save_ptr 
-where it left off.
+As outlined in the manual page on strtok(), strtok() uses a static
+buffer while parsing, so if a thread A initially calls strtok(),
+followed by a thread B, another call to strtok() by thread A will pick
+up the third token instead will get the third element in the list, not
+the second.  strtok_r() avoids this problem by making the thread save
+the save_ptr where it left off.
 
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
 
-The executable name and arguments have separate uses and so 
-separating this in the shell is cleaner and avoids the need for the 
-kernel to manipulate the entire command string.
+The executable name and arguments have separate uses and so separating
+this in the shell is cleaner and avoids the need for the kernel to
+manipulate the entire command string.
 
-Additionally, this should make it easier to handle large numbers of arguments, 
-since the kernel can know beforehand how many arguments 
-it has to process.
+Additionally, this should make it easier to handle large numbers of
+arguments, since the kernel can know beforehand how many arguments it
+has to process.
 
                              SYSTEM CALLS
                              ============
@@ -127,6 +127,29 @@ it has to process.
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
+When a process is created, the parent (spawning the child) creates a
+child info struct (that the child will put its return status into) and
+gives a pointer to that struct to its child. It then places this child
+info struct into a list it maintains.
+
+When wait is called, first we make sure that the tid that we called to
+wait on is a child by looking through the list of child info structs,
+which contain tid's. Then, if it is, first we remove the child info
+struct from the list, so that we can only ever call wait on a process
+once. Then, we get the child thread by its tid, and we check whether
+the child has already terminated, which we know because we have a
+`terminated` field in the child info struct that the child sets when
+it terminates. If the child has not terminated, we sema_down on the
+`child_wait` semaphore, which is initialized with a value of 0, so
+that the parent is blocked. If the child has terminated, we simply
+retrieve its return value and return from wait.
+
+Finally, when the child thread terminates, it sets its return value in
+the child info struct contained by its parent, and sets that it has
+been terminated. When the thread is just about to exit, it then calls
+sema_up on the `child_wait` semaphore, thus freeing up the parent
+process, if any, that is waiting on it.
+
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
 >> process to be terminated.  System calls are fraught with such
@@ -148,6 +171,13 @@ it has to process.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+The thread that calls exec calls sema_down on a semaphore in the new
+thread, so that it gets blocked until the new thread starts running.
+The new thread will start, then upon attempting a load of the
+executable, will set its load status, then sema_up on the semaphore,
+allowing the parent thread to continue, now knowing the correct value
+of the child's load status.
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -166,8 +196,8 @@ it has to process.
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
 
-			  SURVEY QUESTIONS
-			  ================
+              SURVEY QUESTIONS
+              ================
 
 Answering these questions is optional, but it will help us improve the
 course in future years.  Feel free to tell us anything you want - these
