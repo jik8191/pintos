@@ -118,26 +118,34 @@ static void syscall_handler(struct intr_frame *f) {
 /* Returns true if addr to addr + size is valid */
 bool valid_pointer(void **pointer, int size) {
     int i = 0;
+
     if (size == -1) {
         char byte_read;
+
+        // Check each byte of the (char *) until we read a null byte.
         do {
             void *addr = *(pointer) + i;
+
             if (!is_user_vaddr(addr)) {
                 return false;
             }
+
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
                 return false;
             }
+
             byte_read = * (char *) addr;
             i++;
         } while (byte_read != '\0');
-    }
-    else {
+    } else {
+        // Check each byte in the specified byte range.
         for (; i < size; i++) {
             void *addr = *(pointer) + i;
+
             if (!is_user_vaddr(addr)) {
                 return false;
             }
+
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
                 return false;
             }
