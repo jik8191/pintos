@@ -13,7 +13,7 @@ Darius      Simmons     dsimmons@caltech.edu
 Austin      Liu         yliu@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:
-
+1
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
@@ -173,7 +173,9 @@ after making sure that it is valid. To make sure that it is valid we
 used two functions valid_pointer and valid_numeric. These functions
 rely on is_user_vaddr and page_dir_get_page to verify. If the pointers
 are not valid the threads will immediatly exit. Otherwise the data is
-dereferenced and returned.
+dereferenced and returned. In doing so we know that we are doing extra
+work because we have to go through each byte and verify it and then
+dereference it after.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -182,14 +184,11 @@ dereferenced and returned.
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
-This depends on how the data is stored and whether of not the data is
-all on a single page. If its on a single page then you could simply
-ensure that the start was mapped but if you do not have this insurance its
-more complicated. And you could possibly have to check byte by byte. The
-max number for 2 would be 2 depending once again if they are on the
-same page or not. Ideally it would be done with one call. It depends
-whether the data is contigous in memory. If it is then you could possibly
-also just pass in a length parameter.
+The greatest number would be 4,096 in our current implementation because
+we call the function on each byte. For 2 bytes it would
+be 2 as well. The ideal number of checks would be two per page because
+you need to check the start and the end. But we were unsure of how the
+memory layout worked so we checked byte by byte.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
