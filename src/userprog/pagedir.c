@@ -39,7 +39,7 @@ void pagedir_destroy(uint32_t *pd) {
         uint32_t *pte;
 
         for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++) {
-            if (*pte & PTE_P) 
+            if (*pte & PTE_P)
                 palloc_free_page(pte_get_page(*pte));
         }
         palloc_free_page(pt);
@@ -65,8 +65,8 @@ static uint32_t * lookup_page(uint32_t *pd, const void *vaddr, bool create) {
     if (*pde == 0)  {
         if (create) {
             pt = palloc_get_page(PAL_ZERO);
-            if (pt == NULL) 
-                return NULL; 
+            if (pt == NULL)
+                return NULL;
 
             *pde = pde_create(pt);
         }
@@ -180,7 +180,7 @@ void pagedir_set_accessed(uint32_t *pd, const void *vpage, bool accessed) {
             *pte |= PTE_A;
         }
         else {
-            *pte &= ~(uint32_t) PTE_A; 
+            *pte &= ~(uint32_t) PTE_A;
             invalidate_pagedir(pd);
         }
     }

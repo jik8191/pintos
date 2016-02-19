@@ -26,8 +26,8 @@ static bool valid_numeric(void *addr, int size);
 static int to_int(void *addr);
 static const char *to_cchar_p(void *addr);
 static unsigned to_unsigned(void *addr);
-static const void *to_cvoid_p(void *addr);
-static void *to_void_p(void *addr);
+static const void *to_cvoid_p(void *addr, unsigned size);
+static void *to_void_p(void *addr, unsigned size);
 
 /* Specific handlers */
 void sys_halt(void);
@@ -66,6 +66,7 @@ static void syscall_handler(struct intr_frame *f) {
     }
 
     /* Calling the appropriate handler */
+    unsigned temp;
     switch (call_number) {
         case SYS_HALT:
             sys_halt();
@@ -92,10 +93,12 @@ static void syscall_handler(struct intr_frame *f) {
             f->eax = sys_open(to_cchar_p(arg0));
             break;
         case SYS_READ:
-            f->eax = sys_read(to_int(arg0), to_void_p(arg1), to_unsigned(arg2));
+            temp = to_unsigned(arg2);
+            f->eax = sys_read(to_int(arg0), to_void_p(arg1, temp), temp);
             break;
         case SYS_WRITE:
-            f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1), to_unsigned(arg2));
+            temp = to_unsigned(arg2);
+            f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1, temp), temp);
             break;
         case SYS_SEEK:
             sys_seek(to_int(arg0), to_unsigned(arg1));
@@ -114,15 +117,31 @@ static void syscall_handler(struct intr_frame *f) {
 
 /* Returns true if addr to addr + size is valid */
 bool valid_pointer(void **pointer, int size) {
-    /*printf("Pointer %p\n", pointer);*/
-    void *addr = *pointer;
-    /*printf("Pointer %p\n", addr);*/
-    if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
-        return false;
+    int i = 0;
+    if (size == -1) {
+        char byte_read;
+        do {
+            void *addr = *(pointer) + i;
+            if (!is_user_vaddr(addr)) {
+                return false;
+            }
+            if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
+                return false;
+            }
+            byte_read = * (char *) addr;
+            i++;
+        } while (byte_read != '\0');
     }
-    if (pagedir_get_page(thread_current()->pagedir, addr) == NULL ||
-        pagedir_get_page(thread_current()->pagedir, addr + size) == NULL) {
-        return false;
+    else {
+        for (; i < size; i++) {
+            void *addr = *(pointer) + i;
+            if (!is_user_vaddr(addr)) {
+                return false;
+            }
+            if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -154,7 +173,7 @@ static int to_int(void *addr) {
  * if the pointer is invalid */
 static const char *to_cchar_p(void *addr) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, sizeof(const char *))) {
+    if (!valid_pointer(addr, -1)) {
         thread_exit();
     }
     else {
@@ -174,18 +193,18 @@ static unsigned to_unsigned(void *addr) {
 }
 
 /* Gets a void pointer from the given address. */
-static const void*to_cvoid_p(void *addr) {
+static const void*to_cvoid_p(void *addr, unsigned size) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, sizeof(const void *))) {
+    if (!valid_pointer(addr, size)) {
         thread_exit();
     }
     return * (const void **) addr;
 }
 
 /* Gets a void pointer from the given address. */
-static void *to_void_p(void *addr) {
+static void *to_void_p(void *addr, unsigned size) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, sizeof(void *))) {
+    if (!valid_pointer(addr, size)) {
         thread_exit();
     }
     return * (void **) addr;
