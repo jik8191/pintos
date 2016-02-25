@@ -19,8 +19,8 @@ bool debug_mode = false;
 static void syscall_handler(struct intr_frame *);
 
 /* Checking pointer validity */
-static bool valid_pointer(void **pointer, int size);
-static bool valid_numeric(void *addr, int size);
+static void *valid_pointer(void **pointer, int size);
+static void *valid_numeric(void *addr, int size);
 
 /* Conversion functions */
 static int to_int(void *addr);
@@ -116,109 +116,145 @@ static void syscall_handler(struct intr_frame *f) {
 }
 
 /* Returns true if addr to addr + size is valid */
-bool valid_pointer(void **pointer, int size) {
+void *valid_pointer(void **pointer, int size) {
     int i = 0;
+    void *kernel_addr = NULL;
 
+    /* Pointer is a pointer to a pointer, first we want to get the actual
+     * pointer */
+    void *addr = *(pointer);
+
+    /* Need to check that its in user memory */
+    if (!is_user_vaddr(addr)) {
+        return NULL;
+    }
+
+    /* Get the kernel address, if its unmapped return NULL */
+    kernel_addr = pagedir_get_page(thread_current()->pagedir, addr);
+    if (kernel_addr == NULL) {
+        return kernel_addr;
+    }
+
+    /* Now to check the rest of the data from the start to size - 1 */
+    /* If size is -1 then its for a char * and we want to check memory until
+     * we reach a NULL byte */
     if (size == -1) {
         char byte_read;
 
-        // Check each byte of the (char *) until we read a null byte.
+        /* Check each byte of the char * until we read a null byte */
+        i = 1;
         do {
-            void *addr = *(pointer) + i;
+            addr = * (pointer) + i;
 
             if (!is_user_vaddr(addr)) {
-                return false;
+                return NULL;
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                return false;
+                return NULL;
             }
 
             byte_read = * (char *) addr;
             i++;
         } while (byte_read != '\0');
+
+
     } else {
-        // Check each byte in the specified byte range.
-        for (; i < size; i++) {
-            void *addr = *(pointer) + i;
+        /* Check each byte in the specified byte range. */
+        for (i = 1; i < size; i++) {
+            addr = *(pointer) + i;
 
             if (!is_user_vaddr(addr)) {
-                return false;
+                return NULL;
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                return false;
+                return NULL;
             }
         }
+
     }
-    if (addr == NULL){
-        printf("Invalid pointer!");
-        return false;
-    }
-    return true;
+    return kernel_addr;
 }
 
 /* Returns true if addr to addr + size is valid */
-bool valid_numeric(void *addr, int size) {
-    if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size)) {
-        return false;
+void *valid_numeric(void *addr, int size) {
+    void *kernel_addr = NULL;
+
+    /* Making sure the memory is in user space */
+    if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size - 1)) {
+        return kernel_addr;
     }
-    if (pagedir_get_page(thread_current()->pagedir, addr) == NULL ||
-        pagedir_get_page(thread_current()->pagedir, addr + size) == NULL) {
-        return false;
+
+    /* Getting the kernel virtual address if the address is mapped */
+    kernel_addr = pagedir_get_page(thread_current()->pagedir, addr);
+
+    /* Making sure then end of the memory is also mapped */
+    if (pagedir_get_page(thread_current()->pagedir, addr + size - 1) == NULL) {
+        return NULL;
     }
-    return true;
+
+    return kernel_addr;
 }
 
 
 /* Gets the integer starting from the given address. */
 static int to_int(void *addr) {
-    if (!valid_numeric(addr, sizeof(int))) {
+    void *kernel_addr = valid_numeric(addr, sizeof(int));
+
+    if (kernel_addr == NULL) {
         thread_exit();
     }
-    else {
-        return * (int *) addr;
-    }
+
+    return * (int *) kernel_addr;
 }
 
 /* Gets a const char * pointer from the given address. Terminates the process
  * if the pointer is invalid */
 static const char *to_cchar_p(void *addr) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, -1)) {
+    void *kernel_addr = valid_pointer(addr, -1);
+
+    if (kernel_addr == NULL) {
         thread_exit();
     }
-    else {
-        return * (const char **) addr;
-    }
+
+    return * (const char **) addr;
 }
 
 /* Gets an unsigned starting from the given address. */
 static unsigned to_unsigned(void *addr) {
     /* Check if the pointer is invalid */
-    if (!valid_numeric(addr, sizeof(unsigned))) {
+
+    void *kernel_addr = valid_numeric(addr, sizeof(unsigned));
+    if (kernel_addr == NULL) {
         thread_exit();
     }
-    else {
-        return * (unsigned *) addr;
-    }
+
+    return * (unsigned *) addr;
 }
 
 /* Gets a void pointer from the given address. */
 static const void*to_cvoid_p(void *addr, unsigned size) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, size)) {
+    void *kernel_addr = valid_pointer(addr, size);
+
+    if (kernel_addr == NULL) {
         thread_exit();
     }
+
     return * (const void **) addr;
 }
 
 /* Gets a void pointer from the given address. */
 static void *to_void_p(void *addr, unsigned size) {
     /* Check if the pointer is invalid */
-    if (!valid_pointer(addr, size)) {
+    void *kernel_addr = valid_pointer(addr, size);
+
+    if (kernel_addr == NULL) {
         thread_exit();
     }
+
     return * (void **) addr;
 }
 
