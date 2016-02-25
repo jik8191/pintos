@@ -525,8 +525,12 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success)
             *esp = PHYS_BASE;  // start at top of user address space
-        else
+        else {
             palloc_free_page(kpage);
+            return success;
+        }
+    } else {
+        return success;
     }
 
     // Malloc a certain amount first.
