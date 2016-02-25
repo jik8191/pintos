@@ -133,7 +133,7 @@ static const struct integer_base base_X = {16, "0123456789ABCDEF", 'X', 4};
 static const char *parse_conversion(const char *format,
                                     struct printf_conversion *,
                                     va_list *);
-static void format_integer(uintmax_t value, bool is_signed, bool negative, 
+static void format_integer(uintmax_t value, bool is_signed, bool negative,
                            const struct integer_base *,
                            const struct printf_conversion *,
                            void (*output) (char, void *), void *aux);
@@ -167,13 +167,13 @@ void __vprintf(const char *format, va_list args,
         /* Do conversion. */
         switch (*format) {
         case 'd':
-        case 'i': 
+        case 'i':
             {
                 /* Signed integer conversions. */
                 intmax_t value;
-            
+
                 switch (c.type) {
-                case CHAR: 
+                case CHAR:
                     value = (signed char) va_arg(args, int);
                     break;
 
@@ -226,7 +226,7 @@ void __vprintf(const char *format, va_list args,
                 const struct integer_base *b;
 
                 switch (c.type) {
-                case CHAR: 
+                case CHAR:
                     value = (unsigned char) va_arg(args, unsigned);
                     break;
 
@@ -277,7 +277,7 @@ void __vprintf(const char *format, va_list args,
             }
             break;
 
-        case 'c': 
+        case 'c':
             {
                 /* Treat character as single-character string. */
                 char ch = va_arg(args, int);
@@ -298,7 +298,7 @@ void __vprintf(const char *format, va_list args,
                 format_string(s, strnlen(s, c.precision), &c, output, aux);
             }
             break;
-          
+
         case 'p':
             {
                 /* Pointer conversion.
@@ -310,7 +310,7 @@ void __vprintf(const char *format, va_list args,
                                &base_x, &c, output, aux);
             }
             break;
-      
+
         case 'f':
         case 'e':
         case 'E':
@@ -391,7 +391,7 @@ not_a_flag:
         c->width = -c->width;
         c->flags |= MINUS;
     }
-      
+
     /* Parse precision. */
     c->precision = -1;
     if (*format == '.') {
@@ -406,7 +406,7 @@ not_a_flag:
                 c->precision = c->precision * 10 + *format - '0';
         }
 
-        if (c->precision < 0) 
+        if (c->precision < 0)
             c->precision = -1;
     }
 
@@ -425,7 +425,7 @@ not_a_flag:
             c->type = SHORT;
         }
         break;
-      
+
     case 'j':
         c->type = INTMAX;
         break;
@@ -463,7 +463,7 @@ not_a_flag:
     unsigned conversion and ignores NEGATIVE.  The output is done
     according to the provided base B.  Details of the conversion
     are in C. */
-static void format_integer(uintmax_t value, bool is_signed, bool negative, 
+static void format_integer(uintmax_t value, bool is_signed, bool negative,
                            const struct integer_base *b,
                            const struct printf_conversion *c,
                            void (*output)(char, void *), void *aux) {
@@ -529,7 +529,7 @@ static void format_integer(uintmax_t value, bool is_signed, bool negative,
         output(sign, aux);
     if (x) {
         output('0', aux);
-        output(x, aux); 
+        output(x, aux);
     }
     if (c->flags & ZERO)
         output_dup('0', pad_cnt, output, aux);
@@ -574,7 +574,7 @@ void __printf(const char *format,
     arranged 16 per line.  Numeric offsets are also included,
     starting at OFS for the first byte in BUF.  If ASCII is true
     then the corresponding ASCII characters are also rendered
-    alongside. */   
+    alongside. */
 void hex_dump(uintptr_t ofs, const void *buf_, size_t size, bool ascii) {
     const uint8_t *buf = buf_;
     const size_t per_line = 16; /* Maximum bytes per line. */
@@ -582,7 +582,7 @@ void hex_dump(uintptr_t ofs, const void *buf_, size_t size, bool ascii) {
     while (size > 0) {
         size_t start, end, n;
         size_t i;
-      
+
         /* Number of bytes on this line. */
         start = ofs % per_line;
         end = per_line;

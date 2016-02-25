@@ -41,7 +41,7 @@ void test(void) {
             for (i = 0; i < cnt; i++)
                 values[i] = i;
             shuffle(values, cnt);
-  
+
             /* Sort VALUES, then verify ordering. */
             qsort(values, cnt, sizeof *values, compare_ints);
             verify_order(values, cnt);
@@ -78,7 +78,7 @@ static int compare_ints(const void *a_, const void *b_) {
 static void verify_order(const int *array, size_t cnt) {
     int i;
 
-    for (i = 0; (size_t) i < cnt; i++) 
+    for (i = 0; (size_t) i < cnt; i++)
         ASSERT(array[i] == i);
 }
 

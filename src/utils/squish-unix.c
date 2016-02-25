@@ -126,7 +126,7 @@ static void relay(int sock) {
     pipes[0].out = sock;
     pipes[1].in = sock;
     pipes[1].out = STDOUT_FILENO;
-  
+
     while (pipes[0].in != -1 || pipes[1].in != -1 ||
            (pipes[1].size && pipes[1].out != -1)) {
         fd_set read_fds, write_fds;
@@ -145,11 +145,11 @@ static void relay(int sock) {
              */
             if (i == 0 && !pipes[1].active)
                 continue;
-          
+
             if (p->in != -1 && p->size + p->ofs < sizeof p->buf)
                 FD_SET(p->in, &read_fds);
             if (p->out != -1 && p->size > 0)
-                FD_SET(p->out, &write_fds); 
+                FD_SET(p->out, &write_fds);
         }
         sigemptyset(&empty_set);
         retval = pselect(FD_SETSIZE, &read_fds, &write_fds, NULL, NULL,
@@ -163,7 +163,7 @@ static void relay(int sock) {
                 make_nonblocking(STDOUT_FILENO, false);
                 for (;;) {
                     ssize_t n;
-                  
+
                     /* Write buffer. */
                     while (p->size > 0) {
                         n = write(p->out, p->buf + p->ofs, p->size);
@@ -181,7 +181,7 @@ static void relay(int sock) {
                         exit(0);
                 }
             }
-            fail_io("select"); 
+            fail_io("select");
         }
 
         for (i = 0; i < 2; i++) {
@@ -227,7 +227,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
     struct sockaddr_un sun;
     sigset_t sigchld_set;
     int sock;
-  
+
     if (argc < 3) {
         fprintf(stderr,
                 "usage: squish-unix SOCKET COMMAND [ARG]...\n"
@@ -271,7 +271,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
     memset(&zero_itimerval, 0, sizeof zero_itimerval);
     if (setitimer(ITIMER_VIRTUAL, &zero_itimerval, NULL) < 0)
         fail_io("setitimer");
-  
+
     pid = fork();
     if (pid < 0) {
         fail_io("fork");
@@ -293,7 +293,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
             if (retval < 0) {
                 if (errno == EINTR)
                     break;
-                fail_io("select"); 
+                fail_io("select");
             }
 
             /* Accept connection. */
@@ -305,7 +305,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
             relay(conn);
             close(conn);
         }
-        return 0; 
+        return 0;
     }
     else {
         /* Running in child process. */

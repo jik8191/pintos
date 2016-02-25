@@ -18,7 +18,7 @@ void debug_panic(const char *file, int line, const char *function,
     va_end(args);
 
     debug_backtrace ();
-  
+
     exit(1);
 }
 

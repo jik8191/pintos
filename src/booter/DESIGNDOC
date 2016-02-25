@@ -111,7 +111,7 @@ When an timer interrupt occurs, we suspend the program and call the interrupt
 service routine (ISR) from the interrupt descriptor table (IDT). We maintain a
 count and update the map and game time at regular intervals.
 
-When an keyboard interrupt occurs, we suspend the program and call the 
+When an keyboard interrupt occurs, we suspend the program and call the
 ISR from the IDT. We again update relevant state variables.
 
 >> A5: Would you say your program relies on polling or busy-waiting anywhere

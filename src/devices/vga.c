@@ -41,7 +41,7 @@ static void init(void) {
     if (!inited) {
         fb = ptov(0xb8000);
         find_cursor(&cx, &cy);
-        inited = true; 
+        inited = true;
     }
 }
 
@@ -53,7 +53,7 @@ void vga_putc(int c) {
     enum intr_level old_level = intr_disable();
 
     init();
-  
+
     switch (c) {
     case '\n':
         newline();

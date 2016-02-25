@@ -89,7 +89,7 @@ the program had received control directly from
 The link editor also constructs various data
 that assist the dynamic linker
 for executable and shared object files.
-As shown above in 
+As shown above in
 <a href=ch5.pheader.html>``Program Header''</a>,
 this data resides
 in loadable segments, making them available during execution.
@@ -118,10 +118,10 @@ and changes the tables to create memory images for object files.
 <p>
 Because every ABI-conforming program imports the basic system
 services from a shared object library [See ``System Library''
-in Chapter 6], the dynamic linker participates in every 
+in Chapter 6], the dynamic linker participates in every
 ABI-conforming program execution.
 <p>
-As 
+As
 `Program Loading'' explains in the processor supplement,
 shared objects may occupy
 virtual memory addresses that are different from the addresses recorded
@@ -216,7 +216,7 @@ two special compatibility ranges,
 will determine the interpretation of the <code>d_un</code>
 union.  A tag whose value is an even number
 indicates a dynamic section entry that uses <code>d_ptr</code>.
-A tag whose value is an odd number indicates a dynamic section entry 
+A tag whose value is an odd number indicates a dynamic section entry
 that uses <code>d_val</code> or that uses neither <code>d_ptr</code>
 nor <code>d_val</code>.  Tags whose values are less
 than the special value <code>DT_ENCODING</code> and tags
@@ -514,7 +514,7 @@ An entry with a <code>DT_NULL</code> tag marks the end of the
 This element holds the string table offset of a null-terminated string,
 giving the name of a needed library.
 The offset is an index into the table recorded in the <code>DT_STRTAB</code> code.
-See 
+See
 <a href=#shobj_dependencies>``Shared Object Dependencies''</a>
 for more
 information about these names.
@@ -583,7 +583,7 @@ discussed in
 <a href=#init_fini>``Initialization and Termination Functions''</a>
 below.
 <p><dt><code>DT_FINI</code><dd>
-This element holds the address of the termination function, 
+This element holds the address of the termination function,
 discussed in
 <a href=#init_fini>``Initialization and Termination Functions''</a>
 below.
@@ -591,7 +591,7 @@ below.
 This element holds the string table offset of a null-terminated string,
 giving the name of the shared object.
 The offset is an index into the table recorded in the <code>DT_STRTAB</code> entry.
-See 
+See
 <a href=#shobj_dependencies>``Shared Object Dependencies''</a>
 below for more
 information about these names.
@@ -637,7 +637,7 @@ All relocations in a procedure linkage table must use
 the same relocation.
 <p><dt><code>DT_DEBUG</code><dd>
 This member is used for debugging.  Its contents are not specified
-for the ABI; programs that access this entry are not 
+for the ABI; programs that access this entry are not
 ABI-conforming.
 <p><dt><code>DT_TEXTREL</code><dd>
 This member's absence signifies that no
@@ -674,7 +674,7 @@ This element holds the address of the array of pointers to initialization
 functions,
 discussed in
 <a href=#init_fini>``Initialization and Termination Functions''</a>
-below.  
+below.
 <p><dt><code>DT_FINI_ARRAY</code><dd>
 This element holds the address of the array of pointers to termination
 functions,
@@ -708,7 +708,7 @@ This element holds the address of the array of pointers to pre-initialization
 functions,
 discussed in
 <a href=#init_fini>``Initialization and Termination Functions''</a>
-below.  The <code>DT_PREINIT_ARRAY</code> table is processed only 
+below.  The <code>DT_PREINIT_ARRAY</code> table is processed only
 in an executable file; it is ignored if contained in a shared object.
 <p><dt><code>DT_PREINIT_ARRAYSZ</code><dd>
 This element holds the size in bytes of the array of pre-initialization
@@ -725,13 +725,13 @@ described <a href=#tag_encodings>above</a>.
 <p><dt><code>DT_LOOS</code> through <code>DT_HIOS</code><dd>
 Values in this inclusive range
 are reserved for operating system-specific semantics.
-All such values follow the rules for the interpretation of the 
+All such values follow the rules for the interpretation of the
 <code>d_un</code> union described <a href=#tag_encodings>above</a>.
 <p><dt><code>DT_LOPROC</code> through <code>DT_HIPROC</code><dd>
 Values in this inclusive range
 are reserved for processor-specific semantics. If meanings
 are specified, the processor supplement explains them.
-All such values follow the rules for the interpretation of the 
+All such values follow the rules for the interpretation of the
 <code>d_un</code> union described <a href=#tag_encodings>above</a>.
 </dl>
 <p>
@@ -771,8 +771,8 @@ Tag values not appearing in the table are reserved.
 <dl compact>
 <p><dt><code>DF_ORIGIN</code><dd>
 This flag signifies that the object being loaded may make reference
-to the <code>$ORIGIN</code> substitution string (see <a href=#substitution>``Substitution Sequences''</a>).  
-The dynamic linker must determine the pathname of the object 
+to the <code>$ORIGIN</code> substitution string (see <a href=#substitution>``Substitution Sequences''</a>).
+The dynamic linker must determine the pathname of the object
 containing this entry when the object is loaded.
 <a name=df_symbolic></a>
 <p><dt><code>DF_SYMBOLIC</code><dd>
@@ -871,7 +871,7 @@ For example, the string
 <code>/home/dir/lib:/home/dir2/lib:</code>
 tells the dynamic linker to search first the directory
 <code>/home/dir/lib</code>, then <code>/home/dir2/lib</code>,
-and then the current directory to find dependencies. 
+and then the current directory to find dependencies.
 <p>
 The set of directories specified by a given <code>DT_RUNPATH</code>
 entry is used to find only the immediate dependencies
@@ -908,8 +908,8 @@ All <code>LD_LIBRARY_PATH</code> directories are searched before those from
 <p><li>
 Finally, if the other two groups of directories
 fail to locate the desired library, the dynamic linker searches
-the default directories, <code>/usr/lib</code> or such other 
-directories as may be specified by the ABI supplement for a 
+the default directories, <code>/usr/lib</code> or such other
+directories as may be specified by the ABI supplement for a
 given processor.
 </ul>
 <hr>
@@ -921,9 +921,9 @@ shall exhaust the search of all paths before determining
 that a matching object could not be found.  For this determination,
 the relevant attributes are contained in the following ELF header fields:
 <code>e_ident[EI_DATA]</code>,
-<code>e_ident[EI_CLASS]</code>, 
-<code>e_ident[EI_OSABI]</code>, 
-<code>e_ident[EI_ABIVERSION]</code>, 
+<code>e_ident[EI_CLASS]</code>,
+<code>e_ident[EI_OSABI]</code>,
+<code>e_ident[EI_ABIVERSION]</code>,
 <code>e_machine</code>,
 <code>e_type</code>, <code>e_flags</code>
 and <code>e_version</code>.
@@ -940,7 +940,7 @@ mechanisms.
 <hr>
 <img src="warning.gif" alt="NOTE:">
 A fourth search facility, the dynamic array tag <code>DT_RPATH</code>,
-has been moved to level 2 in the ABI.  
+has been moved to level 2 in the ABI.
 It provides a colon-separated list of directories to search.
 Directories specified by <code>DT_RPATH</code> are searched
 before directories specified by <code>LD_LIBRARY_PATH</code>.
@@ -955,39 +955,39 @@ entry.
 Within a string provided by dynamic array entries with the
 <code>DT_NEEDED</code> or <code>DT_RUNPATH</code> tags and in
 pathnames passed as parameters to the <code>dlopen()</code> routine, a
-dollar sign (<code>$</code>) introduces a substitution sequence. 
-This sequence consists of the dollar sign immediately followed 
-by either the longest <i>name</i> sequence or a name contained 
+dollar sign (<code>$</code>) introduces a substitution sequence.
+This sequence consists of the dollar sign immediately followed
+by either the longest <i>name</i> sequence or a name contained
 within left and right braces (<code>{</code>) and (<code>}</code>).
-A name is a sequence of bytes that start with either a letter or 
+A name is a sequence of bytes that start with either a letter or
 an underscore followed by zero or more letters, digits or underscores.
-If a dollar sign is not immediately followed by a name or a 
+If a dollar sign is not immediately followed by a name or a
 brace-enclosed name, the behavior of the dynamic linker is unspecified.
 <p>
 If the name is ``<code>ORIGIN</code>'', then the substitution
 sequence is replaced by the dynamic linker with the absolute
 pathname of the directory in which the object containing the
 substitution sequence originated.  Moreover, the pathname will
-contain no symbolic links or use of ``<code>.</code>'' or 
-``<code>..</code>'' components. 
+contain no symbolic links or use of ``<code>.</code>'' or
+``<code>..</code>'' components.
 Otherwise (when the name is not ``<code>ORIGIN</code>'')
 the behavior of the dynamic linker is unspecified.
 <p>
 When the dynamic linker loads an object that uses <code>$ORIGIN</code>,
 it must calculate the pathname of the directory containing the object.
-Because this calculation can be computationally expensive, 
+Because this calculation can be computationally expensive,
 implementations may want to avoid the calculation for objects
 that do not use <code>$ORIGIN</code>.
-If an object calls <code>dlopen()</code> with a string 
+If an object calls <code>dlopen()</code> with a string
 containing <code>$ORIGIN</code> and does not use <code>$ORIGIN</code>
-in one if its dynamic array entries, 
+in one if its dynamic array entries,
 the dynamic linker may not have calculated the
 pathname for the object until the <code>dlopen()</code> actually
 occurs.  Since the application may have changed its current
 working directory before the <code>dlopen()</code> call,
 the calculation may not yield the correct result.
-To avoid this possibility, an object may signal its intention 
-to reference <code>$ORIGIN</code> by setting the 
+To avoid this possibility, an object may signal its intention
+to reference <code>$ORIGIN</code> by setting the
 <a href=#df_flags><code>DF_ORIGIN</code> flag</a>.
 An implementation may reject an attempt to use <code>$ORIGIN</code>
 within a <code>dlopen()</code> call from an object that
@@ -1000,7 +1000,7 @@ For security, the dynamic linker does not allow use of
 set-group ID programs.  For such sequences that appear
 within strings specified by <code>DT_RUNPATH</code> dynamic
 array entries, the specific search path containing the
-<code>$ORIGIN</code> sequence is ignored (though other 
+<code>$ORIGIN</code> sequence is ignored (though other
 search paths in the same string are processed).
 <code>$ORIGIN</code> sequences within a <code>DT_NEEDED</code>
 entry or path passed as a parameter to <code>dlopen()</code>
@@ -1134,8 +1134,8 @@ Similarly, shared objects and executable files may have termination
 functions, which are executed with the
 <code>atexit</code>(BA_OS) mechanism after the base process begins its
 termination sequence.
-The termination functions for any object A must be called before 
-the termination functions for any other objects that object A depends 
+The termination functions for any object A must be called before
+the termination functions for any other objects that object A depends
 on.  For these purposes, an object A depends on another object B,
 if B appears in A's list of needed objects (recorded in the <code>DT_NEEDED</code>
 entries of the dynamic structure).
@@ -1149,7 +1149,7 @@ object initialization functions.  Pre-initialization functions are
 not permitted in shared objects.
 <hr>
 <img src=warning.gif alt="NOTE:">
-Complete initialization of system libraries may not have occurred when 
+Complete initialization of system libraries may not have occurred when
 pre-initializations are executed, so some features of the system
 may not be available to pre-initialization code.  In general,
 use of pre-initialization code can be considered portable only
@@ -1195,7 +1195,7 @@ entries.
 <img src=warning.gif alt="NOTE:">
 The addresses contained in the initialization and termination arrays
 are function pointers as defined by the processor supplement for
-each processor.  On some architectures, a function pointer may not 
+each processor.  On some architectures, a function pointer may not
 contain the actual address of the function.
 <hr><p>
 <a name=init_order></a>
@@ -1229,7 +1229,7 @@ that it neither caught nor ignored.
 <hr><p>
 <p>
 <a name=register_init></a>
-The processor supplement for each processor specifies whether the 
+The processor supplement for each processor specifies whether the
 dynamic linker is responsible for calling the executable file's
 initialization function or registering the executable file's
 termination function with

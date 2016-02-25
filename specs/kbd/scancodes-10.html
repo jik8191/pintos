@@ -40,7 +40,7 @@ If the CPU writes to port 0x60, the byte is interpreted as a data byte.
 <P>The keyboard controller has two 8-bit I/O ports involved in
 communication with the keyboard: the
 <A HREF="#inputport">input port</A> P1 (receiving input from the keyboard)
-and the 
+and the
 <A HREF="#outputport">output port</A> P2 (for sending output
 to the keyboard).
 <P>
@@ -62,14 +62,14 @@ It can be inspected by the CPU by reading port 0x64.
 <A HREF="#kcOUTB">OUTB</A> </TD></TR><TR><TD>
 
 </TD></TR></TABLE></CENTER>
-<P><I>Bit 7: 
+<P><I>Bit 7:
 <A NAME="kcPARE"></A> Parity error</I>
 <P>
 <BLOCKQUOTE>
 0: OK.
-1: Parity error with last byte. 
+1: Parity error with last byte.
 </BLOCKQUOTE>
-<P><I>Bit 6: 
+<P><I>Bit 6:
 <A NAME="kcTIM"></A> Timeout</I>
 <P>
 <BLOCKQUOTE>
@@ -79,7 +79,7 @@ On PS/2 systems: General timeout.
 On AT systems: Timeout on transmission from keyboard to keyboard controller.
 Possibly parity error (in which case both bits 6 and 7 are set).
 </BLOCKQUOTE>
-<P><I>Bit 5: 
+<P><I>Bit 5:
 <A NAME="kcAUXB"></A> Auxiliary output buffer full</I>
 <P>
 <BLOCKQUOTE>
@@ -92,14 +92,14 @@ If it is valid, this bit 5 tells what data will be read from port 0x60.
 1: Timeout on transmission from keyboard controller to keyboard.
 This may indicate that no keyboard is present.
 </BLOCKQUOTE>
-<P><I>Bit 4: 
+<P><I>Bit 4:
 <A NAME="kcKEYL"></A> Keyboard lock</I>
 <P>
 <BLOCKQUOTE>
 0: Locked.
 1: Not locked.
 </BLOCKQUOTE>
-<P><I>Bit 3: 
+<P><I>Bit 3:
 <A NAME="kcCD"></A> Command/Data</I>
 <P>
 <BLOCKQUOTE>
@@ -107,24 +107,24 @@ This may indicate that no keyboard is present.
 1: Last write to input buffer was a command (written via port 0x64).
 (This bit is also referred to as Address Line A2.)
 </BLOCKQUOTE>
-<P><I>Bit 2: 
+<P><I>Bit 2:
 <A NAME="kcSYSF"></A> System flag</I>
 <P>
 <BLOCKQUOTE>
 Set to 0 after power on reset.
 Set to 1 after successful completion of the keyboard controller self-test
 (Basic Assurance Test, BAT).
-Can also be set by command (see 
+Can also be set by command (see
 <A HREF="#kccb2">below</A>).
 </BLOCKQUOTE>
-<P><I>Bit 1: 
+<P><I>Bit 1:
 <A NAME="kcINPB"></A> Input buffer status</I>
 <P>
 <BLOCKQUOTE>
 0: Input buffer empty, can be written.
 1: Input buffer full, don't write yet.
 </BLOCKQUOTE>
-<P><I>Bit 0: 
+<P><I>Bit 0:
 <A NAME="kcOUTB"></A> Output buffer status</I>
 <P>
 <BLOCKQUOTE>
@@ -156,13 +156,13 @@ from/to port 0x60.
 <A HREF="#kccb0">KIE</A> </TD></TR><TR><TD>
 
 </TD></TR></TABLE></CENTER>
-<P><I>Bit 7: 
+<P><I>Bit 7:
 <A NAME="kccb7"></A> Unused</I>
 <P>
 <BLOCKQUOTE>
 Always 0.
 </BLOCKQUOTE>
-<P><I>Bit 6: 
+<P><I>Bit 6:
 <A NAME="kccb6"></A> Translate</I>
 <P>
 <BLOCKQUOTE>
@@ -172,7 +172,7 @@ Always 0.
 MCA type 2 controllers cannot set this bit to 1. In this case
 scan code conversion is set using keyboard command 0xf0 to port 0x60.
 </BLOCKQUOTE>
-<P><I>Bit 5: 
+<P><I>Bit 5:
 <A NAME="kccb5"></A> Mouse enable</I>
 <P>
 <BLOCKQUOTE>
@@ -182,35 +182,35 @@ On an ISA system: "PC Mode": 0: use 11-bit codes, check parity and do
 scan conversion.
 1: use 8086 codes, don't check parity and don't do scan conversion.
 </BLOCKQUOTE>
-<P><I>Bit 4: 
+<P><I>Bit 4:
 <A NAME="kccb4"></A> Keyboard enable</I>
 <P>
 <BLOCKQUOTE>
 0: Enable keyboard. 1: Disable keyboard
 by driving the clock line low.
 </BLOCKQUOTE>
-<P><I>Bit 3: 
+<P><I>Bit 3:
 <A NAME="kccb3"></A> Ignore keyboard lock</I>
 <P>
 <BLOCKQUOTE>
 For PS/2: Unused, always 0.
 For AT:
-0: No action. 1: Force 
+0: No action. 1: Force
 <A HREF="#kcKEYL">bit 4</A> of the status register
 to 1, "not locked". This is used for keyboard testing after power on.
 Maybe only on older motherboards.
 </BLOCKQUOTE>
-<P><I>Bit 2: 
+<P><I>Bit 2:
 <A NAME="kccb2"></A> System flag</I>
 <P>
 <BLOCKQUOTE>
-This bit is shown in 
+This bit is shown in
 <A HREF="#kcSYSF">bit 2</A> of the status register.
 A "cold reboot" is one with this bit set to zero.
 A "warm reboot" is one with this bit set to one (BAT already completed).
 This will influence the tests and initializations done by the POST.
 </BLOCKQUOTE>
-<P><I>Bit 1: 
+<P><I>Bit 1:
 <A NAME="kccb1"></A> Mouse interrupt enable</I>
 <P>
 <BLOCKQUOTE>
@@ -218,7 +218,7 @@ On an ISA system: unused, always 0. On an EISA or PS/2 system:
 0: Do not use mouse interrupts.
 1: Send interrupt request IRQ12 when the mouse output buffer is full.
 </BLOCKQUOTE>
-<P><I>Bit 0: 
+<P><I>Bit 0:
 <A NAME="kccb0"></A> Keyboard interrupt enable</I>
 <P>
 <BLOCKQUOTE>
@@ -336,13 +336,13 @@ Useful, generally available, keyboard commands are:
 <A HREF="#kccf0">f0-ff</A></B> </TD><TD> Pulse output bit </TD></TR><TR><TD>
 
 </TD></TR></TABLE></CENTER>
-<P><I>Command 0x00-0x1f: 
+<P><I>Command 0x00-0x1f:
 <A NAME="kcc00"></A> Read keyboard controller RAM</I>
 <P>
 <BLOCKQUOTE>
 (AMIBIOS only) Aliases for 0x20-0x3f.
 </BLOCKQUOTE>
-<P><I>Command 0x20-0x3f: 
+<P><I>Command 0x20-0x3f:
 <A NAME="kcc20"></A> Read keyboard controller RAM</I>
 <P>
 <BLOCKQUOTE>
@@ -351,23 +351,23 @@ The read data is placed into the output buffer, and can be read
 by reading port 0x60.
 On MCA systems, type 1 controllers can access all 32 locations;
 type 2 controllers can only access locations 0, 0x13-0x17, 0x1d, 0x1f.
-<P>Location 0 is the 
+<P>Location 0 is the
 <A HREF="#commandbyte">Command byte</A>, see above.
 <P>Location 0x13 (on MCA) is nonzero when a password is enabled.
 <P>Location 0x14 (on MCA) is nonzero when the password was matched.
 <P>Locations 0x16-0x17 (on MCA) give two make codes to be discarded
 during password matching.
 </BLOCKQUOTE>
-<P><I>Command 0x40-0x5f: 
+<P><I>Command 0x40-0x5f:
 <A NAME="kcc40"></A> Write keyboard controller RAM</I>
 <P>
 <BLOCKQUOTE>
 (AMIBIOS only) Aliases for 0x40-0x5f.
 </BLOCKQUOTE>
-<P><I>Command 0x60-0x7f: 
+<P><I>Command 0x60-0x7f:
 <A NAME="kcc60"></A> Write keyboard controller RAM</I>
 <P>
-<P><I>Command 0x90-0x93: 
+<P><I>Command 0x90-0x93:
 <A NAME="kcc90"></A> Synaptics routing prefixes</I>
 <P>
 <BLOCKQUOTE>
@@ -376,12 +376,12 @@ multiplexed devices. See also the
 <A HREF="#multiplexing">multiplexing handshake</A> below.
 <P>Unfortunately, VIA also uses this command:
 </BLOCKQUOTE>
-<P><I>Command 0x90-0x9f: 
+<P><I>Command 0x90-0x9f:
 <A NAME="kcc90via"></A> Write Port13-Port10</I>
 <BLOCKQUOTE>
 (VIA VT82C42) Write low nibble to Port13-Port10.
 </BLOCKQUOTE>
-<P><I>Command 0xa0: 
+<P><I>Command 0xa0:
 <A NAME="kcca0"></A> Read copyright</I>
 <P>
 <BLOCKQUOTE>
@@ -389,7 +389,7 @@ On some keyboard controllers: an ASCIZ copyright string
 (possibly just NUL) is made available for reading via port 0x60.
 On other systems: no effect, the command is ignored.
 </BLOCKQUOTE>
-<P><I>Command 0xa1: 
+<P><I>Command 0xa1:
 <A NAME="kcca1"></A> Read controller firmware version</I>
 <P>
 <BLOCKQUOTE>
@@ -397,7 +397,7 @@ On some keyboard controllers: a single ASCII byte is made available
 for reading via port 0x60.
 On other systems: no effect, the command is ignored.
 </BLOCKQUOTE>
-<P><I>Command 0xa2: 
+<P><I>Command 0xa2:
 <A NAME="kcca2"></A> Switch speed</I>
 <P>
 <BLOCKQUOTE>
@@ -406,7 +406,7 @@ Reset keyboard controller lines P22 and P23 low.
 These lines can be used for speed switching via the keyboard controller.
 When done, the keyboard controller sends one garbage byte to the system.
 </BLOCKQUOTE>
-<P><I>Command 0xa3: 
+<P><I>Command 0xa3:
 <A NAME="kcca3"></A> Switch speed</I>
 <P>
 <BLOCKQUOTE>
@@ -416,7 +416,7 @@ These lines can be used for speed switching via the keyboard controller.
 When done, the keyboard controller sends one garbage byte to the system.
 <P>(Compaq BIOS: Enable system speed control.)
 </BLOCKQUOTE>
-<P><I>Command 0xa4: 
+<P><I>Command 0xa4:
 <A NAME="kcca4"></A> Check if password installed</I>
 <P>
 <BLOCKQUOTE>
@@ -428,7 +428,7 @@ Some systems without password facility always return 0xf1.
 Write Clock = Low.
 <P>(Compaq BIOS: toggle speed.)
 </BLOCKQUOTE>
-<P><I>Command 0xa5: 
+<P><I>Command 0xa5:
 <A NAME="kcca5"></A> Load password</I>
 <P>
 <BLOCKQUOTE>
@@ -441,7 +441,7 @@ Write Clock = High.
 Bit 5: 0: 9-bit keyboard, 1: 11-bit keyboard.
 Bit 4: 0: outp-buff-full interrupt disabled, 1: enabled.)
 </BLOCKQUOTE>
-<P><I>Command 0xa6: 
+<P><I>Command 0xa6:
 <A NAME="kcca6"></A> Check password</I>
 <P>
 <BLOCKQUOTE>
@@ -452,30 +452,30 @@ Enable keyboard upon successful match.
 <P>(On ISA/EISA systems with AMI BIOS)
 Read Clock. 0: Low. 1: High.
 </BLOCKQUOTE>
-<P><I>Command 0xa7: 
+<P><I>Command 0xa7:
 <A NAME="kcca7"></A> Disable mouse port</I>
 <P>
 <BLOCKQUOTE>
 On MCA systems: disable the mouse (auxiliary device)
-by setting its clock line low, and set 
+by setting its clock line low, and set
 <A HREF="#kccb5">bit 5</A>
-of the 
+of the
 <A HREF="#commandbyte">Command byte</A>. Now P23 = 1.
 <P>(On ISA/EISA systems with AMI BIOS)
 Write Cache Bad.
 </BLOCKQUOTE>
-<P><I>Command 0xa8: 
+<P><I>Command 0xa8:
 <A NAME="kcca8"></A> Enable mouse port</I>
 <P>
 <BLOCKQUOTE>
 On MCA systems: enable the mouse (auxiliary device),
-clear 
+clear
 <A HREF="#kccb5">bit 5</A> of the
 <A HREF="#commandbyte">Command byte</A>. Now P23 = 0.
 <P>(On ISA/EISA systems with AMI BIOS)
 Write Cache Good.
 </BLOCKQUOTE>
-<P><I>Command 0xa9: 
+<P><I>Command 0xa9:
 <A NAME="kcca9"></A> Test mouse port</I>
 <P>
 <BLOCKQUOTE>
@@ -490,13 +490,13 @@ keyboard controller and mouse. The result can be read from port 0x60.
 <P>(On ISA/EISA systems with AMI BIOS)
 Read Cache Bad or Good. 0: Bad. 1: Good.
 </BLOCKQUOTE>
-<P><I>Command 0xaa: 
+<P><I>Command 0xaa:
 <A NAME="kccaa"></A> Self test</I>
 <P>
 <BLOCKQUOTE>
 Perform self-test. Return 0x55 if OK, 0xfc if NOK.
 </BLOCKQUOTE>
-<P><I>Command 0xab: 
+<P><I>Command 0xab:
 <A NAME="kccab"></A> Interface test</I>
 <P>
 <BLOCKQUOTE>
@@ -509,7 +509,7 @@ The result can be read from port 0x60.
 4: Keyboard data line stuck high.
 0xff: General error.
 </BLOCKQUOTE>
-<P><I>Command 0xac: 
+<P><I>Command 0xac:
 <A NAME="kccac"></A> Diagnostic dump</I>
 <P>
 <BLOCKQUOTE>
@@ -517,26 +517,26 @@ The result can be read from port 0x60.
 Read from port 0x60 sixteen bytes of keyboard controller RAM,
 and the output and input ports and the controller's program status word.
 </BLOCKQUOTE>
-<P><I>Command 0xad: 
+<P><I>Command 0xad:
 <A NAME="kccad"></A> Disable keyboard</I>
 <P>
 <BLOCKQUOTE>
-Disable the keyboard clock line and set 
+Disable the keyboard clock line and set
 <A HREF="#kccb5">bit 4</A>
-of the 
+of the
 <A HREF="#commandbyte">Command byte</A>.
 Any keyboard command enables the keyboard again.
 </BLOCKQUOTE>
-<P><I>Command 0xae: 
+<P><I>Command 0xae:
 <A NAME="kccae"></A> Enable keyboard</I>
 <P>
 <BLOCKQUOTE>
-Enable the keyboard clock line and clear 
+Enable the keyboard clock line and clear
 <A HREF="#kccb5">bit 4</A>
-of the 
+of the
 <A HREF="#commandbyte">Command byte</A>.
 </BLOCKQUOTE>
-<P><I>Command 0xaf: 
+<P><I>Command 0xaf:
 <A NAME="kccaf"></A> Read keyboard version</I>
 <P>
 <BLOCKQUOTE>
@@ -556,15 +556,15 @@ When done, the keyboard controller sends one garbage byte to the system.
 Commands 0xb0-0xb7 write 0 to lines P10, P11, P12, P13, P22, P23, P14, P15.
 Commands 0xb8-0xbf write 1 to lines P10, P11, P12, P13, P22, P23, P14, P15.
 </BLOCKQUOTE>
-<P><I>Command 0xc0: 
+<P><I>Command 0xc0:
 <A NAME="kccc0"></A> Read input port</I>
 <P>
 <BLOCKQUOTE>
-Read the 
+Read the
 <A HREF="#inputport">input port</A> (P1),
 and make the resulting byte available to be read from port 0x60.
 </BLOCKQUOTE>
-<P><I>Command 0xc1: 
+<P><I>Command 0xc1:
 <A NAME="kccc1"></A> Continuous input port poll, low</I>
 <P>
 <BLOCKQUOTE>
@@ -572,7 +572,7 @@ and make the resulting byte available to be read from port 0x60.
 Continuously copy bits 3-0 of the input port to be read from bits 7-4
 of port 0x64, until another keyboard controller command is received.
 </BLOCKQUOTE>
-<P><I>Command 0xc2: 
+<P><I>Command 0xc2:
 <A NAME="kccc2"></A> Continuous input port poll, high</I>
 <P>
 <BLOCKQUOTE>
@@ -586,7 +586,7 @@ of port 0x64, until another keyboard controller command is received.
 <BLOCKQUOTE>
 (On ISA/EISA systems with AMI BIOS)
 After this command, the system can make lines P22 and P23 low/high
-using 
+using
 <A HREF="#kccd1">command 0xd1</A>.
 </BLOCKQUOTE>
 <P><I>Command 0xc9:
@@ -595,10 +595,10 @@ using
 <BLOCKQUOTE>
 (On ISA/EISA systems with AMI BIOS)
 After this command, the system cannot make lines P22 and P23 low/high
-using 
+using
 <A HREF="#kccd1">command 0xd1</A>.
 </BLOCKQUOTE>
-<P><I>Command 0xca: 
+<P><I>Command 0xca:
 <A NAME="kccca"></A> Read keyboard controller mode</I>
 <P>
 <BLOCKQUOTE>
@@ -607,7 +607,7 @@ Read keyboard controller mode to bit 0 of port 0x60.
 0: ISA (AT) interface.
 1: PS/2 (MCA)interface.
 </BLOCKQUOTE>
-<P><I>Command 0xcb: 
+<P><I>Command 0xcb:
 <A NAME="kcccb"></A> Write keyboard controller mode</I>
 <P>
 <BLOCKQUOTE>
@@ -618,51 +618,51 @@ Write keyboard controller mode to bit 0 of port 0x60.
 (First read the mode using command 0xca, then modify only
 the last bit, then write the mode using this command.)
 </BLOCKQUOTE>
-<P><I>Command 0xd0: 
+<P><I>Command 0xd0:
 <A NAME="kccd0"></A> Read output port</I>
 <P>
 <BLOCKQUOTE>
-Read the 
+Read the
 <A HREF="#outputport">output port</A> (P2)
 and place the result in the output buffer.
 Use only when output buffer is empty.
 </BLOCKQUOTE>
-<P><I>Command 0xd1: 
+<P><I>Command 0xd1:
 <A NAME="kccd1"></A> Write output port</I>
 <P>
 <BLOCKQUOTE>
-Write the 
+Write the
 <A HREF="#outputport">output port</A> (P2).
 Note that writing a 0 in bit 0 will cause a hardware reset.
 <P>(Compaq: the system speed bits are not set. Use commands 0xa1-0xa6 for that.)
 </BLOCKQUOTE>
-<P><I>Command 0xd2: 
+<P><I>Command 0xd2:
 <A NAME="kccd2"></A> Write keyboard output buffer</I>
 <P>
 <BLOCKQUOTE>
 (MCA)
 Write the keyboard controllers output buffer with the byte
 next written to port 0x60, and act as if this was keyboard data.
-(In particular, raise IRQ1 when 
+(In particular, raise IRQ1 when
 <A HREF="#kccb0">bit 0</A>
-of the 
+of the
 <A HREF="#commandbyte">Command byte</A> says so.)
 </BLOCKQUOTE>
-<P><I>Command 0xd3: 
+<P><I>Command 0xd3:
 <A NAME="kccd3"></A> Write mouse output buffer</I>
 <P>
 <BLOCKQUOTE>
 (MCA)
 Write the keyboard controllers output buffer with the byte
 next written to port 0x60, and act as if this was mouse data.
-(In particular, raise IRQ12 when 
+(In particular, raise IRQ12 when
 <A HREF="#kccb1">bit 1</A>
-of the 
+of the
 <A HREF="#commandbyte">Command byte</A> says so.)
 <P>Not all systems support this.
 <P><B>
 <A NAME="multiplexing"></A> Synaptics multiplexing</B>
-On the other hand, Synaptics (see 
+On the other hand, Synaptics (see
 <A HREF="http://www.synaptics-uk.com/decaf/utilities/ps2-mux.PDF">ps2-mux.PDF</A>)
 uses this command as a handshake between driver and controller:
 if the driver gives this command three times, with data bytes
@@ -678,7 +678,7 @@ version number of the standard supported.)
 This latter sequence works both in multiplexed mode and in legacy mode
 and can thus be used to determine whether this feature is present
 without activating it.
-<P>See also the multiplexer commands 
+<P>See also the multiplexer commands
 <A HREF="#kcc90">0x90-0x93</A>.
 <P>For some laptops it has been reported that bit 3 of every third
 mouse byte is forced to 1 (as it would be with the standard
@@ -686,26 +686,26 @@ mouse byte is forced to 1 (as it would be with the standard
 0xf0, 0x56, 0xac and cause misdetection of Synaptics multiplexing
 (for version 10.12).
 </BLOCKQUOTE>
-<P><I>Command 0xd4: 
+<P><I>Command 0xd4:
 <A NAME="kccd4"></A> Write to mouse</I>
 <P>
 <BLOCKQUOTE>
 (MCA)
 The byte next written to port 0x60 is transmitted to the mouse.
 </BLOCKQUOTE>
-<P><I>Command 0xdd: 
+<P><I>Command 0xdd:
 <A NAME="kccdd"></A> Disable A20 address line</I>
 <P>
 <BLOCKQUOTE>
 (HP Vectra)
 </BLOCKQUOTE>
-<P><I>Command 0xdf: 
+<P><I>Command 0xdf:
 <A NAME="kccdf"></A> Enable A20 address line</I>
 <P>
 <BLOCKQUOTE>
 (HP Vectra)
 </BLOCKQUOTE>
-<P><I>Command 0xe0: 
+<P><I>Command 0xe0:
 <A NAME="kcce0"></A> Read test inputs</I>
 <P>
 <BLOCKQUOTE>
@@ -715,24 +715,24 @@ to be read via port 0x60 in bits 0 and 1, respectively.
 Use only when the output port is empty.
 </BLOCKQUOTE>
 <P>
-<P><I>Command 0xf0-0xff: 
+<P><I>Command 0xf0-0xff:
 <A NAME="kccf0"></A> Pulse output bit</I>
 <P>
 <BLOCKQUOTE>
-Bits 3-0 of the 
+Bits 3-0 of the
 <A HREF="#outputport">output port</A> P2
 of the keyboard controller may be pulsed low for approximately 6 µseconds.
 Bits 3-0 of this command specify the output port bits to be pulsed.
 0: Bit should be pulsed.
-1: Bit should not be modified. 
+1: Bit should not be modified.
 The only useful version of this command is Command 0xfe.
 (For MCA, replace 3-0 by 1-0 in the above.)
 </BLOCKQUOTE>
-<P><I>Command 0xfe: 
+<P><I>Command 0xfe:
 <A NAME="kccfe"></A> System reset</I>
 <P>
 <BLOCKQUOTE>
-Pulse bit 0 of the 
+Pulse bit 0 of the
 <A HREF="#outputport">output port</A> P2
 of the keyboard controller. This will reset the CPU.
 </BLOCKQUOTE>

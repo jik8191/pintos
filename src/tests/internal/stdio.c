@@ -25,7 +25,7 @@ static void checkf(const char *expect, const char *format, ...) {
     va_list args;
 
     printf("\"%s\" -> \"%s\": ", format, expect);
-  
+
     va_start(args, format);
     vsnprintf(output, sizeof output, format, args);
     va_end(args);
@@ -84,7 +84,7 @@ void test(void) {
     checkf("-12,345,678,901,234,567", "%'lld", -12345678901234567LL);
     checkf("-123,456,789,012,345,678", "%'lld", -123456789012345678LL);
     checkf("-1,234,567,890,123,456,789", "%'lld", -1234567890123456789LL);
-  
+
     /* Check signed integer conversions. */
     checkf("    0", "%5d", 0);
     checkf("0    ", "%-5d", 0);
@@ -145,7 +145,7 @@ void test(void) {
     checkf("    0", "%#5x", 0);
     checkf("    0", "%#5X", 0);
     checkf("  00000000", "%#10.8x", 0);
-  
+
     checkf("    1", "%5u", 1);
     checkf("    1", "%5o", 1);
     checkf("    1", "%5x", 1);

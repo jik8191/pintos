@@ -13,17 +13,17 @@ fields of the ELF header <code>e_ident</code> array.
 New section flags <a href=ch4.sheader.html#shf_merge><code>SHF_MERGE</code></a> and <a href=ch4.sheader.html#shf_strings><code>SHF_STRINGS</code></a>
 added.
 <li>
-New values added to a symbol table entry's 
+New values added to a symbol table entry's
 <a href=ch4.symtab.html#st_other><code>st_other</code></a>
 field to describe a symbol's
 <a href=ch4.symtab.html#visibility>visibility</a>.
 <li>
-New dynamic section tags <a href=ch5.dynamic.html#dt_runpath><code>DT_RUNPATH</code></a> 
+New dynamic section tags <a href=ch5.dynamic.html#dt_runpath><code>DT_RUNPATH</code></a>
 and <a href=ch5.dynamic.html#df_flags><code>DT_FLAGS</code></a> added.
 Dynamic section tag <a href=ch5.dynamic.html#dt_rpath>
 <code>DT_RPATH</code></a> moved to level 2.
 <li>
-New semantics for <a href=ch5.dynamic.html#shobj_dependencies>shared 
+New semantics for <a href=ch5.dynamic.html#shobj_dependencies>shared
 object path searching</a>, including new
 <a href=ch5.dynamic.html#substitution>``Substitution Sequences''</a>.
 </ul>
@@ -53,7 +53,7 @@ dynamic section tag encodings</a> have been added.
 The OS and processor specific ranges for <code>DT_FLAGS</code>
 have been removed.
 <li>
-The language motivating the use of 
+The language motivating the use of
 <a href=ch5.dynamic.html#substitution><code>DF_ORIGIN</code></a>
 has been changed.
 </ul>
@@ -61,31 +61,31 @@ has been changed.
 <ul>
 <li>
 New language has been added warning about the use
-of <a href=ch4.symtab.html#weak_note>WEAK symbols</a> in 
+of <a href=ch4.symtab.html#weak_note>WEAK symbols</a> in
 application programs.
 <li>
-New rules have been defined for 
-<a href=ch4.reloc.html#relocation_composition>composition of 
+New rules have been defined for
+<a href=ch4.reloc.html#relocation_composition>composition of
 consecutive relocation entries</a> that reference the same location.
 <li>
-Language has been added clarifying the 
+Language has been added clarifying the
 <a href=ch5.dynamic.html#init_order>order of execution</a> for
 functions specified by initialization and termination arrays.
 </ul>
 <h3>Fifth draft published July 21, 1999.</h3>
 <ul>
 <li>
-New <a href=ch4.sheader.html#init_array>section types</a> 
+New <a href=ch4.sheader.html#init_array>section types</a>
 and section names added for init arrays,
 fini arrays and pre-init arrays.
 <li>
-An object may now have both 
+An object may now have both
 <a href=ch5.dynamic.html#dt_init_array>
 <code>DT_INIT</code> and <code>DT_INIT_ARRAY</a> </code> entries
 (and both <code>DT_FINI</code> and <code>DT_FINI_ARRAY</code> entries).
 The relative execution order is specified.
 <li>
-The language describing the 
+The language describing the
 <a href=ch5.dynamic.html#fini_order>order of execution for termination
 functions</a> has been revised.
 <li>
@@ -109,11 +109,11 @@ section flag bits</a> available in the OS specific range.
 <h3>Seventh draft published October 4, 1999.</h3>
 <ul>
 <li>
-Changed the values used for some new 
-<a href=ch4.sheader.html#sh_flags>section attribute flags</a> 
+Changed the values used for some new
+<a href=ch4.sheader.html#sh_flags>section attribute flags</a>
 to accommodate platforms already using previously assigned values.
 <li>
-Added new section attribute flags 
+Added new section attribute flags
 <a href=ch4.sheader.html#shf_info_link><code>SHF_INFO_LINK</code></a>,
 <a href=ch4.sheader.html#shf_link_order><code>SHF_LINK_ORDER</code></a> and
 <a href=ch4.sheader.html#shf_os_nonconforming><code>SHF_OS_NONCONFORMING</code></a>
@@ -128,16 +128,16 @@ when linking sections with unrecognized types or flags.
 Added the concept of <a href=ch4.sheader.html#section_groups>section
 groups</a>.
 <li>
-Removed the macros for <code>ELF32_ST_OTHER</code> and 
+Removed the macros for <code>ELF32_ST_OTHER</code> and
 <code>ELF64_ST_OTHER</code>.
 </ul>
 <h3>Ninth draft published March 30, 2000.</h3>
 <ul>
 <li>
-Added <a href=ch4.symtab.html#protected_note>language</a> 
+Added <a href=ch4.symtab.html#protected_note>language</a>
 clarifying the semantics of symbols marked as <code>STV_PROTECTED</code>.
 <li>
-Added <a href=ch5.dynamic.html#pointer_note>language</a> 
+Added <a href=ch5.dynamic.html#pointer_note>language</a>
 clarifying the contents of the initialization and termination arrays.
 </ul>
 <h3>Tenth draft published 22 June 2000.</h3>

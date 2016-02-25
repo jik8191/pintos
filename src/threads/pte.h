@@ -4,7 +4,7 @@
 
    See vaddr.h for more generic functions and macros for virtual
    addresses.
-   
+
    Virtual addresses are structured as follows:
 
 \verbatim

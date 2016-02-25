@@ -95,7 +95,7 @@ may use one form exclusively or either form depending on context.
 A relocation section references two other sections:
 a symbol table and a section to modify.
 The section header's <code>sh_info</code> and <code>sh_link</code>
-members, described in 
+members, described in
 <a href=ch4.sheader.html>``Sections''</a>
 above, specify these relationships.
 Relocation entries for different object files have
@@ -131,10 +131,10 @@ to the symbol and addend, extract the desired part of the expression
 result, and place it in the field to be relocated.
 <p>
 If multiple <i>consecutive</i> relocation records are applied
-to the same relocation location (<code>r_offset</code>), 
+to the same relocation location (<code>r_offset</code>),
 they are <i>composed</i> instead
-of being applied independently, as described above. 
-By <i>consecutive</i>, we mean that the relocation records are 
+of being applied independently, as described above.
+By <i>consecutive</i>, we mean that the relocation records are
 contiguous within a single relocation section.  By <i>composed</i>,
 we mean that the standard application described above is modified
 as follows:

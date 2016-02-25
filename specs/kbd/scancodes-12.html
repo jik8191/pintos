@@ -134,7 +134,7 @@ If the next byte is again invalid, the reply is ERROR: <B>fc</B>.
 <P>
 <P><I>Command <B>d1</B>: Logitech PS/2++ command</I>
 <P>This command was to be used, followed by an arbitrary data sequence.
-Now replaced by the 
+Now replaced by the
 <A HREF="#sliced">sliced commands</A> using
 <B>e8</B>.
 <P><I>Command <B>e1</B>: Read secondary ID</I>
@@ -150,19 +150,19 @@ and a second byte depending on the model.
 Followed by several parameter bytes. For details, see
 <A HREF="http://trackpoint.almaden.ibm.com/files/ykt3dext.pdf">ykt3dext.pdf</A>.
 </BLOCKQUOTE>
-<P><I>Command <B>e6</B>: 
+<P><I>Command <B>e6</B>:
 <A NAME="mce6"></A> Set mouse scaling to 1:1</I>
 <P>
 <BLOCKQUOTE>
 Often ingredient in magic sequences.
 </BLOCKQUOTE>
-<P><I>Command <B>e7</B>: 
+<P><I>Command <B>e7</B>:
 <A NAME="mce7"></A> Set mouse scaling to 2:1</I>
 <P>
 <BLOCKQUOTE>
 Often ingredient in magic sequences.
 </BLOCKQUOTE>
-<P><I>Command <B>e8</B>: 
+<P><I>Command <B>e8</B>:
 <A NAME="mce8"></A> Set mouse resolution</I>
 <P>
 <BLOCKQUOTE>
@@ -170,62 +170,62 @@ This command is followed by a byte indicating the resolution
 (0, 1, 2, 3: 1, 2, 4, 8 units per mm, respectively).
 It is used in magic sequences to transport two bits,
 so that four of these are needed to send a byte to the mouse.
-See 
+See
 <A HREF="#sliced">below</A>.
 </BLOCKQUOTE>
-<P><I>Command <B>e9</B>: 
+<P><I>Command <B>e9</B>:
 <A NAME="mce9"></A> Status request</I>
 <P>
 <BLOCKQUOTE>
 This command returns three bytes:
 <P>First a status byte:
 Bit 7: unused, 0.
-Bit 6: 0: 
+Bit 6: 0:
 <A HREF="#mousemodes">stream mode</A>,
-1: 
+1:
 <A HREF="#mousemodes">remote mode</A>.
 Bit 5: 0: disabled, 1: enabled.
 Bit 4: 0: scaling set to 1:1, 1: scaling set to 2:1.
 Bit 3: unused, 0.
 Bit 2: 1: left button pressed.
-Bit 1: 1: middle button pressed. 
+Bit 1: 1: middle button pressed.
 Bit 0: 1: right button pressed.
 <P>Then a resolution byte:
 0, 1, 2, 3: 1, 2, 4, 8 units per mm, respectively.
 <P>Finally a sample rate (in Hz).
-<P>See below for special 
+<P>See below for special
 <A HREF="#synaptics">Synaptics Touchpad</A> handling.
 </BLOCKQUOTE>
-<P><I>Command <B>ea</B>: Set 
+<P><I>Command <B>ea</B>: Set
 <A HREF="#mousemodes">stream mode</A></I>
 <P>
-<P><I>Command <B>eb</B>: 
+<P><I>Command <B>eb</B>:
 <A NAME="mceb"></A> Read data</I>
 <P>
 <BLOCKQUOTE>
 Read a mouse packet.
-Needed in 
+Needed in
 <A HREF="#mousemodes">remote mode</A> to ask the mouse for data.
-Also functions in 
+Also functions in
 <A HREF="#mousemodes">stream mode</A>.
 </BLOCKQUOTE>
-<P><I>Command <B>ec</B>: Clear 
+<P><I>Command <B>ec</B>: Clear
 <A HREF="#mousemodes">echo mode</A></I>
 <P>
-<P><I>Command <B>ee</B>: Set 
+<P><I>Command <B>ee</B>: Set
 <A HREF="#mousemodes">echo mode</A></I>
 <P>
-<P><I>Command <B>f0</B>: Set 
+<P><I>Command <B>f0</B>: Set
 <A HREF="#mousemodes">remote mode</A></I>
 <P>
-<P><I>Command <B>f2</B>: 
+<P><I>Command <B>f2</B>:
 <A NAME="mcf2"></A> Read mouse ID</I>
 <P>
 <BLOCKQUOTE>
 (Only supported on some systems.)
 This command reads a 1-byte mouse ID. The reply is a single byte <B>00</B>.
 Wait at least 10ms after issuing this command.
-<P>For the keyboard reply, see 
+<P>For the keyboard reply, see
 <A HREF="scancodes-11.html#kcf2">above</A>.
 <P>BallPoint (trackball) devices return a single byte <B>02</B>,
 Intellimouse returns <B>03</B>,
@@ -233,7 +233,7 @@ Explorer Mouse returns <B>04</B>,
 4d Mouse returns <B>06</B>,
 4dplus Mouse returns <B>08</B>,as does the Typhoon mouse.
 </BLOCKQUOTE>
-<P><I>Command <B>f3</B>: 
+<P><I>Command <B>f3</B>:
 <A NAME="mcf3"></A> Set mouse sample rate</I>
 <P>
 <BLOCKQUOTE>
@@ -244,28 +244,28 @@ Otherwise the NACK is <B>fe</B>, and the host can correct.
 If it is incorrect again <B>fc</B> is sent.
 Correct values are, e.g., 10, 20, 40, 60, 80, 100, 200.
 </BLOCKQUOTE>
-<P><I>Command <B>f4</B>: 
+<P><I>Command <B>f4</B>:
 <A NAME="mcf4"></A> Mouse enable</I>
 <P>
 <BLOCKQUOTE>
 The stream mode mouse data reporting is disabled after a reset and after
-the 
+the
 <A HREF="#mcf5">disable</A> command. This command enables it again.
 </BLOCKQUOTE>
-<P><I>Command <B>f5</B>: 
+<P><I>Command <B>f5</B>:
 <A NAME="mcf5"></A> Mouse disable</I>
 <P>
 <BLOCKQUOTE>
-This stops mouse data reporting in 
+This stops mouse data reporting in
 <A HREF="#mousemodes">stream mode</A>.
 In stream mode, this command should be sent before sending any other commands.
 </BLOCKQUOTE>
-<P><I>Command <B>f6</B>: 
+<P><I>Command <B>f6</B>:
 <A NAME="mcf6"></A> Set defaults</I>
 <P>
 <BLOCKQUOTE>
 If this command is recognized, a reset is done (set sampling rate 100 Hz,
-resolution 4 counts/mm, 
+resolution 4 counts/mm,
 <A HREF="#mousemodes">stream mode</A>,
 disabled, scaling 1:1), but no diagnostics are performed.
 For some enhanced mice that require a magic sequence to get into
@@ -278,7 +278,7 @@ If this command is recognized, the last mouse packet (possibly several bytes)
 is resent. There is no ACK to this command, but if the last reply was ACK,
 it is sent.
 </BLOCKQUOTE>
-<P><I>Command <B>ff</B>: 
+<P><I>Command <B>ff</B>:
 <A NAME="mcff"></A> Mouse reset</I>
 <P>
 <BLOCKQUOTE>
@@ -334,7 +334,7 @@ sent to internal and external devices, they can be commanded separately.)
 </H2>
 
 <P>A few sketchy details. For nice precise information, get
-the 
+the
 <A HREF="http://www.synaptics.com/decaf/utilities/ACF126.pdf">Synaptics interfacing guide</A>.
 <P>
 <H3>Status request</H3>
