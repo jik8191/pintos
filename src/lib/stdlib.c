@@ -95,7 +95,7 @@ static void heapify(unsigned char *array, size_t i, size_t cnt, size_t size,
         size_t max = i;
         if (left <= cnt && do_compare(array, left, max, size, compare, aux) > 0)
             max = left;
-        if (right <= cnt && do_compare(array, right, max, size, compare, aux) > 0) 
+        if (right <= cnt && do_compare(array, right, max, size, compare, aux) > 0)
             max = right;
 
         /* If the maximum value is already in element I, we're done. */
@@ -130,7 +130,7 @@ void sort(void *array, size_t cnt, size_t size,
     /* Sort the heap. */
     for (i = cnt; i > 1; i--) {
         do_swap(array, 1, i, size);
-        heapify(array, 1, i - 1, size, compare, aux); 
+        heapify(array, 1, i - 1, size, compare, aux);
     }
 }
 
@@ -173,9 +173,9 @@ void * binary_search(const void *key, const void *array, size_t cnt, size_t size
         const unsigned char *middle = first + (range / 2) * size;
         int cmp = compare(key, middle, aux);
 
-        if (cmp < 0) 
+        if (cmp < 0)
             last = middle;
-        else if (cmp > 0) 
+        else if (cmp > 0)
             first = middle + size;
         else
             return (void *) middle;

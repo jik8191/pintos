@@ -1,5 +1,5 @@
 _____Examples_of_Text_Mode_Bitmap_Characters_____
-           
+
   7 8x8  0  ___Legend___     7 8x16 0    7 9x16 0
  0--XX----  - Background    0--------   0--------
   -XXXX---  X Foreground     --------    --------

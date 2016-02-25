@@ -127,7 +127,7 @@ static void keyboard_interrupt(struct intr_frame *args UNUSED) {
                Note that Ctrl overrides Shift. */
             if (ctrl && c >= 0x40 && c < 0x60) {
                 /* A is 0x41, Ctrl+A is 0x01, etc. */
-                c -= 0x40; 
+                c -= 0x40;
             }
             else if (shift == caps_lock) {
                 c = tolower(c);
@@ -162,7 +162,7 @@ static void keyboard_interrupt(struct intr_frame *args UNUSED) {
             {0xe01d, &right_ctrl},
             {0,      NULL},
         };
-  
+
         const struct shift_key *key;
 
         /* Scan the table. */
@@ -183,7 +183,7 @@ static bool map_key(const struct keymap k[], unsigned scancode, uint8_t *c) {
         if (scancode >= k->first_scancode &&
             scancode < k->first_scancode + strlen (k->chars)) {
             *c = k->chars[scancode - k->first_scancode];
-            return true; 
+            return true;
         }
     }
 

@@ -72,18 +72,18 @@ it goes to the mouse instead of the keyboard. Common commands:
 
 <P>
 <P><I>Command <B>e8</B></I>: Nonstandard. Reported to give a
-2-byte ID on an 
+2-byte ID on an
 <A HREF="scancodes-5.html#omnikey">OmniKey</A> keyboard.
 <P><I>Command <B>ea</B></I>: Nonstandard. The sequences
 <B>ea</B> <B>70</B> and <B>ea</B> <B>71</B> are
 used by some IBM keyboards to disable and enable extra keys.
 <P><I>Command <B>eb</B></I>: Nonstandard. Sequences involving <B>eb</B>
-are often used for 
+are often used for
 <A HREF="scancodes-1.html#LEDmanip">manipulating extra LEDs</A>.
 <P><I>Command <B>ec</B></I>: Nonstandard. On the
 <A HREF="scancodes-5.html#ibmrapidaccess">IBM Rapid Access keyboard</A>
 this command yields a 2-byte ID.
-<P><I>Command <B>ed</B>: 
+<P><I>Command <B>ed</B>:
 <A NAME="kced"></A> Write LEDs</I>
 <P>
 <BLOCKQUOTE>
@@ -96,13 +96,13 @@ When OK, both bytes are ACKed. If the second byte is recognized as a
 command, that command is ACKed and done instead. Otherwise a NACK is
 returned (and a keyboard enable may be needed).
 </BLOCKQUOTE>
-<P><I>Command <B>ee</B>: 
+<P><I>Command <B>ee</B>:
 <A NAME="kcee"></A> Diagnostic echo</I>
 <P>
 <BLOCKQUOTE>
 This command returns a single byte, again <B>ee</B>.
 </BLOCKQUOTE>
-<P><I>Command <B>f0</B>: 
+<P><I>Command <B>f0</B>:
 <A NAME="kcf0"></A> Set/Get scancode set</I>
 <P>
 <BLOCKQUOTE>
@@ -116,20 +116,20 @@ Note that scancode set 1 should not be translated, while sets
 2 and 3 should be translated.
 <P>Set 2 was introduced by the AT. Set 3 by the PS/2.
 </BLOCKQUOTE>
-<P><I>Command <B>f2</B>: 
+<P><I>Command <B>f2</B>:
 <A NAME="kcf2"></A> Read keyboard ID</I>
 <P>
 <BLOCKQUOTE>
-This command reads a 2-byte 
+This command reads a 2-byte
 <A HREF="scancodes-9.html#keyboardid">keyboard ID</A>.
 XT keyboards do not answer at all (of course),
 AT keyboards reply with an ACK (<B>fa</B>) only,
 MF2 and other keyboards reply with a 2-byte ID.
 Wait at least 10ms after issuing this command.
-<P>For the mouse reply, see 
+<P>For the mouse reply, see
 <A HREF="scancodes-12.html#mcf2">below</A>.
 </BLOCKQUOTE>
-<P><I>Command <B>f3</B>: 
+<P><I>Command <B>f3</B>:
 <A NAME="kcf3"></A> Set repeat rate and delay</I>
 <P>
 <BLOCKQUOTE>
@@ -168,7 +168,7 @@ Write <I>dd</I> at address <I>aa</I> (in 0x01-0x1e).
 <P><I>xx</I> = <B>10</B> or <B>11</B>: Clear all device-related data
 in EEPROM and RAM. Now device is disconnected.
 </BLOCKQUOTE>
-<P><I>Command <B>f4</B>: 
+<P><I>Command <B>f4</B>:
 <A NAME="kcf4"></A> Keyboard enable</I>
 <P>
 <BLOCKQUOTE>
@@ -176,7 +176,7 @@ If a transmit error occurs, the keyboard is automatically disabled.
 This command re-enables the keyboard and clears its internal 16-byte
 buffer.
 </BLOCKQUOTE>
-<P><I>Command <B>f5</B>: 
+<P><I>Command <B>f5</B>:
 <A NAME="kcf5"></A> Set defaults and
 disable keyboard</I>
 <P>
@@ -184,14 +184,14 @@ disable keyboard</I>
 Reset keyboard, clear output buffer, switch off LEDs, reset
 repeat rate and delay to defaults. Disable the keyboard scan.
 </BLOCKQUOTE>
-<P><I>Command <B>f6</B>: 
+<P><I>Command <B>f6</B>:
 <A NAME="kcf6"></A> Set defaults</I>
 <P>
 <BLOCKQUOTE>
 Reset keyboard, clear output buffer, switch off LEDs, reset
 repeat rate and delay to defaults.
 </BLOCKQUOTE>
-<P><I>Command <B>f7</B>: 
+<P><I>Command <B>f7</B>:
 <A NAME="kcf7"></A> Set all keys to repeat</I>
 <P>
 <BLOCKQUOTE>
@@ -200,7 +200,7 @@ does it repeat? does it generate a break code?
 This command sets the "repeat" bit for all keys.
 It does not influence keyboard operation when the scancode set is not Set 3.
 </BLOCKQUOTE>
-<P><I>Command <B>f8</B>: 
+<P><I>Command <B>f8</B>:
 <A NAME="kcf8"></A> Set all keys to give make/break
 codes</I>
 <P>
@@ -208,7 +208,7 @@ codes</I>
 This command sets the "generate break code" bit for all keys.
 It does not influence keyboard operation when the scancode set is not Set 3.
 </BLOCKQUOTE>
-<P><I>Command <B>f9</B>: 
+<P><I>Command <B>f9</B>:
 <A NAME="kcf9"></A> Set all keys to give
 make codes only</I>
 <P>
@@ -216,7 +216,7 @@ make codes only</I>
 This command clears the "generate break code" bit for all keys.
 It does not influence keyboard operation when the scancode set is not Set 3.
 </BLOCKQUOTE>
-<P><I>Command <B>fa</B>: 
+<P><I>Command <B>fa</B>:
 <A NAME="kcfa"></A> Set all keys to repeat
 and give make/break codes</I>
 <P>
@@ -224,7 +224,7 @@ and give make/break codes</I>
 This command sets the "repeat" and "generate break code" bits for all keys.
 It does not influence keyboard operation when the scancode set is not Set 3.
 </BLOCKQUOTE>
-<P><I>Command <B>fb</B>: 
+<P><I>Command <B>fb</B>:
 <A NAME="kcfb"></A> Set some keys to repeat</I>
 <P>
 <BLOCKQUOTE>
@@ -234,7 +234,7 @@ for which this bit must be set. The sequence is ended by a command
 code (<B>ed</B>, <B>ee</B>, <B>f0</B>, <B>f2</B>-<B>ff</B>).
 Afterwards, a "keyboard enable" <B>f4</B> is required.
 </BLOCKQUOTE>
-<P><I>Command <B>fc</B>: 
+<P><I>Command <B>fc</B>:
 <A NAME="kcfc"></A> Set some keys to give make/break
 codes</I>
 <P>
@@ -245,7 +245,7 @@ for which this bit must be set. The sequence is ended by a command
 code (<B>ed</B>, <B>ee</B>, <B>f0</B>, <B>f2</B>-<B>ff</B>).
 Afterwards, a "keyboard enable" <B>f4</B> is required.
 </BLOCKQUOTE>
-<P><I>Command <B>fd</B>: 
+<P><I>Command <B>fd</B>:
 <A NAME="kcfd"></A> Set some keys to give make codes
 only</I>
 <P>
@@ -256,14 +256,14 @@ this bit must be set. The sequence is ended by a recognized command code
 (such as <B>ed</B>, <B>ee</B>, <B>f0</B>, <B>f2</B>-<B>ff</B>).
 Afterwards, a "keyboard enable" <B>f4</B> is required.
 </BLOCKQUOTE>
-<P><I>Command <B>fe</B>: 
+<P><I>Command <B>fe</B>:
 <A NAME="kcfe"></A> Resend</I>
 <P>
 <BLOCKQUOTE>
 Meant for use by the keyboard controller after a transmission error.
 Not for use by the CPU.
 </BLOCKQUOTE>
-<P><I>Command <B>ff</B>: 
+<P><I>Command <B>ff</B>:
 <A NAME="kcff"></A> Keyboard reset</I>
 <P>
 <BLOCKQUOTE>

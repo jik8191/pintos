@@ -49,7 +49,7 @@ void test(void) {
             for (i = 0; i < size; i++)
                 values[i].value = i;
             shuffle(values, size);
-  
+
             /* Assemble list. */
             list_init(&list);
             for (i = 0; i < size; i++)
@@ -95,7 +95,7 @@ void test(void) {
             verify_list_fwd(&list, size);
         }
     }
-  
+
     printf(" done\n");
     printf("list: PASS\n");
 }
@@ -126,7 +126,7 @@ static bool value_less(const struct list_elem *a_, const struct list_elem *b_,
 static void verify_list_fwd(struct list *list, int size) {
     struct list_elem *e;
     int i;
-  
+
     for (i = 0, e = list_begin(list); i < size && e != list_end(list);
          i++, e = list_next(e)) {
         struct value *v = list_entry(e, struct value, elem);

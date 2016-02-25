@@ -14,7 +14,7 @@
 <HR>
 <H2><A NAME="NCD"></A> <A NAME="s6">6. NCD keyboards</A></H2>
 
-<P>Some keyboards natively produce 
+<P>Some keyboards natively produce
 <A HREF="scancodes-9.html#scancodesets">Set 3</A> scancodes.
 When connected to a PC one will by default see translated Set 3 scancodes.
 This means that the F9 and F10 keys have make codes <B>60</B> and <B>61</B>
@@ -39,7 +39,7 @@ scancodes this keyboard sends out.
 However, the F9 and F10 keys send out <B>60</B> and <B>61</B>,
 respectively, so their key release events send out <B>e0</B>
 and <B>e1</B>, confusing the keyboard driver.</I>
-<P>(Compare this with the 
+<P>(Compare this with the
 <A HREF="scancodes-9.html#correspondence">table</A>
 giving the translated Set 3 scancodes. The reported codes are
 almost identical.)
@@ -48,9 +48,9 @@ almost identical.)
 <B>5b</B> (F4), <B>5c</B> (F5), <B>5d</B> (F6),
 <B>5e</B> (F7), <B>5f</B> (F8), <B>60</B> (F9),
 <B>61</B> (F10), <B>62</B> (F11), <B>63</B> (F12)
-<P> 
+<P>
 <B>76</B> (Break), <B>77</B> (Setup).
-<P> 
+<P>
 # top row
 <P><B>64</B> (Esc),
 <B>02</B> (1), <B>03</B> (2), <B>04</B> (3),
@@ -267,7 +267,7 @@ which shipped with some NCD X terminals and also with some Mips
 workstations IIRC. This keyboard returns Set 3 keycodes
 even when its told to be in Set 2. In particular, the release
 codes for F9 and F10 are <B>e0</B> and <B>e1</B>.
-The 
+The
 <A HREF="scancodes-9.html#keyboardid">keyboard ID</A> is <B>ab</B> <B>85</B>.
 <P>
 <P>

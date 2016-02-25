@@ -71,7 +71,7 @@ Scancodes: <B>65</B>, <B>67</B>, <B>69</B>, <B>6b</B>.
 <P>
 <H3>Compaq Eight-Button Easy Access Keyboard</H3>
 
-<P>A 
+<P>A
 <A HREF="compaq_unkn.jpg">Compaq keyboard</A> that I have here,
 has the usual setup (with Windows keys) plus a top row of eight buttons,
 that produce scancodes
@@ -97,7 +97,7 @@ These keys do not produce any codes in scan code Set 3.
 <H3>IBM Rapid Access keyboard</H3>
 
 <P>
-<A NAME="ibmrapidaccess"></A> 
+<A NAME="ibmrapidaccess"></A>
 (Information from Dennis Bjorklund &lt;<CODE>dennisb@cs.chalmers.se</CODE>&gt;
 and others.)
 <P>The IBM Rapid Access keyboard has 14 extra buttons and two more leds
@@ -138,7 +138,7 @@ which becomes <B>3e</B> <B>43</B> in translated scancode Set 2.
 (Possibly an ID?)
 <P>
 <P>
-<A NAME="rapidinit"></A> 
+<A NAME="rapidinit"></A>
 Dennis Bjorklund writes:
 <I>Here is the hack I use to send commands to the keyboard. After you have
 compiled it you can do things like</I> <CODE>send_to_keyboard ea 71</CODE>,
@@ -317,7 +317,7 @@ has 11 extra keys.  Ten of them produce the following escape scancodes:
 <B>e0</B> <B>65</B> (Search).
 <P>The eleventh key (with keycap "F lock") is a switch between two sets
 of scancodes for function keys F1-F12.  When "F lock" is pressed, then
-F1-F12 act as function keys and produce usual keyscans for these keys.  
+F1-F12 act as function keys and produce usual keyscans for these keys.
 When "F lock" is depressed, F1-F12 generate the following keyscans:
 <P><B>e0</B> <B>3b</B> (new [F1]),
 <B>e0</B> <B>3c</B> (reply [F2]),
@@ -393,13 +393,13 @@ produce the following scancodes:
 <B>e0</B> <B>5b</B> (LeftWindow),
 <B>e0</B> <B>5c</B> (RightWindow),
 <B>e0</B> <B>5d</B> (Menu).
-The untranslated Set 2 scancodes (see 
+The untranslated Set 2 scancodes (see
 <A HREF="scancodes-9.html#scancodesets">below</A>)
 are <B>e0</B> <B>1f</B>, <B>e0</B> <B>27</B> and
 <B>e0</B> <B>2f</B>, respectively.
 The USB key codes are usage page 0x07, usage index 227, 231, 101
 (decimal), respectively.
-Microsoft 
+Microsoft
 <A HREF="http://www.microsoft.com/hwdev/download/desinit/scancode.zip">describes</A>
 the intended use in detail. Both Windows keys are intended to be
 used as modifier keys, like both shift and control and alt keys.
@@ -497,7 +497,7 @@ In the default state the scancodes are
 <P>
 <H3><A NAME="msoffice"></A> Microsoft Office keyboard</H3>
 
-<P>Christian Hammond 
+<P>Christian Hammond
 <A HREF="http://www.chipx86.com/linuxstuff/officekb/wheel.php">reports</A>
 about the keyboard Scroll Wheel:
 <I>The following is my interpretation of the results of</I>
@@ -574,7 +574,7 @@ for (, ), =. PrintScreen and ScrollLock have the usual codes.
 <IMG SRC="ms_office.jpg">
 </FIGURE>
 
-See the 
+See the
 <A HREF="http://www.microsoft.com/hardware/keyboard/ok_info.asp">Microsoft ad</A>.
 <P>
 <H2><A NAME="ss5.5">5.5 Safeway keyboards</A>
@@ -660,7 +660,7 @@ the Power, Sleep, Wake keys yield <B>e0</B> <B>5e</B>,
 do not yield any code. In untranslated scancode mode 1 they
 yield the same code as in untranslated scancode mode 2.
 (This is a design bug: untranslated scancode mode 1 should be the same
-as translated scancode mode 2 (see 
+as translated scancode mode 2 (see
 <A HREF="scancodes-9.html#scancodesets">below</A>),
 and this is true for the ordinary keys, but fails here for the
 "multimedia" keys. For example, the keys End and Keypad-Minus
@@ -698,7 +698,7 @@ Buttons:
 <B>e0</B> <B>6d</B> (Media Player),
 <B>e0</B> <B>6b</B> (My Computer),
 <B>e0</B> <B>21</B> (Calculator).
-<P>This keyboard reports 
+<P>This keyboard reports
 <A HREF="scancodes-9.html#keyboardid">keyboard ID</A>
 <B>ab</B> <B>83</B> (translated <B>ab</B> <B>c1</B>).
 Scancode sets 1 and 2 are reported as <B>01</B> and <B>02</B>
@@ -714,7 +714,7 @@ It may need a special driver.
 <H2><A NAME="nokia"></A> <A NAME="ss5.7">5.7 Nokia keyboard</A>
 </H2>
 
-<P>This 121-key 
+<P>This 121-key
 <A HREF="nokia.jpg">Nokia keyboard</A>
 has ten function keys on the left and twenty-four on
 the two top rows. On the right a block with cursor keys
@@ -722,7 +722,7 @@ and a block with numeric keys. There are three LEDs.
 The keys have brown markings, and sometimes also blue ones.
 Where both occur, the blue markings describe the usual PC keytops.
 <P>Roughly speaking, the scancodes are as expected.
-The 
+The
 <A HREF="nokia-top.jpg">function keys</A> F1-F10,F11,F12
 have scan codes <B>3b</B>-<B>44</B>, <B>57</B>, <B>58</B> as usual.
 The keys on the upper row, labeled F13-F24, yield the same codes as
@@ -731,7 +731,7 @@ and <B>bb</B> <B>aa</B> on release.
 The function keys F4,F11,F13-F19,F21,F24 have front labels
 CrSel, AltCr, Red, Pink, Green, Yellow, Blue, Turq, White,
 Col, USM.
-<P>The 
+<P>The
 <A HREF="nokia-left.jpg">ten keys on the left</A>
 have the following scancodes.
 First column of five:
@@ -752,7 +752,7 @@ left or right Ctrl or left or right Shift, and <B>54</B>
 with left or right Alt, as expected for PrtSc;
 <B>1d 3f</B> (ChgSc/WSCtrl), as expected for Ctrl F5;
 <B>38 e0 49</B> (Jump), as expected for Alt PgUp.
-<P>On 
+<P>On
 <A HREF="nokia-right.jpg">the right</A> a cursor key
 section and a number pad.
 The cursor key section has the expected block of six:
@@ -862,11 +862,11 @@ There are only two LEDs. The keycaps are unusual.
 <B>68</B>, <B>44</B>, <B>42</B>, <B>40</B>,
 <B>3e</B>, <B>65</B>, <B>70</B>.
 In untranslated Set 2, the F17 key gives <B>e0</B> <B>83</B>.
-<P>An 
+<P>An
 <A HREF="lk411.jpg">LK411 keyboard</A>,
-with 
+with
 <A HREF="lk411-left.jpg">left</A>
-and 
+and
 <A HREF="lk411-right.jpg">right</A> hand side enlarged.
 <P>The keys labeled F18, F19, F20 produce the codes expected for
 PrtSc, ScrollLock, Pause.
@@ -910,7 +910,7 @@ opened the keyboard for cleaning. The scancodes are from left to right
 <H2><A NAME="cherry81"></A> <A NAME="ss5.14">5.14 Cherry G81-3000</A>
 </H2>
 
-<P>According to 
+<P>According to
 <A HREF="http://www.delorie.com/djgpp/doc/rbinter/it/06/0.html">Delorie</A>
 the "Cherry G81-3000 SAx/04" keyboard has four additional keys,
 which can be made available by a user modification;
@@ -921,13 +921,13 @@ the fourth new key, labeled (delta), sends make code <B>73</B>.
 <H2><A NAME="ss5.15">5.15 Accord keyboard</A>
 </H2>
 
-<P>According to 
+<P>According to
 <A HREF="http://www.delorie.com/djgpp/doc/rbinter/it/06/0.html">Delorie</A>
-the "Accord" 
+the "Accord"
 <A HREF="http://www.ergonomics.co.uk/products/input/keyb7300.jpg">ergonomic keyboard</A>
 with optional touchpad has an additional key above the Grey-Minus key
 marked with a left-pointing triangle and labeled "Fn" in the owner's
-booklet which sends make code <B>e0 68</B>.        
+booklet which sends make code <B>e0 68</B>.
 <P>
 <H2><A NAME="ss5.16">5.16 Trust Ergonomic keyboard</A>
 </H2>
@@ -1037,7 +1037,7 @@ was down already.
 </H2>
 
 <P>
-<A NAME="omnibookinit"></A> 
+<A NAME="omnibookinit"></A>
 The HP Omnibook XE3 laptop has special multimedia keys (aka OneTouch buttons)
 disabled by default. It is enabled by writing 0x59 to port 0x64
 and then 0x90 to port 0x60 (as was found by Pavel Mihaylov).
@@ -1211,7 +1211,7 @@ for Internet and Audio. Unusual scancodes (untranslated/translated):</I>
 <B>e0</B> <B>42</B> / <B>e0</B> <B>25</B> (Volume -),
 <B>e0</B> <B>24</B> / <B>e0</B> <B>12</B> (Mute),
 <B>e0</B> <B>15</B> / <B>e0</B> <B>10</B> (Stop),
-<B>e0</B> <B>4e</B> / <B>e0</B> <B>0c</B> (Play/Pause), 
+<B>e0</B> <B>4e</B> / <B>e0</B> <B>0c</B> (Play/Pause),
 <B>e0</B> <B>34</B> / <B>e0</B> <B>22</B> (Prev Track),
 <B>e0</B> <B>3d</B> / <B>e0</B> <B>08</B> (Next Track),
 <B>e0</B> <B>4d</B> / <B>e0</B> <B>19</B> (Eject).
@@ -1247,7 +1247,7 @@ additional keys:
 <H2><A NAME="ss5.29">5.29 Samsung Ergonomics Keyboard</A>
 </H2>
 
-<P>Miguel Costa reports that his 
+<P>Miguel Costa reports that his
 <A HREF="samsung.jpg">Samsung Ergonomics Keyboard</A> has the following additional keys:
 <B>e0</B> <B>2e</B> (Vol down),
 <B>e0</B> <B>30</B> (Vol up),
@@ -1392,7 +1392,7 @@ be 65536 scancodes, currently though only 128 are defined.</I>
 </H2>
 
 <P>
-<A NAME="mtek"></A> 
+<A NAME="mtek"></A>
 Mike A. Harris &lt;<CODE>mharris@meteng.on.ca</CODE>&gt;
 reports a keyboard (an "Mtek" keyboard, model "K208")
 where PrtSc/SysRq behaves like Pause/Break and also sends both make

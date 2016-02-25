@@ -49,13 +49,13 @@ when pressed (without modifier) and nothing at all upon release.
 However, together with (left or right) Ctrl, one gets
 <B>e0</B> <B>46</B> <B>e0</B> <B>c6</B>,
 and again nothing at release. It does not repeat.
-<P>See 
+<P>See
 <A HREF="#dellnoup">below</A> for a report on keys
 with a different behaviour.
 <P>There are many reports of laptops with badly debounced key-up events.
 Thus, unexpected key-up events should probably be regarded as not
 unusual, and be ignored. Another source of key-up events without
-preceding key-down can be the 
+preceding key-down can be the
 <A HREF="#fakeshifts">fake shift</A>.
 <P>
 <H2><A NAME="ss1.2">1.2 Protocol scancodes</A>
@@ -96,7 +96,7 @@ prefixed by <B>e0</B>.
 
 <P>The codes <B>e0</B> and <B>e1</B> introduce scancode sequences,
 and are not usually used as isolated scancodes themselves
-(but see 
+(but see
 <A HREF="scancodes-6.html#e0_as_key">below</A>).
 <P>(The prefix <B>e0</B> was originally used for the grey duplicates
 of keys on the original PC/XT keyboard. These days <B>e0</B> is
@@ -110,7 +110,7 @@ are unavailable to signify key presses (on a default keyboard).
 Nevertheless they also occur as scancodes, see for example the
 <A HREF="scancodes-2.html#telerate">Telerate</A> and
 <A HREF="scancodes-5.html#safeway23">Safeway SW23</A> keyboards below.
-<P>Also other prefixes occur, see 
+<P>Also other prefixes occur, see
 <A HREF="scancodes-5.html#prefix_80">below</A>.
 <P>
 <A HREF="scancodes-9.html#logiteche2">Logitech</A> uses an <B>e2</B> prefix
@@ -167,7 +167,7 @@ as F12 on a Telerate keyboard,
 as PF1 on a Focus 9000 keyboard, and as FN on an IBM ThinkPad.
 <P><B>56</B> mostly on non-US keyboards. It is often an unlabelled key
 <A HREF="laser.jpg">to the left</A>
-or 
+or
 <A HREF="toshiba.jpg">to the right</A>
 of the left Alt key.<BR>
 <FIGURE>
@@ -194,14 +194,14 @@ Scancodes <B>55</B>, <B>6d</B>, <B>6f</B>, <B>73</B>, <B>74</B>,
 <B>7c</B>, <B>7e</B> occur on the
 <A HREF="scancodes-5.html#focus">Focus 9000</A> keyboard.
 Scancodes <B>65</B>, <B>67</B>, <B>69</B>, <B>6b</B>
-occur on a 
+occur on a
 <A HREF="scancodes-5.html#armada">Compaq Armada</A> keyboard.
 Scancodes <B>66</B>-<B>68</B>, <B>73</B> occur on the
 <A HREF="scancodes-5.html#cherry81">Cherry G81-3000</A> keyboard.
 Scancodes <B>70</B>, <B>73</B>, <B>79</B>, <B>7b</B>, <B>7d</B>
-occur on a 
+occur on a
 <A HREF="scancodes-7.html#japanese">Japanese 86/106 keyboard</A>.
-<P>Scancodes <B>f1</B> and <B>f2</B> occur on 
+<P>Scancodes <B>f1</B> and <B>f2</B> occur on
 <A HREF="scancodes-8.html#korean">Korean keyboards</A>.
 <P>
 <H2><A NAME="ss1.5">1.5 Escaped scancodes</A>
@@ -234,7 +234,7 @@ the receiver just discards the <B>e0</B>.
 
 </TD></TR></TABLE></CENTER>
 <P>These escaped scancodes occur only on 101+ key keyboards.
-The 
+The
 <A HREF="scancodes-5.html#microsoft">Microsoft keyboard</A> adds
 <P>
 <CENTER><TABLE BORDER><TR><TD>
@@ -281,7 +281,7 @@ the group of ten keys mentioned, and get fake shifts when
 <H2><A NAME="ss1.7">1.7 Added non-fake shifts</A>
 </H2>
 
-<P>On my 121-key 
+<P>On my 121-key
 <A HREF="scancodes-5.html#nokia">Nokia Data</A> keyboard there are
 function keys F1, ..., F24, where F1, ..., F12 send the expected codes
 <B>3b</B>, ..., <B>58</B>, and F13, ..., F24 send the same codes
@@ -363,12 +363,12 @@ registers. See, for example, the
 
 <P>Some keyboards have additional LEDs, and in a few cases we know
 how to manipulate those.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#chicony">Chicony keyboard</A> needs command sequences
 <B>eb</B> <B>00</B> <I>xy</I>, with
 <I>xy</I> = <B>01</B> for the Moon LED and
 <I>xy</I> = <B>02</B> for the zzZ LED.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#EZButton">IBM EZ Button keyboard</A> needs
 command sequences <B>eb</B> <B>00</B> <I>xy</I>, with
 <I>xy</I> = <B>01</B> for the Msg LED,
@@ -376,16 +376,16 @@ command sequences <B>eb</B> <B>00</B> <I>xy</I>, with
 <I>xy</I> = <B>04</B> for the Power LED,
 <I>xy</I> = <B>10</B> for the Talk LED, and
 <I>xy</I> = <B>20</B> for the Message Waiting LED.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#ibmrapidaccess">IBM Rapid Access keyboard</A> needs
 command sequences <B>eb</B> <B>00</B> <I>xy</I>, with
 <I>xy</I> = <B>04</B> for the Suspend LED and
 <I>xy</I> = <B>20</B> for the Mute LED.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#ibmrapidaccessii">IBM Rapid Access keyboard II</A> needs
 the command sequences <B>eb</B> <B>71</B> and <B>eb</B> <B>70</B>
 to switch the Standby LED on and off.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#logitechinternet">Logitech Internet Keyboard</A>
 has an additional amber LED. It is turned on by sending <B>eb</B>,
 and then blinks about once a second. It is turned off again by <B>ec</B>.
@@ -400,7 +400,7 @@ or labelled FN is often used to modify the meaning of other keys.
 This FN does not produce scancodes itself, it only modifies the
 scancodes produced by other keys.
 <P>
-<A NAME="dellnoup"></A> 
+<A NAME="dellnoup"></A>
 Neil Brown reports about his Dell Latitude D800 laptop that it has
 five key combinations that do not produce proper break codes.
 The five combinations FN+F2, FN+F3, FN+F10, FN+Down, FN+Up

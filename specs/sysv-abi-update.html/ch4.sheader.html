@@ -3,7 +3,7 @@
 <h1>Sections</h1><p>
 An object file's section header table lets one
 locate all the file's sections.
-The section header table is an array of <code>Elf32_Shdr</code> 
+The section header table is an array of <code>Elf32_Shdr</code>
 or <code>Elf64_Shdr</code> structures
 as described below.
 A section header table index is a subscript into this array.
@@ -19,7 +19,7 @@ has the value <code>SHN_UNDEF</code> (<code>0</code>) and the
 actual number of section header table
 entries is contained in the <code>sh_size</code> field of
 the section header at index <code>0</code>
-(otherwise, the <code>sh_size</code> member of the initial entry 
+(otherwise, the <code>sh_size</code> member of the initial entry
 contains <code>0</code>).
 <p>
 Some section header table indexes are reserved in contexts
@@ -27,7 +27,7 @@ where index size is restricted, for example, the <code>st_shndx</code>
 member of a symbol table entry and the <code>e_shnum</code> and
 <code>e_shstrndx</code> members of the ELF header.
 In such contexts, the reserved values do not represent actual
-sections in the object file.  Also in such contexts, an escape 
+sections in the object file.  Also in such contexts, an escape
 value indicates that the actual section
 index is to be found elsewhere, in a larger field.
 <hr>
@@ -201,7 +201,7 @@ Section types and their descriptions appear
 <p>
 <p><dt><code>sh_flags</code><dd>
 Sections support 1-bit flags that describe miscellaneous attributes.
-Flag definitions appear 
+Flag definitions appear
 <a href=#sh_flags>below</a>.
 <p>
 <p><dt><code>sh_addr</code><dd>
@@ -392,19 +392,19 @@ below for details.
 The section holds a symbol hash table.
 Currently, an object file may have only one hash table,
 but this restriction may be relaxed in the future.
-See 
+See
 <a href=ch5.dynamic.html#hash>``Hash Table''</a>
 in the Chapter 5 for details.
 <p><dt><code>SHT_DYNAMIC</code><dd>
 The section holds information for dynamic linking.
 Currently, an object file may have only one dynamic section,
 but this restriction may be relaxed in the future.
-See 
+See
 <a href=ch5.dynamic.html#dynamic_section>``Dynamic Section''</a>
 in Chapter 5 for details.
 <p><dt><code>SHT_NOTE</code><dd>
 The section holds information that marks the file in some way.
-See 
+See
 <a href=ch5.pheader.html#note_section>``Note Section''</a>
 in Chapter 5 for details.
 <p><dt><code>SHT_NOBITS</code><dd>
@@ -623,33 +623,33 @@ of an object file; this attribute is off for those sections.
 The section contains executable machine instructions.
 <a name=shf_merge></a>
 <p><dt><code>SHF_MERGE</code><dd>
-The data in the section may be merged to eliminate duplication. 
+The data in the section may be merged to eliminate duplication.
 Unless the <code>SHF_STRINGS</code> flag is also set,
 the data elements in the section are of a uniform size.
-The size of each element is specified in the section 
-header's <code>sh_entsize</code> field. 
+The size of each element is specified in the section
+header's <code>sh_entsize</code> field.
 If the <code>SHF_STRINGS</code> flag is also set,
 the data elements consist of null-terminated character strings.
 The size of each character is specified in the section
-header's <code>sh_entsize</code> field. 
+header's <code>sh_entsize</code> field.
 <p>
 Each element in the section is compared against other elements
 in sections with the same name, type and flags.
 Elements that would have identical values at program run-time
-may be merged. 
+may be merged.
 Relocations referencing elements of such sections must be
 resolved to the merged locations of the referenced values.
 Note that any relocatable values, including
 values that would result in run-time relocations, must be
 analyzed to determine whether the run-time values would actually
-be identical.  An ABI-conforming object file may not depend 
-on specific elements being merged, and an ABI-conforming 
+be identical.  An ABI-conforming object file may not depend
+on specific elements being merged, and an ABI-conforming
 link editor may choose not to merge specific elements.
 <a name=shf_strings></a>
 <p><dt><code>SHF_STRINGS</code><dd>
 The data elements in the section consist of null-terminated character
-strings.  The size of each character is specified in the section 
-header's <code>sh_entsize</code> field. 
+strings.  The size of each character is specified in the section
+header's <code>sh_entsize</code> field.
 <a name=shf_info_link></a>
 <p><dt><code>SHF_INFO_LINK</code><dd>
 The <code>sh_info</code> field of this section header holds a section
@@ -657,11 +657,11 @@ header table index.
 <a name=shf_link_order></a>
 <p><dt><code>SHF_LINK_ORDER</code><dd>
 This flag adds special ordering requirements for link editors.
-The requirements apply if the 
-<code>sh_link</code> field of this section's header references 
-another section (the linked-to section).  
+The requirements apply if the
+<code>sh_link</code> field of this section's header references
+another section (the linked-to section).
 If this section is combined with other
-sections in the output file, it must appear in the same 
+sections in the output file, it must appear in the same
 relative order with respect to those sections, as the linked-to section
 appears with respect to sections the linked-to section is combined with.
 <p>
@@ -774,11 +774,11 @@ reject the object containing the section with an error.
 Unrecognized sections that do not have the
 <code>SHF_OS_NONCONFORMING</code> attribute, are combined in a two-phase
 process.  As the link editor combines sections using this process,
-it must honor the alignment constraints of the 
+it must honor the alignment constraints of the
 input sections (asserted by the <code>sh_addralign</code> field),
 padding between sections with zero bytes, if necessary, and producing
 a combination with the maximum alignment constraint of its
-component input sections. 
+component input sections.
 <p>
 <ol>
 <li>
@@ -812,7 +812,7 @@ different from zero, where appropriate.
 <h2>Section Groups</h2>
 Some sections occur in interrelated groups.  For example, an out-of-line
 definition of an inline function might require, in addition to the
-section containing its executable instructions, a read-only data 
+section containing its executable instructions, a read-only data
 section containing literals referenced, one or more debugging information
 sections and other informational sections.  Furthermore, there may be
 internal references among these sections that would not make sense
@@ -822,15 +822,15 @@ included or omitted from the linked object as a unit.
 A section cannot be a member of more than one group.
 <p>
 A section of type <code>SHT_GROUP</code> defines such a grouping
-of sections. The name of a symbol from one of the containing 
+of sections. The name of a symbol from one of the containing
 object's symbol tables provides a signature for the section group.
 The section header of the <code>SHT_GROUP</code> section specifies
 the identifying symbol entry, as described above:
 the <code>sh_link</code> member contains the section header index
-of the symbol table section that contains the entry.  
-The <code>sh_info</code> member contains the symbol table index of 
+of the symbol table section that contains the entry.
+The <code>sh_info</code> member contains the symbol table index of
 the identifying entry.   The <code>sh_flags</code>
-member of the section header contains <code>0</code>. 
+member of the section header contains <code>0</code>.
 The name of the section (<code>sh_name</code>) is not specified.
 <p>
 The referenced signature symbol is not restricted.
@@ -895,7 +895,7 @@ group.
 <p>
 <a name="section_group_rules"></a>
 To facilitate removing a group without leaving dangling references
-and with only minimal processing of the symbol table, 
+and with only minimal processing of the symbol table,
 the following rules must be followed:
 <ul>
 <p><li>
@@ -1142,15 +1142,15 @@ to execute the code in this section.
 <p><dt><code>.fini_array</code><dd>
 This section holds an array of function pointers that contributes
 to a single termination array for the executable or shared
-object containing the section.  
+object containing the section.
 <p><dt><code>.got</code><dd>
 This section holds the global offset table.
 See ``Coding Examples'' in Chapter 3, ``Special Sections'' in
-Chapter 4, and ``Global Offset Table'' in Chapter 5 of the 
+Chapter 4, and ``Global Offset Table'' in Chapter 5 of the
 processor supplement for more information.
 <p><dt><code>.hash</code><dd>
 This section holds a symbol hash table.
-See 
+See
 <a href=ch5.dynamic.html#hash>``Hash Table''</a>
 in Chapter 5 for more information.
 <p><dt><code>.init</code><dd>
@@ -1202,7 +1202,7 @@ normally would have the name <code>.rel.text</code> or <code>.rela.text</code>.
 These sections hold read-only data that
 typically contribute to a non-writable segment
 in the process image.
-See 
+See
 <a href=ch5.pheader.html>``Program Header''</a>
 in Chapter 5 for more information.
 <p><dt><code>.shstrtab</code><dd>
@@ -1215,7 +1215,7 @@ symbol string table, the section's attributes will include the
 <code>SHF_ALLOC</code>
 bit; otherwise, that bit will be off.
 <p><dt><code>.symtab</code><dd>
-This section holds a symbol table, as 
+This section holds a symbol table, as
 <a href=ch4.symtab.html>``Symbol Table''</a>.
 in this chapter describes.
 If the file has a loadable segment that includes the

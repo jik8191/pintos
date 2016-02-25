@@ -101,7 +101,7 @@ EOF
 
 sub check_for_keyword {
     my ($run, $keyword, @output) = @_;
-    
+
     my ($kw_line) = grep (/$keyword/, @output);
     return unless defined $kw_line;
 

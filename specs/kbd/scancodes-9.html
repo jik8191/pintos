@@ -74,7 +74,7 @@ There is nothing special with the Pause key in scancode mode 3.
 <P>The 8042 microprocessor translates the incoming byte stream produced
 by the keyboard, and turns an <B>f0</B> prefix into an OR with
 <B>80</B> for the next byte.
-<A NAME="contagious"></A> 
+<A NAME="contagious"></A>
 (Some implementations do this for the next byte that does not have
 this bit set already. A consequence is that in Set 3 the keys with Set-3
 value 0x80 or more are broken in a peculiar way: hitting such a key and
@@ -86,7 +86,7 @@ releasing first Menu and then Sleep produces
 <B>8d</B> <B>f0</B> <B>8d</B> <B>54</B> <B>f0</B> <B>54</B>.
 Other implementations are OK.)
 <P>
-<A NAME="translationtable"></A> 
+<A NAME="translationtable"></A>
 Unless told not to translate, the keyboard controller translates
 keyboard scancodes into the scancodes it returns to the CPU
 using the following table (in hex):
@@ -117,7 +117,7 @@ f0 </TD><TD> - </TD><TD> f1?</TD><TD> f2?</TD><TD> f3?</TD><TD> f4?</TD><TD> f5?
 <I>PC 8042 Controller</I>, ISBN 0-929392-21-3.
 (Report by <CODE>vojtech@suse.cz</CODE>.)
 <P>A way to check this table is: (i) put the keyboard in untranslated modes
-1, 2, 3 and look at the 
+1, 2, 3 and look at the
 <A HREF="table.h">resulting values</A>,
 and (ii) put the keyboard in translated scancode modes 1, 2, 3. Now compare
 the values. The entries with question marks were not checked in this way.
@@ -182,7 +182,7 @@ coincide. ID <B>ab</B> <B>90</B> was also mentioned
 </H2>
 
 <P>For the traditional keys the correspondence is fairly clear:
-above we saw the 
+above we saw the
 <A HREF="#translationtable">translation table</A>,
 and Set 1 equals translated Set 2, and Set 3 equals Set 2 in most cases
 where Set 2 has a single (non-escaped) scancode,
@@ -192,7 +192,7 @@ and in any case the correspondence is constant (and given
 and other additional keys, and what happens for them is completely
 random, and varies from keyboard to keyboard.
 <P>Let us look at an example.
-<P>The 
+<P>The
 <A HREF="scancodes-5.html#msinternet">Microsoft Internet keyboard</A>
 has keys Search, Favorites, Stop, Forward, Back, My Computer,
 Mail, Web / Home, Calculator with translated Set 3 scancodes
@@ -232,19 +232,19 @@ to translated Set 2, except for the multimedia keys, where
 untranslated Set 1 equals untranslated Set 2.
 <P>(iv) A big advantage of Set 3 is that each key generates a unique code
 so that one does not need to parse sequences. However, the BTC keyboard
-mentioned 
+mentioned
 <A HREF="scancodes-5.html#BTC">above</A> generates <B>e0</B> <B>6f</B>
 for its Macro key also in scancode mode 3. The Safeway keyboard mentioned
 <A HREF="scancodes-5.html#safeway23">above</A> does not generate any codes
 for its multimedia keys in scancode mode 3.
 <P>(v) Some keyboard controllers cannot handle Set 3 values that are
-larger than 0x7f, and give 
+larger than 0x7f, and give
 <A HREF="#contagious">peculiar results</A>
 for e.g. the Windows keys in translated scancode mode 3.
 The result is that the following key is "eaten": the key down action
 turns into a key up.
 <P>(vi) The USB legacy support only supports translated Set 2.
-<P>(vii) The 
+<P>(vii) The
 <A HREF="http://www.microsoft.com/hwdev/download/desinit/scancode.zip">Microsoft Keyboard Scan Code Specification</A> writes:
 <I>In the very early days of Windows NT, an attempt was made
 to use the much more orthogonal Scan Code Set 3, but due to bugs
@@ -388,7 +388,7 @@ It is bad for having a stable system that just works.
 </H2>
 
 <P>
-<A NAME="logiteche2"></A> 
+<A NAME="logiteche2"></A>
 Logitech uses an <B>e2</B> prefix for the codes sent by a
 pointing device integrated on the keyboard.
 <P>

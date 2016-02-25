@@ -132,7 +132,7 @@ static void relay(int pty, int dead_child_fd) {
     pipes[0].out = pty;
     pipes[1].in = pty;
     pipes[1].out = STDOUT_FILENO;
-  
+
     while (pipes[1].in != -1) {
         fd_set read_fds, write_fds;
         int retval;
@@ -149,19 +149,19 @@ static void relay(int pty, int dead_child_fd) {
              */
             if (i == 0 && !pipes[1].active)
                 continue;
-          
+
             if (p->in != -1 && p->size + p->ofs < sizeof p->buf)
                 FD_SET(p->in, &read_fds);
             if (p->out != -1 && p->size > 0)
-                FD_SET(p->out, &write_fds); 
+                FD_SET(p->out, &write_fds);
         }
         FD_SET(dead_child_fd, &read_fds);
 
         do {
-            retval = select(FD_SETSIZE, &read_fds, &write_fds, NULL, NULL); 
+            retval = select(FD_SETSIZE, &read_fds, &write_fds, NULL, NULL);
         } while (retval < 0 && errno == EINTR);
 
-        if (retval < 0) 
+        if (retval < 0)
             fail_io("select");
 
         if (FD_ISSET(dead_child_fd, &read_fds))
@@ -294,7 +294,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
     memset(&zero_itimerval, 0, sizeof(zero_itimerval));
     if (setitimer(ITIMER_VIRTUAL, &zero_itimerval, &old_itimerval) < 0)
         fail_io("setitimer");
-  
+
     pid = fork();
     if (pid < 0) {
         fail_io("fork");
@@ -315,7 +315,7 @@ int main(int argc __attribute__ ((unused)), char *argv[]) {
             else if (WIFSIGNALED(status))
                 raise (WTERMSIG(status));
         }
-        return 0; 
+        return 0;
     }
     else {
         /* Running in child process. */

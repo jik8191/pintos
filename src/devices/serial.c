@@ -79,7 +79,7 @@ static void init_poll(void) {
     outb(MCR_REG, MCR_OUT2);             /* Required to enable interrupts. */
     intq_init(&txq);
     mode = POLL;
-} 
+}
 
 /*! Initializes the serial port device for queued interrupt-driven
     I/O.  With interrupt-driven I/O we don't waste CPU time
@@ -107,7 +107,7 @@ void serial_putc(uint8_t byte) {
            use dumb polling to transmit a byte. */
         if (mode == UNINIT)
             init_poll();
-        putc_poll(byte); 
+        putc_poll(byte);
     }
     else {
         /* Otherwise, queue a byte and update the interrupt enable register. */
@@ -117,10 +117,10 @@ void serial_putc(uint8_t byte) {
                we'd have to reenable interrupts.
                That's impolite, so we'll send a character via
                polling instead. */
-            putc_poll(intq_getc (&txq)); 
+            putc_poll(intq_getc (&txq));
         }
 
-        intq_putc(&txq, byte); 
+        intq_putc(&txq, byte);
         write_ier();
     }
 
@@ -158,7 +158,7 @@ static void set_serial(int bps) {
     /* Set data rate. */
     outb(LS_REG, divisor & 0xff);
     outb(MS_REG, divisor >> 8);
-  
+
     /* Reset DLAB. */
     outb(LCR_REG, LCR_N81);
 }
@@ -177,7 +177,7 @@ static void write_ier(void) {
        characters we receive. */
     if (!input_full())
         ier |= IER_RECV;
-  
+
     outb(IER_REG, ier);
 }
 
@@ -203,7 +203,7 @@ static void serial_interrupt(struct intr_frame *f UNUSED) {
 
     /* As long as we have a byte to transmit, and the hardware is
        ready to accept a byte for transmission, transmit a byte. */
-    while (!intq_empty(&txq) && (inb(LSR_REG) & LSR_THRE) != 0) 
+    while (!intq_empty(&txq) && (inb(LSR_REG) & LSR_THRE) != 0)
         outb(THR_REG, intq_getc(&txq));
 
     /* Update interrupt enable register based on queue status. */

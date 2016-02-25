@@ -90,7 +90,7 @@ both 32 and 64-bit objects.
 This member currently specifies a symbol's visibility.
 A list of the values and meanings appears <a href=#visibility>below</a>.
 The following code shows how to manipulate the values for
-both 32 and 64-bit objects.  Other bits contain 0 and have 
+both 32 and 64-bit objects.  Other bits contain 0 and have
 no defined meaning.
 <hr>
 <PRE>
@@ -347,7 +347,7 @@ rules as follows: instead of binding the reference to
 the first symbol found with the given name, the dynamic linker searches
 for the first symbol with that name with type other
 than <code>STT_COMMON</code>.  If no such symbol is found,
-it looks for the <code>STT_COMMON</code> definition of that 
+it looks for the <code>STT_COMMON</code> definition of that
 name that has the largest size.
 <a name=visibility></a>
 <p>
@@ -384,7 +384,7 @@ become part of an executable or shared object.
 The visibility of symbols with the <code>STV_DEFAULT</code>
 attribute is as specified by the symbol's binding type.
 That is, global and weak symbols are visible
-outside of their defining <i>component</i> 
+outside of their defining <i>component</i>
 (executable file or shared object).
 Local symbols are <i>hidden</i>, as described below.
 Global and weak symbols are also <i>preemptable</i>,
@@ -428,7 +428,7 @@ from another component if its address is passed outside.
 <p>
 A hidden symbol contained in a relocatable object must be
 either removed or converted to <code>STB_LOCAL</code> binding
-by the link-editor when the relocatable object is included in an 
+by the link-editor when the relocatable object is included in an
 executable file or shared object.
 <p><dt><code>STV_INTERNAL</code><dd>
 The meaning of this visibility attribute may be defined by processor
@@ -438,7 +438,7 @@ can safely treat internal symbols as hidden.
 <p>
 An internal symbol contained in a relocatable object must be
 either removed or converted to <code>STB_LOCAL</code> binding
-by the link-editor when the relocatable object is included in an 
+by the link-editor when the relocatable object is included in an
 executable file or shared object.
 </dl>
 <p>
@@ -504,7 +504,7 @@ This value is an escape value.
 It indicates that the symbol refers to a specific location within a section,
 but that the section header index for that section is too large to be
 represented directly in the symbol table entry.
-The actual section header index is found in the associated 
+The actual section header index is found in the associated
 <code>SHT_SYMTAB_SHNDX</code> section.
 The entries in that section correspond one to one
 with the entries in the symbol table.

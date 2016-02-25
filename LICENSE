@@ -26,7 +26,7 @@ license:
 A few individual files in Pintos were originally derived from other
 projects, but they have been extensively modified for use in Pintos.
 The original code falls under the original license, and modifications
-for Pintos are additionally covered by the Pintos license above. 
+for Pintos are additionally covered by the Pintos license above.
 
 In particular, code derived from Nachos is subject to the following
 license:
