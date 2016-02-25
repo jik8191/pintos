@@ -151,6 +151,10 @@ bool valid_pointer(void **pointer, int size) {
             }
         }
     }
+    if (addr == NULL){
+        printf("Invalid pointer!");
+        return false;
+    }
     return true;
 }
 
