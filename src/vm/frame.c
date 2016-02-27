@@ -1,5 +1,6 @@
 #include "frame.h"
-#include "palloc.h"
+
+#include "threads/malloc.h"
 
 /* ----- Declarations ----- */
 
@@ -13,13 +14,15 @@ unsigned frame_hash(const struct hash_elem *, void *);
 
 /*! Initialize the data structures needed for managing the page frame
     abstraction. */
-void frame_init() {
+void frame_init(void)
+{
     hash_init(&frametable, frame_hash, frame_less, NULL);
 }
 
 
 /*! Return a virtual page and create a frame in the process. */
-void * frame_get_page(enum palloc_flags flags) {
+void * frame_get_page(enum palloc_flags flags)
+{
     void * page = palloc_get_page (flags);
 
     if (page == NULL) {
@@ -27,11 +30,11 @@ void * frame_get_page(enum palloc_flags flags) {
         return NULL;
     }
 
-    struct frame *f = malloc (sizeof struct frame);
+    struct frame *f = malloc (sizeof (struct frame));
     f->paddr = page;
 
     /* Insert it into the frame table */
-    hash_insert(&hash_table, &f->elem);
+    hash_insert(&frametable, &f->elem);
 
     return page;
 }
@@ -41,7 +44,8 @@ void * frame_get_page(enum palloc_flags flags) {
     If a frame exists with the specified page address in the frame table, we
     return the address of the frame. Otherwise, we return NULL, suggesting that
     the specified page is not in a physical page frame at the moment. */
-struct frame * frame_lookup(const void *paddr) {
+struct frame * frame_lookup(void *paddr)
+{
     struct frame f;
     struct hash_elem *e;
 
@@ -58,7 +62,8 @@ struct frame * frame_lookup(const void *paddr) {
 bool frame_less(
     const struct hash_elem *a,
     const struct hash_elem *b,
-    void *aux UNUSED) {
+    void *aux UNUSED)
+{
 
     struct frame *aframe = hash_entry(a, struct frame, elem);
     struct frame *bframe = hash_entry(b, struct frame, elem);
@@ -67,7 +72,8 @@ bool frame_less(
 }
 
 /*! The function used to hash two frames */
-unsigned frame_hash(const struct hash_elem *e, void *aux UNUSED) {
+unsigned frame_hash(const struct hash_elem *e, void *aux UNUSED)
+{
     struct frame *f = hash_entry(e, struct frame, elem);
-    return hash_bytes (&f->addr, sizeof f->addr);
+    return hash_bytes (&f->paddr, sizeof (f->paddr));
 }

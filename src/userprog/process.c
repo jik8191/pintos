@@ -18,8 +18,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
 #include "userprog/syscall.h"
+#include "vm/frame.h"
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *program_name, void (**eip) (void), void **esp,
@@ -64,6 +64,7 @@ tid_t process_execute(const char *file_name) {
 
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
+        palloc_free_page(program_name);
     } else {
         /* Add the thread to the children of the current thread. */
         struct childinfo *ci = malloc(sizeof(struct childinfo));
@@ -488,7 +489,8 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* Get a page of memory. */
-        uint8_t *kpage = palloc_get_page(PAL_USER);
+        /* uint8_t *kpage = palloc_get_page(PAL_USER); */
+        uint8_t *kpage = frame_get_page(PAL_USER);
         if (kpage == NULL)
             return false;
 
@@ -520,7 +522,8 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    /* kpage = palloc_get_page(PAL_USER | PAL_ZERO); */
+    kpage = frame_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success)
