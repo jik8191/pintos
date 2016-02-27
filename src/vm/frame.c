@@ -1,4 +1,5 @@
 #include "frame.h"
+#include "palloc.h"
 
 /* ----- Declarations ----- */
 
@@ -16,9 +17,24 @@ void frame_init() {
     hash_init(&frametable, frame_hash, frame_less, NULL);
 }
 
-void frame_get_page() {
-}
 
+/*! Return a virtual page and create a frame in the process. */
+void * frame_get_page(enum palloc_flags flags) {
+    void * page = palloc_get_page (flags);
+
+    if (page == NULL) {
+        // TODO: Fail
+        return NULL;
+    }
+
+    struct frame *f = malloc (sizeof struct frame);
+    f->paddr = page;
+
+    /* Insert it into the frame table */
+    hash_insert(&hash_table, &f->elem);
+
+    return page;
+}
 
 /*! Look up a frame by the address of the page occupying it.
 
