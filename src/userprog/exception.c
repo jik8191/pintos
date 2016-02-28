@@ -150,7 +150,7 @@ static void page_fault(struct intr_frame *f) {
 
     /* If the process was not found in the supplemental page entry kill
      * the process. */
-    if (page_entry == NULL) {
+    if (page_entry == NULL || !not_present) {
         printf("Page fault at %p: %s error %s page in %s context.\n",
            fault_addr,
            not_present ? "not present" : "rights violation",
@@ -164,7 +164,6 @@ static void page_fault(struct intr_frame *f) {
 
     /* Getting all of the necessary variables to load the process. */
     struct file *file = page_entry->file;
-    /* TODO is this the right way? */
     uint8_t *upage = (uint8_t *) page_entry->upaddr;
     off_t ofs = page_entry->ofs;
     uint32_t read_bytes = page_entry->read_bytes;
@@ -174,6 +173,8 @@ static void page_fault(struct intr_frame *f) {
     /* Doing the loading */
     file_seek(file, ofs);
     while (read_bytes > 0 || zero_bytes > 0) {
+        printf("Upage: %p\n", upage);
+        printf("Writable: %d\n", writable);
         /* Calculate how to fill this page.
            We will read PAGE_READ_BYTES bytes from FILE
            and zero the final PAGE_ZERO_BYTES bytes. */
@@ -183,12 +184,15 @@ static void page_fault(struct intr_frame *f) {
         /* Get a page of memory. */
         uint8_t *kpage = frame_get_page(PAL_USER);
         /* TODO if this is null you will want to swapping */
-        if (kpage == NULL)
+        if (kpage == NULL) {
+            printf("Couldn't get a frame\n");
             kill(f);
+        }
 
         /* Load this page. */
         if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
             palloc_free_page(kpage);
+            printf("Couldn't load the page\n");
             kill(f);
         }
         memset(kpage + page_read_bytes, 0, page_zero_bytes);
@@ -198,6 +202,7 @@ static void page_fault(struct intr_frame *f) {
          * function so this is not ideal. */
         if (!install_page(upage, kpage, writable)) {
             palloc_free_page(kpage);
+            printf("Couldn't install the page\n");
             kill(f);
         }
 

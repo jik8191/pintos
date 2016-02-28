@@ -71,5 +71,6 @@ bool spte_insert (struct thread* t,
     entry->writable = writable;
 
     // insert entry into thread t's supplemental page table
-    return hash_insert(&(t->spt), &(entry->hash_elem));
+    /* TODO this is pretty stupid */
+    return (hash_insert(&(t->spt), &(entry->hash_elem)) == NULL);
 }

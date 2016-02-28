@@ -502,6 +502,9 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          spte_zero_bytes, writable) == false){
             return false;
         }
+        else {
+            printf("new page in supp table: %p\n", upage);
+        }
 
         /* Advance. */
         read_bytes -= spte_read_bytes;
