@@ -490,6 +490,9 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 #ifdef VM
     struct thread *t = thread_current();
+
+    off_t curr_ofs = ofs;
+
     // Store the necessary information instead of actually loading anything yet
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page when it is fetched.
@@ -498,18 +501,16 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         uint32_t spte_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
 
-        if (spte_insert (t, upage, file, ofs, spte_read_bytes,
+        if (spte_insert (t, upage, file, curr_ofs, spte_read_bytes,
                          spte_zero_bytes, writable) == false){
             return false;
-        }
-        else {
-            printf("new page in supp table: %p\n", upage);
         }
 
         /* Advance. */
         read_bytes -= spte_read_bytes;
         zero_bytes -= spte_zero_bytes;
         upage += PGSIZE;
+        curr_ofs += PGSIZE;
     }
 #else
     file_seek(file, ofs);
@@ -521,7 +522,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* Get a page of memory. */
-         uint8_t *kpage = palloc_get_page(PAL_USER);
+        uint8_t *kpage = palloc_get_page(PAL_USER);
         if (kpage == NULL)
             return false;
 
@@ -555,7 +556,6 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    /* kpage = palloc_get_page(PAL_USER | PAL_ZERO); */
     kpage = frame_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);

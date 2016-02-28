@@ -144,8 +144,6 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is not present, lookup the page in the supplemental
      * page table. */
 
-    printf("In the page fault handler for address: %p\n", fault_addr);
-
     struct spte *page_entry = spte_lookup(fault_addr);
 
     /* If the process was not found in the supplemental page entry kill
@@ -170,47 +168,30 @@ static void page_fault(struct intr_frame *f) {
     uint32_t zero_bytes = page_entry->zero_bytes;
     bool writable = page_entry->writable;
 
-    /* Doing the loading */
     file_seek(file, ofs);
-    while (read_bytes > 0 || zero_bytes > 0) {
-        printf("Upage: %p\n", upage);
-        printf("Writable: %d\n", writable);
-        /* Calculate how to fill this page.
-           We will read PAGE_READ_BYTES bytes from FILE
-           and zero the final PAGE_ZERO_BYTES bytes. */
-        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-        size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-        /* Get a page of memory. */
-        uint8_t *kpage = frame_get_page(PAL_USER);
-        /* TODO if this is null you will want to swapping */
-        if (kpage == NULL) {
-            printf("Couldn't get a frame\n");
-            kill(f);
-        }
-
-        /* Load this page. */
-        if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
-            palloc_free_page(kpage);
-            printf("Couldn't load the page\n");
-            kill(f);
-        }
-        memset(kpage + page_read_bytes, 0, page_zero_bytes);
-
-        /* Add the page to the process's address space. */
-        /* Calling install page from process.c, it is originally a static
-         * function so this is not ideal. */
-        if (!install_page(upage, kpage, writable)) {
-            palloc_free_page(kpage);
-            printf("Couldn't install the page\n");
-            kill(f);
-        }
-
-        /* Advance. */
-        read_bytes -= page_read_bytes;
-        zero_bytes -= page_zero_bytes;
-        upage += PGSIZE;
+    /* Get a page of memory. */
+    uint8_t *kpage = palloc_get_page(PAL_USER);
+    /* TODO if this is null you will want to swapping */
+    if (kpage == NULL) {
+        printf("Couldn't get a frame\n");
+        kill(f);
     }
-    printf("Handled a page fault\n");
+
+    /* Load this page. */
+    if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
+        printf("Couldn't load the page\n");
+        palloc_free_page(kpage);
+        kill(f);
+    }
+    memset(kpage + read_bytes, 0, zero_bytes);
+
+    /* Add the page to the process's address space. */
+    if (!install_page(upage, kpage, writable)) {
+        printf("Couldn't install the page\n");
+        palloc_free_page(kpage);
+        kill(f);
+    }
+
 }
 
