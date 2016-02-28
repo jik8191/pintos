@@ -4,6 +4,13 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "vm/page.h"
+#include "threads/palloc.h"
+#include <string.h>
+#include "threads/vaddr.h"
+#include "vm/frame.h"
+#include "userprog/process.h"
+
 
 /*! Number of page faults processed. */
 static long long page_fault_cnt;
@@ -137,15 +144,68 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is not present, lookup the page in the supplemental
      * page table. */
 
+    struct spte *page_entry = spte_lookup(fault_addr);
 
-    /* To implement virtual memory, delete the rest of the function
-       body, and replace it with code that brings in the page to
-       which fault_addr refers. */
-    printf("Page fault at %p: %s error %s page in %s context.\n",
+    printf("In the page fault handler\n");
+
+    /* If the process was not found in the supplemental page entry kill
+     * the process. */
+    if (page_entry == NULL) {
+        printf("Page fault at %p: %s error %s page in %s context.\n",
            fault_addr,
            not_present ? "not present" : "rights violation",
            write ? "writing" : "reading",
            user ? "user" : "kernel");
-    kill(f);
+
+        kill(f);
+    }
+
+    /* If it was found, you need to load the process */
+
+    /* Getting all of the necessary variables to load the process. */
+    struct file *file = page_entry->file;
+    /* TODO is this the right way? */
+    uint8_t *upage = (uint8_t *) page_entry->upaddr;
+    off_t ofs = page_entry->ofs;
+    uint32_t read_bytes = page_entry->read_bytes;
+    uint32_t zero_bytes = page_entry->zero_bytes;
+    bool writable = page_entry->writable;
+
+    /* Doing the loading */
+    file_seek(file, ofs);
+    while (read_bytes > 0 || zero_bytes > 0) {
+        /* Calculate how to fill this page.
+           We will read PAGE_READ_BYTES bytes from FILE
+           and zero the final PAGE_ZERO_BYTES bytes. */
+        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+        /* Get a page of memory. */
+        uint8_t *kpage = frame_get_page(PAL_USER);
+        /* TODO if this is null you will want to swapping */
+        if (kpage == NULL)
+            kill(f);
+
+        /* Load this page. */
+        if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
+            palloc_free_page(kpage);
+            kill(f);
+        }
+        memset(kpage + page_read_bytes, 0, page_zero_bytes);
+
+        /* Add the page to the process's address space. */
+        /* Calling install page from process.c, it is originally a static
+         * function so this is not ideal. */
+        if (!install_page(upage, kpage, writable)) {
+            palloc_free_page(kpage);
+            kill(f);
+        }
+
+        /* Advance. */
+        read_bytes -= page_read_bytes;
+        zero_bytes -= page_zero_bytes;
+        upage += PGSIZE;
+    }
+    printf("Handled a page fault\n");
 }
 
