@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *program_name, void (**eip) (void), void **esp,
@@ -309,6 +310,13 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
     t->pagedir = pagedir_create();
     if (t->pagedir == NULL)
         goto done;
+    /* Initialize the supplemental page table. */
+#ifdef VM
+    if (spt_init(t) == 0)
+        goto done;
+#endif
+    
+    /* Record the necessary information in the SPT later as well. */
     process_activate();
 
     /* Open executable file. */
@@ -480,6 +488,27 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     ASSERT(pg_ofs(upage) == 0);
     ASSERT(ofs % PGSIZE == 0);
 
+#ifdef VM
+    struct thread *t = thread_current();
+    // Store the necessary information instead of actually loading anything yet
+    while (read_bytes > 0 || zero_bytes > 0) {
+        /* Calculate how to fill this page when it is fetched.
+           We will read SPTE_READ_BYTES bytes from FILE
+           and zero the final SPTE_ZERO_BYTES bytes. */
+        uint32_t spte_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
+        
+        if (spte_insert (t, upage, file, ofs, spte_read_bytes, 
+                         spte_zero_bytes, writable) == false){
+            return false;
+        }
+
+        /* Advance. */
+        read_bytes -= spte_read_bytes;
+        zero_bytes -= spte_zero_bytes;
+        upage += PGSIZE;
+    }
+#else 
     file_seek(file, ofs);
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.
@@ -512,6 +541,8 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
     }
+#endif // VM
+
     return true;
 }
 

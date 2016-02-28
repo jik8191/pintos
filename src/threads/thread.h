@@ -10,7 +10,8 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
-#include "lib/kernel/fixed_point.h"
+#include <fixed_point.h>
+#include <hash.h>
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -148,6 +149,9 @@ struct thread {
     /**@{*/
 #endif
 
+#ifdef VM
+    struct hash spt;                    /*!< Supplemental page table */
+#endif
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
