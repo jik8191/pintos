@@ -144,9 +144,9 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is not present, lookup the page in the supplemental
      * page table. */
 
-    struct spte *page_entry = spte_lookup(fault_addr);
+    printf("In the page fault handler for address: %p\n", fault_addr);
 
-    printf("In the page fault handler\n");
+    struct spte *page_entry = spte_lookup(fault_addr);
 
     /* If the process was not found in the supplemental page entry kill
      * the process. */
