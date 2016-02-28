@@ -310,12 +310,11 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
     t->pagedir = pagedir_create();
     if (t->pagedir == NULL)
         goto done;
+
     /* Initialize the supplemental page table. */
-#ifdef VM
     if (spt_init(t) == 0)
         goto done;
-#endif
-    
+
     /* Record the necessary information in the SPT later as well. */
     process_activate();
 
@@ -497,8 +496,8 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
            and zero the final SPTE_ZERO_BYTES bytes. */
         uint32_t spte_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
-        
-        if (spte_insert (t, upage, file, ofs, spte_read_bytes, 
+
+        if (spte_insert (t, upage, file, ofs, spte_read_bytes,
                          spte_zero_bytes, writable) == false){
             return false;
         }
@@ -508,7 +507,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         zero_bytes -= spte_zero_bytes;
         upage += PGSIZE;
     }
-#else 
+#else
     file_seek(file, ofs);
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.

@@ -149,9 +149,7 @@ struct thread {
     /**@{*/
 #endif
 
-#ifdef VM
     struct hash spt;                    /*!< Supplemental page table */
-#endif
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
