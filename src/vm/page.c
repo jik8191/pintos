@@ -57,7 +57,8 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
  */
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
-                  uint32_t read_bytes, uint32_t zero_bytes, bool writable){
+                  uint32_t read_bytes, uint32_t zero_bytes,
+                  bool stack_page, bool writable){
     struct spte *entry;
     entry = malloc(sizeof(struct spte));
     if (entry == NULL)
@@ -68,6 +69,7 @@ bool spte_insert (struct thread* t,
     entry->ofs = ofs;
     entry->read_bytes = read_bytes;
     entry->zero_bytes = zero_bytes;
+    entry->stack_page = stack_page;
     entry->writable = writable;
 
     // insert entry into thread t's supplemental page table

@@ -19,6 +19,7 @@ struct spte {
     uint32_t read_bytes;
     uint32_t zero_bytes;
     bool writable;
+    bool stack_page; /*! True if this entry represents a stack entry page. */
     struct hash_elem hash_elem; /*!< To put spte in spt. */
 };
 
@@ -31,6 +32,7 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
-                  uint32_t read_bytes, uint32_t zero_bytes, bool writable);
+                  uint32_t read_bytes, uint32_t zero_bytes, bool stack_page,
+                  bool writable);
 
 #endif /* vm/page.h */

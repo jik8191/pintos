@@ -150,6 +150,7 @@ struct thread {
 #endif
 
     struct hash spt;                    /*!< Supplemental page table */
+
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */

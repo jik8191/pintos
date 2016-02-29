@@ -502,7 +502,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
 
         if (spte_insert (t, upage, file, curr_ofs, spte_read_bytes,
-                         spte_zero_bytes, writable) == false){
+                         spte_zero_bytes, false, writable) == false){
             return false;
         }
 
@@ -559,8 +559,12 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     kpage = frame_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-        if (success)
+        if (success) {
             *esp = PHYS_BASE;  // start at top of user address space
+            /* Inserting the stack page into the supplemental page table */
+            spte_insert(thread_current(), PHYS_BASE - PGSIZE, NULL, 0, 0,
+                        PGSIZE, true, true);
+        }
         else {
             palloc_free_page(kpage);
             return success;
