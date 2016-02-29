@@ -23,12 +23,6 @@ static void *valid_pointer(void **pointer, int size);
 static void *valid_numeric(void *addr, int size);
 
 /* Conversion functions */
-static int to_int(void *addr);
-static const char *to_cchar_p(void *addr);
-static unsigned to_unsigned(void *addr);
-static const void *to_cvoid_p(void *addr, unsigned size);
-static void *to_void_p(void *addr, unsigned size);
-
 static void *validate_arg(void *addr, enum conversion_type ct, int size,
                           struct intr_frame *f);
 
@@ -101,7 +95,7 @@ static void syscall_handler(struct intr_frame *f) {
                                                        -1, f);
             unsigned_arg = * (unsigned *) validate_arg(arg1, CONVERT_NUMERIC,
                                                        sizeof(unsigned), f);
-            f->eax = sys_create(to_cchar_p(arg0), unsigned_arg);
+            f->eax = sys_create(cchar_arg, unsigned_arg);
             break;
         case SYS_REMOVE:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
@@ -269,67 +263,6 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size,
         default:
             thread_exit();
     }
-}
-
-
-/* Gets the integer starting from the given address. */
-static int to_int(void *addr) {
-    void *kernel_addr = valid_numeric(addr, sizeof(int));
-
-    if (kernel_addr == NULL) {
-        thread_exit();
-    }
-
-    return * (int *) kernel_addr;
-}
-
-/* Gets a const char * pointer from the given address. Terminates the process
- * if the pointer is invalid */
-static const char *to_cchar_p(void *addr) {
-    /* Check if the pointer is invalid */
-    void *kernel_addr = valid_pointer(addr, -1);
-
-    if (kernel_addr == NULL) {
-        thread_exit();
-    }
-
-    return * (const char **) addr;
-}
-
-/* Gets an unsigned starting from the given address. */
-static unsigned to_unsigned(void *addr) {
-    /* Check if the pointer is invalid */
-
-    void *kernel_addr = valid_numeric(addr, sizeof(unsigned));
-    if (kernel_addr == NULL) {
-        thread_exit();
-    }
-
-    return * (unsigned *) addr;
-}
-
-/* Gets a void pointer from the given address. */
-static const void*to_cvoid_p(void *addr, unsigned size) {
-    /* Check if the pointer is invalid */
-    void *kernel_addr = valid_pointer(addr, size);
-
-    if (kernel_addr == NULL) {
-        thread_exit();
-    }
-
-    return * (const void **) addr;
-}
-
-/* Gets a void pointer from the given address. */
-static void *to_void_p(void *addr, unsigned size) {
-    /* Check if the pointer is invalid */
-    void *kernel_addr = valid_pointer(addr, size);
-
-    if (kernel_addr == NULL) {
-        thread_exit();
-    }
-
-    return * (void **) addr;
 }
 
 void sys_halt(void) {
