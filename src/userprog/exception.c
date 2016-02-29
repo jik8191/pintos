@@ -158,9 +158,9 @@ static void page_fault(struct intr_frame *f) {
      * page table. */
 
     struct spte *page_entry = spte_lookup(fault_addr);
-
     /* If the process was not found in the supplemental page entry kill
      * the process. Unless its from growing the stack. */
+
     if (page_entry == NULL) {
         /* TODO check if the error comes from growing the stack. */
 
@@ -168,6 +168,8 @@ static void page_fault(struct intr_frame *f) {
          * from a push or pusha. */
         if (fault_addr < f->esp && fault_addr != f->esp - 4 &&
             fault_addr != f->esp -32) {
+            /*printf("The address: %p\n", fault_addr);*/
+            /*printf("The stack: %p\n", f->esp);*/
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
@@ -182,7 +184,7 @@ static void page_fault(struct intr_frame *f) {
         /* TODO PGSIZE is really big, might want to make this smaller. Do you
          * need to check that its below PHYS_BASE as well? */
         else if (fault_addr < f->esp - PGSIZE) {
-               printf("Page fault at %p: %s error %s page in %s context.\n",
+            printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
                write ? "writing" : "reading",
@@ -196,7 +198,12 @@ static void page_fault(struct intr_frame *f) {
         uint8_t *kpage = palloc_get_page(PAL_USER | PAL_ZERO);
 
         /* Where the next stack page starts */
-        uint8_t *new_stack = (void *) ((unsigned long) fault_addr & (PTMASK | PDMASK));
+        uint8_t *new_stack = (void *) ((unsigned long)
+                                fault_addr & (PTMASK | PDMASK));
+
+        /*printf("The old stack: %p\n", f->esp);*/
+        /*printf("The address: %p\n", fault_addr);*/
+        /*printf("The new stack: %p\n", new_stack);*/
 
         if (kpage == NULL) {
             printf("Couldn't get a frame\n");
@@ -216,6 +223,10 @@ static void page_fault(struct intr_frame *f) {
     }
 
     else {
+
+        /*printf("You actually found it?????????????????????\n");*/
+        /*printf("The old stack: %p\n", f->esp);*/
+        /*printf("The address: %p\n", fault_addr);*/
 
         /* If it was found, you need to load the process */
 
@@ -243,6 +254,7 @@ static void page_fault(struct intr_frame *f) {
             palloc_free_page(kpage);
             kill(f);
         }
+
         memset(kpage + read_bytes, 0, zero_bytes);
 
         /* Add the page to the process's address space. */

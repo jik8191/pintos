@@ -16,5 +16,10 @@ struct fd_elem {
     struct file *file_struct;
 };
 
+enum conversion_type {
+    CONVERT_NUMERIC,
+    CONVERT_POINTER
+};
+
 #endif /* userprog/syscall.h */
 
