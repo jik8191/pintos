@@ -7,8 +7,11 @@
 #define PF_U 0x4    /*!< 0: kernel, 1: user process. */
 /*! @} */
 
+#include "threads/interrupt.h"
+
 void exception_init(void);
 void exception_print_stats(void);
+void expand_stack(struct intr_frame *f, void *addr);
 
 #endif /* userprog/exception.h */
 

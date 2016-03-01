@@ -160,7 +160,6 @@ static void page_fault(struct intr_frame *f) {
     struct spte *page_entry = spte_lookup(fault_addr);
     /* If the process was not found in the supplemental page entry kill
      * the process. Unless its from growing the stack. */
-
     if (page_entry == NULL) {
         /* TODO check if the error comes from growing the stack. */
 
@@ -168,9 +167,9 @@ static void page_fault(struct intr_frame *f) {
          * from a push or pusha. */
         if (fault_addr < f->esp && fault_addr != f->esp - 4 &&
             fault_addr != f->esp -32) {
-            printf("With thread: %s\n", thread_current()->name);
-            printf("The address: %p\n", fault_addr);
-            printf("The stack: %p\n", f->esp);
+            /*printf("With thread: %s\n", thread_current()->name);*/
+            /*printf("The address: %p\n", fault_addr);*/
+            /*printf("The stack: %p\n", f->esp);*/
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
@@ -268,3 +267,27 @@ static void page_fault(struct intr_frame *f) {
     }
 }
 
+void expand_stack(struct intr_frame *f, void *addr) {
+    /* Getting a page */
+    uint8_t *kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+
+    /* Where the next stack page starts */
+    uint8_t *new_stack = (void *) ((unsigned long)
+                            addr & (PTMASK | PDMASK));
+
+    if (kpage == NULL) {
+        printf("Couldn't get a frame\n");
+        kill(f);
+    }
+
+    /* Installing the page */
+    if (!install_page(new_stack, kpage, true)) {
+        printf("Couldn't install the page\n");
+        palloc_free_page(kpage);
+        kill(f);
+    }
+
+    /* Putting it into the supplemental page table */
+    spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
+                true, true);
+}

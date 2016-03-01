@@ -15,6 +15,7 @@
 #include "threads/malloc.h"
 
 #include "vm/page.h"
+#include "userprog/exception.h"
 
 bool debug_mode = false;
 
@@ -43,6 +44,7 @@ unsigned sys_tell(int fd);
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
+bool can_write(void *buffer, int size);
 
 void syscall_init(void) {
     lock_init(&file_lock);
@@ -184,6 +186,11 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
             if (addr > f->esp && addr < STACK_FLOOR) {
                 return NULL;
             }
+            /* If you reach this point it means that you want to expand the
+             * stack. */
+            /* TODO find a way to trigger a pagefault on addr. Or find a way
+             * to get a new page for the stack. */
+            expand_stack(f, addr);
         }
     }
 
@@ -217,6 +224,7 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
                     if (addr > f->esp && addr < STACK_FLOOR) {
                         return NULL;
                     }
+                    expand_stack(f, addr);
                 }
             }
 
@@ -227,8 +235,11 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
 
     } else {
         /* Check each byte in the specified byte range. */
+        if (debug_mode)
+            printf("Size of area to check: %d\n", size);
         for (i = 1; i < size; i++) {
             addr = *(pointer) + i;
+            /*printf("The address being checked: %p\n", addr);*/
 
             if (!is_user_vaddr(addr)) {
                 return NULL;
@@ -244,6 +255,7 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
                     if (addr > f->esp && addr < STACK_FLOOR) {
                         return NULL;
                     }
+                    expand_stack(f, addr);
                 }
             }
         }
@@ -437,6 +449,10 @@ int sys_read(int fd, void *buffer, unsigned size) {
     if (debug_mode)
         printf("in sys_read with thread: %d\n", thread_current()->tid);
 
+    if (!can_write(buffer, size)) {
+        lock_release(&file_lock);
+        thread_exit();
+    }
 
     if (fd == 0) {
         /* Switching to a char * buffer */
@@ -572,4 +588,17 @@ struct fd_elem *get_file(int fd) {
         }
     }
     return NULL;
+}
+
+/* A function that verifies that you can write to an area of memory. Should
+ * have already been checked that it is mapped. */
+bool can_write(void *addr, int size) {
+    int i = 0;
+    for (; i < size; i++) {
+        struct spte *page_entry = spte_lookup(addr);
+        ASSERT(page_entry != NULL);
+        if (page_entry->writable != true)
+            return false;
+    }
+    return true;
 }
