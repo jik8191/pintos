@@ -41,6 +41,7 @@ int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
+mapid_t sys_mmap(int fd, void *addr);
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
@@ -152,6 +153,14 @@ static void syscall_handler(struct intr_frame *f) {
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int), f);
             sys_close(int_arg);
+            break;
+        case SYS_MMAP:
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int), f);
+            /* TODO This should be unmapped, validate as numeric? */
+            void_arg = * (void **) validate_arg(arg1, CONVERT_NUMERIC,
+                                                sizeof(void *), f);
+            f->eax = sys_mmap(int_arg, void_arg);
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -576,6 +585,75 @@ void sys_close(int fd) {
     free(file_info);
 
     lock_release(&file_lock);
+}
+
+/* Make a memory mapping for the given file. */
+mapid_t sys_mmap(int fd, void *addr) {
+
+    /* Fail if the addr is not page aligned. */
+    if (addr != pg_round_down(addr))
+        return MAP_FAILED;
+
+    /* Fail if the address is 0. */
+    if (addr == 0)
+        return MAP_FAILED;
+
+
+    /* Locking the filesys. */
+    lock_acquire(&file_lock);
+
+    /* Getting the fd struct */
+    struct fd_elem *file_info = get_file(fd);
+    /* If the file wasn't found just release the lock and kill the process. */
+    if (file_info == NULL) {
+        lock_release(&file_lock);
+        return MAP_FAILED;
+    }
+
+    /* Loop through and take pagesize chunks of the file and put them in
+     * the supplemental page table. */
+
+    /* Variables to use. */
+    void * page_addr = addr;
+    uint32_t page_offset = 0;
+    uint32_t read_bytes, zero_bytes;
+    int bytes_loaded = 0;
+    struct file *file = file_info->file_struct;
+    int size = file_length(file);
+
+    /* Fail if the file has no size */
+    if (size == 0) {
+        lock_release(&file_lock);
+        return MAP_FAILED;
+    }
+
+    /* Checking if any of the page mapping exists. */
+    int i = 0;
+    for (; i < size; i++) {
+        if (spte_lookup(addr + i) != NULL) {
+            lock_release(&file_lock);
+            return MAP_FAILED;
+        }
+    }
+
+    while(bytes_loaded < size) {
+        /* The variables for this supplemental page table entry */
+        read_bytes = bytes_loaded + PGSIZE <= size ? PGSIZE : size - bytes_loaded;
+        zero_bytes = PGSIZE - read_bytes;
+
+        /* Inserting into the supplemental page table */
+        spte_insert(thread_current(), (uint8_t *) page_addr, file, page_offset,
+                    read_bytes, zero_bytes, false, file->deny_write);
+
+        /* Updating variables. */
+        bytes_loaded += read_bytes+ zero_bytes;
+        page_offset += PGSIZE;
+        page_addr += PGSIZE;
+    }
+
+    lock_release(&file_lock);
+
+    return fd;
 }
 
 /* Returns the file struct for a given fd */
