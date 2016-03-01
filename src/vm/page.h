@@ -10,6 +10,9 @@
 /* Supplemental page table entry (spte) struct.
  * Each thread will have its own spte. The entry holds additional
  * data about each page for virtual memory management. */
+
+/* TODO might be helpful to add the physical address of the frame */
+
 struct spte {
     // see load_segment() in process.c for more about how these fields
     // are used

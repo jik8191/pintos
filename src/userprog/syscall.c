@@ -14,12 +14,14 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 
+#include "vm/page.h"
+
 bool debug_mode = false;
 
 static void syscall_handler(struct intr_frame *);
 
 /* Checking pointer validity */
-static void *valid_pointer(void **pointer, int size);
+static void *valid_pointer(void **pointer, int size, struct intr_frame *f);
 static void *valid_numeric(void *addr, int size);
 
 /* Conversion functions */
@@ -154,7 +156,7 @@ static void syscall_handler(struct intr_frame *f) {
 }
 
 /* Returns true if addr to addr + size is valid */
-void *valid_pointer(void **pointer, int size) {
+void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
     int i = 0;
     void *kernel_addr = NULL;
 
@@ -169,9 +171,21 @@ void *valid_pointer(void **pointer, int size) {
 
     /* Get the kernel address, if its unmapped return NULL */
     kernel_addr = pagedir_get_page(thread_current()->pagedir, addr);
+
     if (kernel_addr == NULL) {
-        return kernel_addr;
+        /* See if the address is in the supplemental page table */
+        if (!spte_lookup(addr)) {
+            return NULL;
+        }
+        /*if (addr < PHYS_BASE && addr > f->esp && addr > STACK_FLOOR) {*/
+            /*return addr;*/
+        /*}*/
     }
+
+    /* See if the address is in the supplemental page table */
+    /*if (spte_lookup(addr)) {*/
+        /*return addr;*/
+    /*}*/
 
     /* Now to check the rest of the data from the start to size - 1 */
     /* If size is -1 then its for a char * and we want to check memory until
@@ -189,7 +203,8 @@ void *valid_pointer(void **pointer, int size) {
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                return NULL;
+                if (!spte_lookup(addr))
+                    return NULL;
             }
 
             byte_read = * (char *) addr;
@@ -207,11 +222,13 @@ void *valid_pointer(void **pointer, int size) {
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                return NULL;
+                if (!spte_lookup(addr)) {
+                    return NULL;
+                }
             }
         }
     }
-    return kernel_addr;
+    return addr;
 }
 
 /* Returns true if addr to addr + size is valid */
@@ -245,6 +262,8 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size,
             kernel_addr = valid_numeric(addr, size);
 
             if (kernel_addr == NULL) {
+                if (debug_mode)
+                    printf("Invalid numeric argument\n");
                 thread_exit();
             }
 
@@ -252,9 +271,13 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size,
 
         case(CONVERT_POINTER):
 
-            kernel_addr = valid_pointer(addr, size);
+            kernel_addr = valid_pointer(addr, size, f);
 
             if (kernel_addr == NULL) {
+                if (debug_mode) {
+                    printf("Invalid pointer argument at: %p\n", addr);
+                    printf("The stack is at: %p\n", f->esp);
+                }
                 thread_exit();
             }
 
@@ -412,6 +435,10 @@ int sys_read(int fd, void *buffer, unsigned size) {
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_read = file_read(file, buffer, size);
+            if (bytes_read == 0) {
+                if (debug_mode)
+                    printf("No bytes were read\n");
+            }
         }
         else {
             if (debug_mode)

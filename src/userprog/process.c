@@ -562,6 +562,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
         if (success) {
             *esp = PHYS_BASE;  // start at top of user address space
             /* Inserting the stack page into the supplemental page table */
+            /*printf("The stack bottom is at: %p\n", PHYS_BASE - PGSIZE);*/
             spte_insert(thread_current(), PHYS_BASE - PGSIZE, NULL, 0, 0,
                         PGSIZE, true, true);
         }
