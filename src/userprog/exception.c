@@ -168,8 +168,9 @@ static void page_fault(struct intr_frame *f) {
          * from a push or pusha. */
         if (fault_addr < f->esp && fault_addr != f->esp - 4 &&
             fault_addr != f->esp -32) {
-            /*printf("The address: %p\n", fault_addr);*/
-            /*printf("The stack: %p\n", f->esp);*/
+            printf("With thread: %s\n", thread_current()->name);
+            printf("The address: %p\n", fault_addr);
+            printf("The stack: %p\n", f->esp);
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
@@ -183,7 +184,7 @@ static void page_fault(struct intr_frame *f) {
          * the current stack pointer is. */
         /* TODO PGSIZE is really big, might want to make this smaller. Do you
          * need to check that its below PHYS_BASE as well? */
-        else if (fault_addr < f->esp - PGSIZE) {
+        else if (fault_addr < f->esp - PGSIZE && fault_addr > STACK_FLOOR) {
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",

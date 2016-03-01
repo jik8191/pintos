@@ -52,7 +52,8 @@ static inline void *pg_round_down(const void *va) {
 #define	PHYS_BASE ((void *) LOADER_PHYS_BASE)
 
 /* The maximum lower end of the stack */
-#define STACK_FLOOR (PHYS_BASE - (PGSIZE * 4))
+/* TODO whats a good value for this? */
+#define STACK_FLOOR (PHYS_BASE - (PGSIZE * 100))
 
 /*! Returns true if VADDR is a user virtual address. */
 static inline bool is_user_vaddr(const void *vaddr) {

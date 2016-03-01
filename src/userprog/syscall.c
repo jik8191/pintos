@@ -55,6 +55,8 @@ static void syscall_handler(struct intr_frame *f) {
     void *caller_esp = f->esp;
     int call_number = * (int *) validate_arg(caller_esp, CONVERT_NUMERIC,
                                              sizeof(int), f);
+    if (debug_mode)
+        printf("The stack pointer: %p\n", f->esp);
 
     /* Getting the args, the calls at most have 3 */
     void *arg0 = f->esp + 4;
@@ -175,11 +177,14 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
     if (kernel_addr == NULL) {
         /* See if the address is in the supplemental page table */
         if (!spte_lookup(addr)) {
-            return NULL;
+            /* Check if the stack should be expanded */
+            if (addr < f->esp && addr != f->esp - 4 && addr != f->esp - 32) {
+                return NULL;
+            }
+            if (addr > f->esp && addr < STACK_FLOOR) {
+                return NULL;
+            }
         }
-        /*if (addr < PHYS_BASE && addr > f->esp && addr > STACK_FLOOR) {*/
-            /*return addr;*/
-        /*}*/
     }
 
     /* See if the address is in the supplemental page table */
@@ -203,8 +208,16 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                if (!spte_lookup(addr))
-                    return NULL;
+                if (!spte_lookup(addr)) {
+                    /* Check if the stack should be expanded */
+                    if (addr < f->esp && addr != f->esp - 4 &&
+                        addr != f->esp - 32) {
+                        return NULL;
+                    }
+                    if (addr > f->esp && addr < STACK_FLOOR) {
+                        return NULL;
+                    }
+                }
             }
 
             byte_read = * (char *) addr;
@@ -223,7 +236,14 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
                 if (!spte_lookup(addr)) {
-                    return NULL;
+                    /* Check if the stack should be expanded */
+                    if (addr < f->esp && addr != f->esp - 4 &&
+                        addr != f->esp - 32) {
+                        return NULL;
+                    }
+                    if (addr > f->esp && addr < STACK_FLOOR) {
+                        return NULL;
+                    }
                 }
             }
         }
