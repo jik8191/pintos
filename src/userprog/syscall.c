@@ -643,7 +643,7 @@ mapid_t sys_mmap(int fd, void *addr) {
 
         /* Inserting into the supplemental page table */
         spte_insert(thread_current(), (uint8_t *) page_addr, file, page_offset,
-                    read_bytes, zero_bytes, false, file->deny_write);
+                    read_bytes, zero_bytes, PTYPE_MMAP, file->deny_write);
 
         /* Updating variables. */
         bytes_loaded += read_bytes+ zero_bytes;

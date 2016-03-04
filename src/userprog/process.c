@@ -502,7 +502,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
 
         if (spte_insert (t, upage, file, curr_ofs, spte_read_bytes,
-                         spte_zero_bytes, false, writable) == false){
+                         spte_zero_bytes, PTYPE_CODE, writable) == false){
             return false;
         }
 
@@ -553,18 +553,19 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     user virtual memory. Do stack initialization as
     outlined in Pintos Documentation 5.5.1 */
 static bool setup_stack(void **esp, const char *program_name, char **args) {
+    uint8_t *upage = PHYS_BASE - PGSIZE;
     uint8_t *kpage;
     bool success = false;
 
-    kpage = frame_get_page(PAL_USER | PAL_ZERO);
+    kpage = frame_get_page(upage, PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
-        success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+        success = install_page(upage, kpage, true);
         if (success) {
             *esp = PHYS_BASE;  // start at top of user address space
+
             /* Inserting the stack page into the supplemental page table */
-            /*printf("The stack bottom is at: %p\n", PHYS_BASE - PGSIZE);*/
-            spte_insert(thread_current(), PHYS_BASE - PGSIZE, NULL, 0, 0,
-                        PGSIZE, true, true);
+            spte_insert(
+                thread_current(), upage, NULL, 0, 0, PGSIZE, PTYPE_STACK, true);
         }
         else {
             palloc_free_page(kpage);
