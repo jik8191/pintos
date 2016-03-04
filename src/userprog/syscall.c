@@ -17,7 +17,7 @@
 #include "vm/page.h"
 #include "userprog/exception.h"
 
-bool debug_mode = false;
+bool debug_mode = true;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -164,7 +164,9 @@ static void syscall_handler(struct intr_frame *f) {
             f->eax = sys_mmap(int_arg, void_arg);
             break;
         case SYS_MUNMAP:
-            
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int), f);
+            sys_munmap(int_arg);
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -652,8 +654,8 @@ mapid_t sys_mmap(int fd, void *addr) {
         zero_bytes = PGSIZE - read_bytes;
 
         /* Inserting into the supplemental page table */
-        spte_insert(thread_current(), (uint8_t *) page_addr, file, page_offset,
-                    read_bytes, zero_bytes, PTYPE_MMAP, file->deny_write);
+        spte_insert(cur, (uint8_t *) page_addr, file, page_offset,
+                    read_bytes, zero_bytes, false, file->deny_write);
 
         /* Updating variables. */
         bytes_loaded += read_bytes+ zero_bytes;
@@ -664,6 +666,8 @@ mapid_t sys_mmap(int fd, void *addr) {
     /* Now we can insert the element into the list of mapped files. */
     list_push_back(&cur->mmap_files, &mf->elem);
     cur->num_mfiles++;
+    if (debug_mode)
+        printf("Thread %s mapped fd %d to vm addr %p", cur->name, fd, addr);
     lock_release(&file_lock);
 
     return mf->mapid;
@@ -676,6 +680,8 @@ mapid_t sys_mmap(int fd, void *addr) {
 void sys_munmap(mapid_t mapping) {
     /* Locking the filesys. */
     lock_acquire(&file_lock);
+    if (debug_mode)
+        printf("Unmap the mapping %d\n", (int) mapping);
     struct thread *cur = thread_current();
     // First check if the mapping is valid
     if (mapping < cur->num_mfiles){
@@ -703,6 +709,8 @@ void sys_munmap(mapid_t mapping) {
             }
             // remove page from the process's page directory
             pagedir_clear_page(cur->pagedir, addr);
+            // TODO: need to remove corresponding spte from the thread's spt
+            // as the mapping is no longer valid
             spte = spte_lookup(addr + PGSIZE);
         }
         file_close(f);
@@ -710,7 +718,6 @@ void sys_munmap(mapid_t mapping) {
         free(mf);
     }
     lock_release(&file_lock);
-    return;
 }
 
 
