@@ -7,23 +7,29 @@
 #include "filesys/file.h"
 #include "threads/thread.h"
 
+enum page_type {
+    PTYPE_STACK,
+    PTYPE_MMAP,
+    PTYPE_CODE,
+    PTYPE_DATA
+};
+
 /* Supplemental page table entry (spte) struct.
  * Each thread will have its own spte. The entry holds additional
  * data about each page for virtual memory management. */
-
 /* TODO might be helpful to add the physical address of the frame */
-
 struct spte {
     // see load_segment() in process.c for more about how these fields
     // are used
-    void *upaddr;  /*!< user page address, used as key. */
+    void *upaddr;               /*!< user page address, used as key. */
     struct file *file;
     off_t ofs;
     uint32_t read_bytes;
     uint32_t zero_bytes;
     bool writable;
-    bool stack_page; /*! True if this entry represents a stack entry page. */
     struct hash_elem hash_elem; /*!< To put spte in spt. */
+
+    enum page_type type;        /*!< Type of user page */
 };
 
 bool spt_init (struct thread *t);
@@ -35,7 +41,7 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
-                  uint32_t read_bytes, uint32_t zero_bytes, bool stack_page,
-                  bool writable);
+                  uint32_t read_bytes, uint32_t zero_bytes,
+                  enum page_type type, bool writable);
 
 #endif /* vm/page.h */

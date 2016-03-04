@@ -1,16 +1,18 @@
 #include "userprog/exception.h"
+
 #include <inttypes.h>
 #include <stdio.h>
-#include "userprog/gdt.h"
+#include <string.h>
+
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "vm/page.h"
 #include "threads/palloc.h"
-#include <string.h>
 #include "threads/vaddr.h"
-#include "vm/frame.h"
-#include "userprog/process.h"
 #include "threads/pte.h"
+#include "userprog/process.h"
+#include "userprog/gdt.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 
 
 /*! Number of page faults processed. */
@@ -158,18 +160,15 @@ static void page_fault(struct intr_frame *f) {
      * page table. */
 
     struct spte *page_entry = spte_lookup(fault_addr);
+
     /* If the process was not found in the supplemental page entry kill
-     * the process. Unless its from growing the stack. */
+       the process. Unless its from growing the stack. */
     if (page_entry == NULL) {
-        /* TODO check if the error comes from growing the stack. */
 
         /* The only way the stackpointer can be above the access will be
          * from a push or pusha. */
         if (fault_addr < f->esp && fault_addr != f->esp - 4 &&
             fault_addr != f->esp -32) {
-            /*printf("With thread: %s\n", thread_current()->name);*/
-            /*printf("The address: %p\n", fault_addr);*/
-            /*printf("The stack: %p\n", f->esp);*/
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
@@ -194,16 +193,13 @@ static void page_fault(struct intr_frame *f) {
 
         }
 
-        /* Getting a page */
-        uint8_t *kpage = palloc_get_page(PAL_USER | PAL_ZERO);
-
         /* Where the next stack page starts */
         uint8_t *new_stack = (void *) ((unsigned long)
                                 fault_addr & (PTMASK | PDMASK));
 
-        /*printf("The old stack: %p\n", f->esp);*/
-        /*printf("The address: %p\n", fault_addr);*/
-        /*printf("The new stack: %p\n", new_stack);*/
+        /* TODO: Darius, come fix this. You wrote a function to do this. */
+        /* Getting a page */
+        uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
 
         if (kpage == NULL) {
             printf("Couldn't get a frame\n");
@@ -219,14 +215,8 @@ static void page_fault(struct intr_frame *f) {
 
         /* Putting it into the supplemental page table */
         spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
-                    true, true);
-    }
-
-    else {
-
-        /*printf("You actually found it?????????????????????\n");*/
-        /*printf("The old stack: %p\n", f->esp);*/
-        /*printf("The address: %p\n", fault_addr);*/
+                    PTYPE_STACK, true);
+    } else {
 
         /* If it was found, you need to load the process */
 
@@ -241,7 +231,8 @@ static void page_fault(struct intr_frame *f) {
         file_seek(file, ofs);
 
         /* Get a page of memory. */
-        uint8_t *kpage = palloc_get_page(PAL_USER);
+        uint8_t *kpage = frame_get_page(upage, PAL_USER);
+
         /* TODO if this is null you will want to swapping */
         if (kpage == NULL) {
             printf("Couldn't get a frame\n");
@@ -267,13 +258,15 @@ static void page_fault(struct intr_frame *f) {
     }
 }
 
+/*! When the stack pointer page faults because the stack has run out of room,
+    we allocate a new page for the stack, up to some maximum. */
 void expand_stack(struct intr_frame *f, void *addr) {
-    /* Getting a page */
-    uint8_t *kpage = palloc_get_page(PAL_USER | PAL_ZERO);
-
     /* Where the next stack page starts */
     uint8_t *new_stack = (void *) ((unsigned long)
                             addr & (PTMASK | PDMASK));
+
+    /* Getting a page */
+    uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
 
     if (kpage == NULL) {
         printf("Couldn't get a frame\n");
@@ -289,5 +282,5 @@ void expand_stack(struct intr_frame *f, void *addr) {
 
     /* Putting it into the supplemental page table */
     spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
-                true, true);
+                PTYPE_STACK, true);
 }
