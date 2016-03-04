@@ -12,20 +12,20 @@
 
 /* Functions for manipulating the supplemental page table (spt) */
 
-/* Initializes the spt for a thread t*/
+/*! Initializes the spt for a thread t*/
 bool spt_init (struct thread *t){
     return hash_init(&(t->spt), spte_hash, spte_less, NULL);
 }
 
 
-/* Returns a hash value for spt entry (spte) p.
-   Code taken from A.8.5 Hash Table Example in PintOS docs*/
+/*! Returns a hash value for spt entry (spte) p. Code taken from A.8.5 Hash
+    Table Example in PintOS docs*/
 unsigned spte_hash (const struct hash_elem *p_, void *aux UNUSED) {
   const struct spte *p = hash_entry (p_, struct spte, hash_elem);
   return hash_bytes (&p->upaddr, sizeof p->upaddr);
 }
 
-/* Look up the page for the given virtual address. */
+/*! Look up the page for the given virtual address. */
 struct spte *spte_lookup(void *vaddr) {
 
     /* The supplemental page table for this thread */
@@ -42,8 +42,8 @@ struct spte *spte_lookup(void *vaddr) {
     return e != NULL ? hash_entry (e, struct spte, hash_elem) : NULL;
 }
 
-/* Returns true if spte a precedes spte b, the
-   < operator is ok for pointers. */
+/*! Returns true if spte a precedes spte b, the < operator is ok for pointers.
+ */
 bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux UNUSED) {
   const struct spte *a = hash_entry (a_, struct spte, hash_elem);
@@ -52,25 +52,24 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return a->upaddr < b->upaddr;
 }
 
-/* Inserts an entry into the spt of thread t so that
-   we know where to load program segment data from later on.
- */
+/*! Inserts an entry into the spt of thread t so that we know where to load
+    program segment data from later on. */
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
                   uint32_t read_bytes, uint32_t zero_bytes,
-                  bool stack_page, bool writable){
+                  enum page_type type, bool writable){
     struct spte *entry;
     entry = malloc(sizeof(struct spte));
     if (entry == NULL)
         return false;
 
-    entry->upaddr = (void *) upage;
-    entry->file = file;
-    entry->ofs = ofs;
+    entry->upaddr     = (void *) upage;
+    entry->file       = file;
+    entry->ofs        = ofs;
     entry->read_bytes = read_bytes;
     entry->zero_bytes = zero_bytes;
-    entry->stack_page = stack_page;
-    entry->writable = writable;
+    entry->writable   = writable;
+    entry->type       = type;
 
     // insert entry into thread t's supplemental page table
     /* TODO this is pretty stupid */
