@@ -4,8 +4,13 @@
 #include <debug.h>
 #include <stdint.h>
 #include <hash.h>
+
+#include "devices/block.h"
 #include "filesys/file.h"
 #include "threads/thread.h"
+
+/*! Used for the swap index for an spte when the data is not swapped */
+#define NOT_SWAPPED (-1)
 
 enum page_type {
     PTYPE_STACK,
@@ -30,6 +35,7 @@ struct spte {
     struct hash_elem hash_elem; /*!< To put spte in spt. */
 
     enum page_type type;        /*!< Type of user page */
+    block_sector_t swap_index;  /*!< Index of the swapped data, if any */
 };
 
 bool spt_init (struct thread *t);

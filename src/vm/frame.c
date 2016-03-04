@@ -1,5 +1,6 @@
 #include "frame.h"
 
+#include "devices/block.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
@@ -9,6 +10,9 @@
 
 struct frame * frame_evict(void);
 void frame_replace(struct frame *f);
+
+void frame_pin(struct frame *f);
+void frame_unpin(struct frame *f);
 
 /* The hash used for the frame table, along with the required hash functions. */
 static struct hash frametable;
@@ -82,6 +86,9 @@ struct frame * frame_evict(void)
         for (; e != list_end(&frame_queue); e = list_next(e)) {
             struct frame *f = list_entry(e, struct frame, lelem);
 
+            /* Skip pinned pages */
+            if (f->pinned) continue;
+
             /* The page directory of the owner of the frame's contents */
             uint32_t *pagedir = f->owner->pagedir;
 
@@ -103,6 +110,10 @@ struct frame * frame_evict(void)
 
             } else if (toswap == NULL) {
 
+                /* Frame the pin so we don't try to replace it twice. We don't
+                   have to unpin because it will be freed later. */
+                frame_pin(f);
+
                 /* Else if we haven't gotten a new page, we can replace this
                    page with the new one */
                 frame_replace(f);
@@ -113,6 +124,18 @@ struct frame * frame_evict(void)
     }
 
     return toswap;
+}
+
+/*! Pin a frame */
+void frame_pin(struct frame *f)
+{
+    f->pinned = true;
+}
+
+/*! Unpin a frame */
+void frame_unpin(struct frame *f)
+{
+    f->pinned = false;
 }
 
 /*! Evict the frame by clearing it out or swapping its contents.
@@ -154,14 +177,25 @@ void frame_replace(struct frame *f)
             case PTYPE_STACK:
                 noswap = false;
                 break;
-
-            default:
-                break;
         }
     }
 
     // We can quit here if we don't have to swap.
     if (noswap) return;
+
+    switch (page->type) {
+        /* Write these out to the swap file */
+        case PTYPE_STACK:
+        case PTYPE_DATA:
+            page->swap_index = swap_page(f);
+            break;
+
+        /* Write these out to the files they belong to */
+        case PTYPE_CODE:
+        case PTYPE_MMAP:
+            /* TODO: Write to file */
+            break;
+    }
 }
 
 /*! Look up a frame by the address of the page occupying it.

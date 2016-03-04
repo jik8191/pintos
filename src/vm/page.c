@@ -70,6 +70,7 @@ bool spte_insert (struct thread* t,
     entry->zero_bytes = zero_bytes;
     entry->writable   = writable;
     entry->type       = type;
+    entry->swap_index = NOT_SWAPPED;
 
     // insert entry into thread t's supplemental page table
     /* TODO this is pretty stupid */
