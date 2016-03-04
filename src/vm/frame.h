@@ -10,10 +10,11 @@ struct frame {
     void *paddr;    /*!< Address to the page that occupies the frame */
     void *uaddr;    /*!< User virtual addres for the page */
 
-    bool dirty;     /*!< This bit is set so we know if the frame contents have
-                         been dirtied since its creation. We need this
-                         information since we reset the actual dirty bit in our
-                         eviction policy */
+    struct thread *owner; /*!< The thread that owns the contents of the frame */
+
+    bool dirty; /*!< This bit is set so we know if the frame contents have been
+                     dirtied since its creation. We need this information since
+                     we reset the actual dirty bit in our eviction policy */
 
     struct hash_elem elem;  /*!< Element used to put frame in frame table. */
     struct list_elem lelem; /*!< Element used to put frame in frame queue. */
