@@ -49,10 +49,11 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
     }
 
     struct frame *f = malloc (sizeof (struct frame));
-    f->paddr = page;
-    f->uaddr = uaddr;
-    f->dirty = false;
-    f->owner = thread_current();
+    f->paddr  = page;
+    f->uaddr  = uaddr;
+    f->pinned = false;
+    f->dirty  = false;
+    f->owner  = thread_current();
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
@@ -134,7 +135,7 @@ void frame_replace(struct frame *f)
     bool noswap = true;
 
     /* Read-only pages don't have to be written to swap */
-    if (page->writeable) {
+    if (page->writable) {
         bool dirty;
 
         /* We check whether the frame has ever been dirty */
