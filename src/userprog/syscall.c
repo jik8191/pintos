@@ -42,6 +42,7 @@ int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 mapid_t sys_mmap(int fd, void *addr);
+void sys_munmap(mapid_t mapping);
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
@@ -161,6 +162,9 @@ static void syscall_handler(struct intr_frame *f) {
             void_arg = * (void **) validate_arg(arg1, CONVERT_NUMERIC,
                                                 sizeof(void *), f);
             f->eax = sys_mmap(int_arg, void_arg);
+            break;
+        case SYS_MUNMAP:
+            
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -345,7 +349,6 @@ void sys_exit(int status) {
         t->info->return_status = status;
         t->info->terminated = true;
     }
-
     thread_exit();
 }
 
@@ -598,7 +601,6 @@ mapid_t sys_mmap(int fd, void *addr) {
     if (addr == 0)
         return MAP_FAILED;
 
-
     /* Locking the filesys. */
     lock_acquire(&file_lock);
 
@@ -636,9 +638,17 @@ mapid_t sys_mmap(int fd, void *addr) {
         }
     }
 
+    /* Associate the thread with this mapped file. */
+    struct thread *cur = thread_current();
+    struct mmap_fileinfo *mf = malloc(sizeof (struct mmap_fileinfo));
+    mf->addr = addr;
+    mf->size = size;
+    mf->mapid = cur->num_mfiles;
+
     while(bytes_loaded < size) {
         /* The variables for this supplemental page table entry */
-        read_bytes = bytes_loaded + PGSIZE <= size ? PGSIZE : size - bytes_loaded;
+        read_bytes = bytes_loaded + PGSIZE <= size ? 
+            PGSIZE : size - bytes_loaded;
         zero_bytes = PGSIZE - read_bytes;
 
         /* Inserting into the supplemental page table */
@@ -650,11 +660,59 @@ mapid_t sys_mmap(int fd, void *addr) {
         page_offset += PGSIZE;
         page_addr += PGSIZE;
     }
-
+    
+    /* Now we can insert the element into the list of mapped files. */
+    list_push_back(&cur->mmap_files, &mf->elem);
+    cur->num_mfiles++;
     lock_release(&file_lock);
 
-    return fd;
+    return mf->mapid;
 }
+
+
+/* Unmaps the mapping designated by mapping, which must be a 
+   mapping ID returned by a previous call to mmap by the same process 
+   that has not yet been unmapped. */
+void sys_munmap(mapid_t mapping) {
+    /* Locking the filesys. */
+    lock_acquire(&file_lock);
+    struct thread *cur = thread_current();
+    // First check if the mapping is valid
+    if (mapping < cur->num_mfiles){
+        struct list *mmap_files = &cur->mmap_files;
+
+        // If it is, look up which file it corresponds to
+        struct list_elem *e;
+        struct mmap_fileinfo *mf = NULL;
+        for (e = list_begin (mmap_files); e != list_end (mmap_files);
+             e = list_next (e)) {
+            mf = list_entry (e, struct mmap_fileinfo, elem);
+            if (mf->mapid == mapping) break;
+        }
+        ASSERT(mf != NULL);
+        // Look up the address in the SPT 
+        void *addr = mf->addr;
+        struct spte *spte = spte_lookup(addr);
+        struct file *f = file_reopen(spte->file);
+
+        // for each page in the file, write if necessary, then clear, free it
+        int i;
+        for (i = 0; i < mf->size; i++){
+            // check if the corresponding page has been modified
+            if (pagedir_is_dirty(cur->pagedir, addr)){
+            }
+            // remove page from the process's page directory
+            pagedir_clear_page(cur->pagedir, addr);
+            spte = spte_lookup(addr + PGSIZE);
+        }
+        file_close(f);
+        list_remove(&mf->elem);
+        free(mf);
+    }
+    lock_release(&file_lock);
+    return;
+}
+
 
 /* Returns the file struct for a given fd */
 struct fd_elem *get_file(int fd) {

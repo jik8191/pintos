@@ -107,27 +107,27 @@ struct thread {
     int nice;                           /*!< The threads nice value. */
     fp recent_cpu;                      /*!< The threads recent_cpu. */
 
-    struct list_elem allelem;           /*!< List element for all threads list. */
-    struct list_elem rdyelem;           /*!< List element for the ready lists. */
-    struct list_elem waitelem;          /*!< List element for waiting list. */
+    struct list_elem allelem;           /*!< List elem for all threads list. */
+    struct list_elem rdyelem;           /*!< List elem for the ready lists. */
+    struct list_elem waitelem;          /*!< List elem for waiting list. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     int64_t ticks_awake;                /*!< Tick time to wake up at. */
 
-    struct semaphore sema_wait;         /*!< Semaphore for thread while sleeping. */
-    struct list_elem semaelem;          /*!< List element for the list of semaphore waiters. */
+    struct semaphore sema_wait;         /*!< Thread sema while sleeping. */
+    struct list_elem semaelem;          /*!< List elem for sema waiters list. */
 
-    struct list locks;                  /*!< List of locks the thread has acquired. */
-    struct lock *lock_waiton;           /*!< The lock the current thread is waiting on. */
+    struct list locks;                  /*!< List of locks acquired by thread */
+    struct lock *lock_waiton;           /*!< Lock the thread is waiting on. */
     /**@}*/
 
 #ifdef USERPROG
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
-    struct list fd_list;                /*!< List of file descripters */
+    struct list fd_list;                /*!< List of file descriptors */
     int max_fd;                         /*!< Max fd the thread has */
     struct semaphore *child_sema;       /*!< A semaphore for a child to
                                              communicate with their parent */
@@ -150,7 +150,8 @@ struct thread {
 #endif
 
     struct hash spt;                    /*!< Supplemental page table */
-
+    struct list mmap_files;             /*!< List of memory mapped file info. */
+    int num_mfiles;                      /*!< Number of memory mapped files. */
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
