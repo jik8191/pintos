@@ -53,7 +53,7 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 /*! Inserts an entry into the spt of thread t so that we know where to load
-    program segment data from later on. */
+    program segment data from later on. Return true if successful. */
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
                   uint32_t read_bytes, uint32_t zero_bytes,
@@ -74,4 +74,13 @@ bool spte_insert (struct thread* t,
     // insert entry into thread t's supplemental page table
     /* TODO this is pretty stupid */
     return (hash_insert(&(t->spt), &(entry->hash_elem)) == NULL);
+}
+
+/*! Removes an entry from the spt of thread t. Return true if successful. */
+bool spte_remove (struct thread* t, struct spte *entry){
+    struct hash_elem* removed = hash_delete(&(t->spt), &(entry->hash_elem));
+    // printf("Removing spte at %p.\n", entry);
+    free(entry);
+    // printf("Removed spte at %p.\n", entry);
+    return (removed != NULL);
 }

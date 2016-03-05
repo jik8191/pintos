@@ -17,7 +17,7 @@
 #include "vm/page.h"
 #include "userprog/exception.h"
 
-bool debug_mode = true;
+bool debug_mode = false;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -667,7 +667,7 @@ mapid_t sys_mmap(int fd, void *addr) {
     list_push_back(&cur->mmap_files, &mf->elem);
     cur->num_mfiles++;
     if (debug_mode)
-        printf("Thread %s mapped fd %d to vm addr %p", cur->name, fd, addr);
+        printf("Thread %s mapped fd %d to vm addr %p.\n", cur->name, fd, addr);
     lock_release(&file_lock);
 
     return mf->mapid;
@@ -699,6 +699,10 @@ void sys_munmap(mapid_t mapping) {
         // Look up the address in the SPT 
         void *addr = mf->addr;
         struct spte *spte = spte_lookup(addr);
+        ASSERT(spte != NULL);
+        if (debug_mode){
+            printf("Found spte at %p.\n", spte);
+        }
         struct file *f = file_reopen(spte->file);
 
         // for each page in the file, write if necessary, then clear, free it
@@ -709,8 +713,9 @@ void sys_munmap(mapid_t mapping) {
             }
             // remove page from the process's page directory
             pagedir_clear_page(cur->pagedir, addr);
-            // TODO: need to remove corresponding spte from the thread's spt
+            // remove corresponding spte from the thread's spt
             // as the mapping is no longer valid
+            spte_remove(cur, spte);
             spte = spte_lookup(addr + PGSIZE);
         }
         file_close(f);

@@ -44,4 +44,6 @@ bool spte_insert (struct thread* t,
                   uint32_t read_bytes, uint32_t zero_bytes,
                   enum page_type type, bool writable);
 
+bool spte_remove (struct thread* t, struct spte *entry);
+
 #endif /* vm/page.h */

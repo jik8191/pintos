@@ -147,7 +147,7 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
-        printf("Page fault at %p: %s error %s page in %s context.\n",
+        printf("\n Page fault at %p: %s error %s page in %s context.\n",
            fault_addr,
            not_present ? "not present" : "rights violation",
            write ? "writing" : "reading",
