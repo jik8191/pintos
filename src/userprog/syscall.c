@@ -580,7 +580,11 @@ void sys_close(int fd) {
     lock_acquire(&file_lock);
 
     struct fd_elem *file_info = get_file(fd);
+    if (debug_mode)
+        printf("Closing file with fd_elem: %p\n", file_info);
     if (file_info == NULL) {
+        if (debug_mode)
+            printf("Killing process due to invalid file access.\n");
         lock_release(&file_lock);
         thread_exit();
     }
@@ -589,6 +593,8 @@ void sys_close(int fd) {
     file_close(file_info->file_struct);
     free(file_info);
 
+    if (debug_mode)
+        printf("Done closing file.\n");
     lock_release(&file_lock);
 }
 
@@ -644,7 +650,7 @@ mapid_t sys_mmap(int fd, void *addr) {
     struct thread *cur = thread_current();
     struct mmap_fileinfo *mf = malloc(sizeof (struct mmap_fileinfo));
     mf->addr = addr;
-    mf->size = size;
+    mf->num_pgs = size/PGSIZE + 1;
     mf->mapid = cur->num_mfiles;
 
     while(bytes_loaded < size) {
@@ -667,7 +673,8 @@ mapid_t sys_mmap(int fd, void *addr) {
     list_push_back(&cur->mmap_files, &mf->elem);
     cur->num_mfiles++;
     if (debug_mode)
-        printf("Thread %s mapped fd %d to vm addr %p.\n", cur->name, fd, addr);
+        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n", 
+               cur->name, fd, size, addr);
     lock_release(&file_lock);
 
     return mf->mapid;
@@ -700,14 +707,17 @@ void sys_munmap(mapid_t mapping) {
         void *addr = mf->addr;
         struct spte *spte = spte_lookup(addr);
         ASSERT(spte != NULL);
-        if (debug_mode){
-            printf("Found spte at %p.\n", spte);
-        }
         struct file *f = file_reopen(spte->file);
+        if (debug_mode){
+            printf("Corresponding file at %p with size %d.\n", f, mf->num_pgs);
+        }
 
         // for each page in the file, write if necessary, then clear, free it
         int i;
-        for (i = 0; i < mf->size; i++){
+        for (i = 0; i < mf->num_pgs; i++){
+            if (debug_mode){
+                printf("Found spte at %p.\n", spte);
+            }
             // check if the corresponding page has been modified
             if (pagedir_is_dirty(cur->pagedir, addr)){
             }
@@ -719,8 +729,12 @@ void sys_munmap(mapid_t mapping) {
             spte = spte_lookup(addr + PGSIZE);
         }
         file_close(f);
-        list_remove(&mf->elem);
+        list_remove(&(mf->elem));
         free(mf);
+        if (debug_mode){
+            printf("Unmapped file %p.\n", f);
+        }
+
     }
     lock_release(&file_lock);
 }

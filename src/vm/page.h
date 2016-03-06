@@ -46,4 +46,11 @@ bool spte_insert (struct thread* t,
 
 bool spte_remove (struct thread* t, struct spte *entry);
 
+
+bool spte_remove (struct thread* t, struct spte *entry);
+
+void spte_delete(struct hash_elem *e, void *thr);
+
+void spt_destroy (struct thread *t);
+
 #endif /* vm/page.h */
