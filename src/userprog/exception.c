@@ -147,7 +147,7 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
-        printf("\n Page fault at %p: %s error %s page in %s context.\n",
+        printf("Page fault at %p: %s error %s page in %s context.\n",
            fault_addr,
            not_present ? "not present" : "rights violation",
            write ? "writing" : "reading",
@@ -238,6 +238,12 @@ static void page_fault(struct intr_frame *f) {
             printf("Couldn't get a frame\n");
             kill(f);
         }
+
+        /* int bytes_to_read = file_read(file, kpage, read_bytes); */
+        /* printf("Reading %d bytes.\n", bytes_to_read); */
+        /* printf("From file at %p.\n", file); */
+        /* printf("Page at %p.\n", kpage); */
+        /* printf("Read bytes is %d bytes.\n", read_bytes); */
 
         /* Load this page. */
         if (file_read(file, kpage, read_bytes) != (int) read_bytes) {

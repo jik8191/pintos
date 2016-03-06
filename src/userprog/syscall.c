@@ -589,9 +589,32 @@ void sys_close(int fd) {
         thread_exit();
     }
 
-    list_remove(&file_info->elem);
-    file_close(file_info->file_struct);
-    free(file_info);
+    bool mmaped = false;
+    struct thread *cur = thread_current();
+    struct list *mmap_files = &cur->mmap_files;
+    // If it is a memory mapped file, do not remove
+    struct list_elem *e;
+    struct mmap_fileinfo *mf = NULL;
+    struct spte *spte;
+    for (e = list_begin (mmap_files); e != list_end (mmap_files);
+         e = list_next (e)) {
+        mf = list_entry (e, struct mmap_fileinfo, elem);
+        spte = spte_lookup(mf->addr);
+        if (spte->file != NULL && spte->file == file_info->file_struct){
+            mmaped = true;
+            if (debug_mode)
+                printf("Closing a memory mapped file.\n");
+            break;
+        }
+    }
+    
+    if (!mmaped){
+        if (debug_mode)
+            printf("Closing a non-memory mapped file.\n");
+        list_remove(&file_info->elem);
+        file_close(file_info->file_struct);
+        free(file_info);
+    }
 
     if (debug_mode)
         printf("Done closing file.\n");
