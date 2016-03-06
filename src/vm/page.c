@@ -76,3 +76,26 @@ bool spte_insert (struct thread* t,
     /* TODO this is pretty stupid */
     return (hash_insert(&(t->spt), &(entry->hash_elem)) == NULL);
 }
+
+/*! Removes an entry from the spt of thread t. Return true if successful. */
+bool spte_remove (struct thread* t, struct spte *entry){
+    struct hash_elem* removed = hash_delete(&(t->spt), &(entry->hash_elem));
+    // printf("Removing spte at %p.\n", entry);
+    free(entry);
+    // printf("Removed spte at %p.\n", entry);
+    return (removed != NULL);
+}
+
+
+/*! hash_action_func for spt_destroy, spt_remove. */
+void spte_delete(struct hash_elem *e, void *thr){
+    struct thread *t = (struct thread *) thr;
+    struct spte *entry = hash_entry(e, struct spte, hash_elem);
+    hash_delete(&(t->spt), e);
+    free(entry);
+};
+
+/*! Destroys the spt for a thread t on exit. */
+void spt_destroy (struct thread *t){
+    hash_destroy(&(t->spt), *spte_delete);
+}

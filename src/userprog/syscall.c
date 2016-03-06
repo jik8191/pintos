@@ -164,7 +164,9 @@ static void syscall_handler(struct intr_frame *f) {
             f->eax = sys_mmap(int_arg, void_arg);
             break;
         case SYS_MUNMAP:
-            
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int), f);
+            sys_munmap(int_arg);
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -578,7 +580,11 @@ void sys_close(int fd) {
     lock_acquire(&file_lock);
 
     struct fd_elem *file_info = get_file(fd);
+    if (debug_mode)
+        printf("Closing file with fd_elem: %p\n", file_info);
     if (file_info == NULL) {
+        if (debug_mode)
+            printf("Killing process due to invalid file access.\n");
         lock_release(&file_lock);
         thread_exit();
     }
@@ -587,6 +593,8 @@ void sys_close(int fd) {
     file_close(file_info->file_struct);
     free(file_info);
 
+    if (debug_mode)
+        printf("Done closing file.\n");
     lock_release(&file_lock);
 }
 
@@ -642,7 +650,7 @@ mapid_t sys_mmap(int fd, void *addr) {
     struct thread *cur = thread_current();
     struct mmap_fileinfo *mf = malloc(sizeof (struct mmap_fileinfo));
     mf->addr = addr;
-    mf->size = size;
+    mf->num_pgs = size/PGSIZE + 1;
     mf->mapid = cur->num_mfiles;
 
     while(bytes_loaded < size) {
@@ -664,6 +672,9 @@ mapid_t sys_mmap(int fd, void *addr) {
     /* Now we can insert the element into the list of mapped files. */
     list_push_back(&cur->mmap_files, &mf->elem);
     cur->num_mfiles++;
+    if (debug_mode)
+        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n", 
+               cur->name, fd, size, addr);
     lock_release(&file_lock);
 
     return mf->mapid;
@@ -676,6 +687,8 @@ mapid_t sys_mmap(int fd, void *addr) {
 void sys_munmap(mapid_t mapping) {
     /* Locking the filesys. */
     lock_acquire(&file_lock);
+    if (debug_mode)
+        printf("Unmap the mapping %d\n", (int) mapping);
     struct thread *cur = thread_current();
     // First check if the mapping is valid
     if (mapping < cur->num_mfiles){
@@ -693,21 +706,34 @@ void sys_munmap(mapid_t mapping) {
         // Look up the address in the SPT 
         void *addr = mf->addr;
         struct spte *spte = spte_lookup(addr);
+        ASSERT(spte != NULL);
+        
         struct file *f = file_reopen(spte->file);
+        if (debug_mode){
+            printf("Corresponding file at %p with size %d.\n", f, mf->num_pgs);
+        }
 
         // for each page in the file, write if necessary, then clear, free it
         int i;
-        for (i = 0; i < mf->size; i++){
+        for (i = 0; i < mf->num_pgs; i++){
+            if (debug_mode){
+                printf("Found spte at %p.\n", spte);
+            }
             // check if the corresponding page has been modified
             if (pagedir_is_dirty(cur->pagedir, addr)){
             }
             // remove page from the process's page directory
             pagedir_clear_page(cur->pagedir, addr);
+            spte_remove(cur, spte);
             spte = spte_lookup(addr + PGSIZE);
         }
         file_close(f);
-        list_remove(&mf->elem);
+        list_remove(&(mf->elem));
         free(mf);
+        if (debug_mode){
+            printf("Unmapped file %p.\n", f);
+        }
+
     }
     lock_release(&file_lock);
     return;

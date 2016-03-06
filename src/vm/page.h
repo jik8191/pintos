@@ -38,4 +38,11 @@ bool spte_insert (struct thread* t,
                   uint32_t read_bytes, uint32_t zero_bytes, bool stack_page,
                   bool writable);
 
+
+bool spte_remove (struct thread* t, struct spte *entry);
+
+void spte_delete(struct hash_elem *e, void *thr);
+
+void spt_destroy (struct thread *t);
+
 #endif /* vm/page.h */

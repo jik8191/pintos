@@ -15,6 +15,7 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
 #endif
 
 /*! Random value for struct thread's `magic' member.
@@ -329,13 +330,14 @@ void thread_exit(void) {
     }
 
     /* Cleaning up the mapped files */
-    e = list_begin(&cur->mmap_files);
-    while (e != list_end(&cur->mmap_files)) {
-        struct mmap_fileinfo *mf = list_entry(e, struct mmap_fileinfo, elem);
-        e = list_next(e);
-        sys_munmap(mf->mapid);
-    }
+    /* e = list_begin(&cur->mmap_files); */
+    /* while (e != list_end(&cur->mmap_files)) { */
+    /*     struct mmap_fileinfo *mf = list_entry(e, struct mmap_fileinfo, elem); */
+    /*     e = list_next(e); */
+    /*     sys_munmap(mf->mapid); */
+    /* } */
 
+    // spt_destroy(cur);
     // Allow parent waiting to run.
     sema_up(&cur->child_wait);
 

@@ -21,8 +21,8 @@ struct fd_elem {
 struct mmap_fileinfo {
     struct list_elem elem;
     mapid_t mapid;
-    int size;
     void *addr;
+    int num_pgs;
 };
 
 enum conversion_type {
