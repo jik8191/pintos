@@ -5,6 +5,7 @@
 #include "devices/block.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "vm/page.h"
@@ -24,8 +25,6 @@ static struct hash frametable;
 bool frame_less(const struct hash_elem *, const struct hash_elem *, void *);
 unsigned frame_hash(const struct hash_elem *, void *);
 
-static struct list frame_queue;
-
 
 /* ----- Implementations ----- */
 
@@ -34,7 +33,6 @@ static struct list frame_queue;
 void frame_init(void)
 {
     hash_init(&frametable, frame_hash, frame_less, NULL);
-    list_init(&frame_queue);
 }
 
 /*! Return a virtual page and create a frame in the process. */
@@ -66,7 +64,6 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
-    list_push_back(&frame_queue, &f->lelem);
 
     frame_unpin(f);
 
