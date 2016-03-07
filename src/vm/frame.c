@@ -1,10 +1,15 @@
 #include "frame.h"
 
+#include <hash.h>
+
 #include "devices/block.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "vm/page.h"
+#include "vm/swap.h"
+#include "filesys/file.h"
 
 /* ----- Declarations ----- */
 
@@ -19,7 +24,7 @@ static struct hash frametable;
 bool frame_less(const struct hash_elem *, const struct hash_elem *, void *);
 unsigned frame_hash(const struct hash_elem *, void *);
 
-static struct list frame_queue;
+/* static struct list frame_queue; */
 
 
 /* ----- Implementations ----- */
@@ -29,7 +34,7 @@ static struct list frame_queue;
 void frame_init(void)
 {
     hash_init(&frametable, frame_hash, frame_less, NULL);
-    list_init(&frame_queue);
+    /* list_init(&frame_queue); */
 }
 
 
@@ -43,7 +48,8 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
 
         /* Free the page and remove the frame for the evicted frame */
         palloc_free_page(evicted->paddr);
-        list_remove(&evicted->lelem);
+        /* list_remove(&evicted->lelem); */
+        hash_delete(&frametable, &evicted->elem);
         free(evicted);
 
         /* Allocate a new page now, which should work */
@@ -53,15 +59,18 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
     }
 
     struct frame *f = malloc (sizeof (struct frame));
+    frame_pin(f);
+
     f->paddr  = page;
     f->uaddr  = uaddr;
-    f->pinned = false;
     f->dirty  = false;
     f->owner  = thread_current();
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
-    list_push_back(&frame_queue, &f->lelem);
+    /* list_push_back(&frame_queue, &f->lelem); */
+
+    frame_unpin(f);
 
     return page;
 }
@@ -81,10 +90,15 @@ struct frame * frame_evict(void)
 
     /* Keep looping until we actually evict a page */
     while (toswap == NULL) {
-        struct list_elem *e = list_begin(&frame_queue);
+        /* struct list_elem *e = list_begin(&frame_queue); */
+        struct hash_iterator i;
+        hash_first (&i, &frametable);
 
-        for (; e != list_end(&frame_queue); e = list_next(e)) {
-            struct frame *f = list_entry(e, struct frame, lelem);
+        while (hash_next (&i)) {
+        /* for (; e != list_end(&frame_queue); e = list_next(e)) { */
+            /* struct frame *f = list_entry(e, struct frame, lelem); */
+
+            struct frame *f = hash_entry (hash_cur (&i), struct frame, elem);
 
             /* Skip pinned pages */
             if (f->pinned) continue;
@@ -92,6 +106,7 @@ struct frame * frame_evict(void)
             /* The page directory of the owner of the frame's contents */
             uint32_t *pagedir = f->owner->pagedir;
 
+            /* TODO: look at both physical and virtual address for aliasing */
             bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
             bool dirty    = pagedir_is_dirty(pagedir, f->uaddr);
 
@@ -132,10 +147,22 @@ void frame_pin(struct frame *f)
     f->pinned = true;
 }
 
+void frame_pin_paddr(void *paddr)
+{
+    struct frame *f = frame_lookup(paddr);
+    frame_pin(f);
+}
+
 /*! Unpin a frame */
 void frame_unpin(struct frame *f)
 {
     f->pinned = false;
+}
+
+void frame_unpin_paddr(void *paddr)
+{
+    struct frame *f = frame_lookup(paddr);
+    frame_unpin(f);
 }
 
 /*! Evict the frame by clearing it out or swapping its contents.
@@ -163,7 +190,7 @@ void frame_replace(struct frame *f)
 
         /* We check whether the frame has ever been dirty */
         dirty = pagedir_is_dirty(f->owner->pagedir, f->uaddr);
-        dirty = dirty || f->dirty; // Set in second-chance eviction.
+        dirty = dirty || f->dirty; /* f->dirty set in second-chance eviction. */
 
         switch (page->type) {
             /* We only have to swap if the page is dirty */
@@ -181,21 +208,31 @@ void frame_replace(struct frame *f)
     }
 
     // We can quit here if we don't have to swap.
-    if (noswap) return;
+    if (noswap) goto done;
 
     switch (page->type) {
         /* Write these out to the swap file */
         case PTYPE_STACK:
+        case PTYPE_CODE:
         case PTYPE_DATA:
             page->swap_index = swap_page(f);
             break;
 
         /* Write these out to the files they belong to */
-        case PTYPE_CODE:
         case PTYPE_MMAP:
+            /* printf("NOT IMPLEMENTED\n"); */
             /* TODO: Write to file */
+            lock_acquire(&file_lock);
+
+            /* Write out the file */
+            file_write_at(page->file, f->paddr, page->read_bytes, page->ofs);
+
+            lock_release(&file_lock);
             break;
     }
+
+done:
+    pagedir_clear_page(f->owner->pagedir, f->uaddr);
 }
 
 /*! Look up a frame by the address of the page occupying it.

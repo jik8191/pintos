@@ -1,4 +1,5 @@
 #include "vm/page.h"
+
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -6,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <hash.h>
-#include "threads/malloc.h"
 
+#include "threads/malloc.h"
 #include "threads/pte.h"
 
 /* Functions for manipulating the supplemental page table (spt) */
@@ -70,7 +71,7 @@ bool spte_insert (struct thread* t,
     entry->zero_bytes = zero_bytes;
     entry->writable   = writable;
     entry->type       = type;
-    entry->swap_index = NOT_SWAPPED;
+    entry->swap_index = NOTSWAPPED;
 
     // insert entry into thread t's supplemental page table
     /* TODO this is pretty stupid */

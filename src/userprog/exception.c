@@ -11,8 +11,10 @@
 #include "threads/pte.h"
 #include "userprog/process.h"
 #include "userprog/gdt.h"
+#include "userprog/pagedir.h"
 #include "vm/page.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
 
 /*! Number of page faults processed. */
@@ -144,6 +146,10 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
+    /* printf("page faulting at %s addr %x...\n", */
+            /* write ? "writable" : "read-only", */
+            /* fault_addr); */
+
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
@@ -156,17 +162,28 @@ static void page_fault(struct intr_frame *f) {
         kill(f);
     }
 
-    /* If the error is not present, lookup the page in the supplemental
-     * page table. */
+    /* TODO: Not sure we should page fault for all non-user accesses. Also,
+       fix the error message? */
+    /* Exit if the page fault was not a user address. */
+    if (!is_user_vaddr(fault_addr)) {
+        printf("Page fault at %p: Invalid address error %s page in %s context.\n",
+            fault_addr,
+            write ? "writing" : "reading",
+            user ? "user" : "kernel");
 
+        kill(f);
+    }
+
+    /* If the error is not present, lookup the page in the supplemental
+       page table. */
     struct spte *page_entry = spte_lookup(fault_addr);
 
     /* If the process was not found in the supplemental page entry kill
-       the process. Unless its from growing the stack. */
+       the process. Unless it is from growing the stack. */
     if (page_entry == NULL) {
 
         /* The only way the stackpointer can be above the access will be
-         * from a push or pusha. */
+           from a push or pusha. */
         if (fault_addr < f->esp && fault_addr != f->esp - 4 &&
             fault_addr != f->esp -32) {
             printf("Page fault at %p: %s error %s page in %s context.\n",
@@ -179,9 +196,9 @@ static void page_fault(struct intr_frame *f) {
         }
 
         /* Only allowing the fault address to be a pgsize away from where
-         * the current stack pointer is. */
+           the current stack pointer is. */
         /* TODO PGSIZE is really big, might want to make this smaller. Do you
-         * need to check that its below PHYS_BASE as well? */
+           need to check that its below PHYS_BASE as well? */
         else if (fault_addr < f->esp - PGSIZE && fault_addr > STACK_FLOOR) {
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
@@ -193,6 +210,9 @@ static void page_fault(struct intr_frame *f) {
 
         }
 
+        /* If we didn't have a page fault error, then grow the stack. */
+        printf("growing the stack...\n");
+
         /* Where the next stack page starts */
         uint8_t *new_stack = (void *) ((unsigned long)
                                 fault_addr & (PTMASK | PDMASK));
@@ -200,6 +220,7 @@ static void page_fault(struct intr_frame *f) {
         /* TODO: Darius, come fix this. You wrote a function to do this. */
         /* Getting a page */
         uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
+        frame_pin_paddr(kpage);
 
         if (kpage == NULL) {
             printf("Couldn't get a frame\n");
@@ -207,55 +228,88 @@ static void page_fault(struct intr_frame *f) {
         }
 
         /* Installing the page */
+        printf("installing page at user addr %x...\n", new_stack);
         if (!install_page(new_stack, kpage, true)) {
             printf("Couldn't install the page\n");
             palloc_free_page(kpage);
             kill(f);
         }
+        /* printf("done installing page...\n"); */
 
         /* Putting it into the supplemental page table */
         spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
                     PTYPE_STACK, true);
+
+        frame_unpin_paddr(kpage);
     } else {
 
-        /* If it was found, you need to load the process */
-
-        /* Getting all of the necessary variables to load the process. */
-        struct file *file = page_entry->file;
+        /* Get the user address for the page, and whether the page was swapped
+           before. */
         uint8_t *upage = (uint8_t *) page_entry->upaddr;
-        off_t ofs = page_entry->ofs;
-        uint32_t read_bytes = page_entry->read_bytes;
-        uint32_t zero_bytes = page_entry->zero_bytes;
-        bool writable = page_entry->writable;
-
-        file_seek(file, ofs);
+        int swap_index = page_entry->swap_index;
+        bool writable  = page_entry->writable;
+        /* printf("got spt for page at addr %x\n", upage); */
 
         /* Get a page of memory. */
         uint8_t *kpage = frame_get_page(upage, PAL_USER);
+        frame_pin_paddr(kpage);
 
-        /* TODO if this is null you will want to swapping */
-        if (kpage == NULL) {
-            printf("Couldn't get a frame\n");
-            kill(f);
+        /* TODO: (Nick) Need to read evicted code and mmap files back into
+           a page from the files. */
+
+        /* If the page was not swapped, then we page faulted because we still
+           need to load the process from file. */
+        if (swap_index == NOTSWAPPED) {
+            printf("loading code segment...\n");
+            /* Get all of the necessary info to load the process. */
+            struct file *file   = page_entry->file;
+            off_t ofs           = page_entry->ofs;
+            uint32_t read_bytes = page_entry->read_bytes;
+            uint32_t zero_bytes = page_entry->zero_bytes;
+
+            file_seek(file, ofs);
+
+            /* Load this page. */
+            if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
+                printf("Couldn't load the page\n");
+                palloc_free_page(kpage);
+                kill(f);
+            }
+
+            memset(kpage + read_bytes, 0, zero_bytes);
+
+            /* Add the page to the process's address space. */
+            if (!install_page(upage, kpage, writable)) {
+            /* if (!pagedir_set_page( */
+            /*         thread_current()->pagedir, upage, kpage, writable)) { */
+                printf("Couldn't install the page\n");
+                palloc_free_page(kpage);
+                kill(f);
+            }
         }
 
-        /* Load this page. */
-        if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
-            printf("Couldn't load the page\n");
-            palloc_free_page(kpage);
-            kill(f);
+        /* Otherwise, the page was swapped and we need to load it from swap */
+        else {
+            printf ("Loading from swap with user address %x and kernel addr %x\n",
+                    upage, kpage);
+
+            swap_load(kpage, (block_sector_t) swap_index);
+
+            if (!pagedir_set_page(
+                    thread_current()->pagedir, upage, kpage, writable)) {
+            /* if (!install_page(upage, kpage, writable)) { */
+                printf("Couldn't install the page\n");
+                palloc_free_page(kpage);
+                kill(f);
+            }
+            printf ("done loading from swap\n");
+
+            page_entry->swap_index = NOTSWAPPED;
         }
 
-        memset(kpage + read_bytes, 0, zero_bytes);
-
-        /* Add the page to the process's address space. */
-        if (!install_page(upage, kpage, writable)) {
-            printf("Couldn't install the page\n");
-            palloc_free_page(kpage);
-            kill(f);
-        }
-
+        frame_unpin_paddr(kpage);
     }
+    /* printf("leaving handler...\n"); */
 }
 
 /*! When the stack pointer page faults because the stack has run out of room,

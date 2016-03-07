@@ -58,8 +58,11 @@ block_sector_t swap_page(struct frame *f)
     /* Delta from the initial index */
     int del = 0;
 
+    /* printf("writing to swap from paddr %x\n", f->paddr); */
     /* Write the page to swap */
     for (; del < BLOCKS_PER_PAGE; del++) {
+        /* printf("writing to swap from paddr %x\n", f->paddr + del * BLOCK_SECTOR_SIZE); */
+        /* printf("first byte of writing is %x\n", *(uint8_t *) (f->paddr + del * BLOCK_SECTOR_SIZE)); */
         block_write(
             swap->file,
             idx + del,
@@ -70,5 +73,28 @@ block_sector_t swap_page(struct frame *f)
     lock_release(&swaplock);
 
     return idx;
+}
+
+void swap_load(uint8_t *paddr, block_sector_t idx)
+{
+    /* printf ("Loading from swap for paddr = %x\n", paddr); */
+    lock_acquire(&swaplock);
+
+    /* Delta from the initial index */
+    int del = 0;
+
+    /* Read the swap into the specified page */
+    for (; del < BLOCKS_PER_PAGE; del++) {
+        block_read(
+            swap->file,
+            idx + del,
+            paddr + (del * BLOCK_SECTOR_SIZE)
+        );
+    }
+
+    /* Indicate the swap slots are free. */
+    bitmap_set_multiple(swap->slots, idx, BLOCKS_PER_PAGE, false);
+
+    lock_release(&swaplock);
 }
 

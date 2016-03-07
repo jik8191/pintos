@@ -3,6 +3,7 @@
 
 #include <hash.h>
 #include <list.h>
+#include <hash.h>
 
 #include "threads/palloc.h"
 
@@ -25,5 +26,8 @@ struct frame {
 void frame_init(void);
 void * frame_get_page(void *uaddr, enum palloc_flags flags);
 struct frame * frame_lookup(void *paddr);
+
+void frame_pin_paddr(void *paddr);
+void frame_unpin_paddr(void *paddr);
 
 #endif /* VM_FRAME_H */
