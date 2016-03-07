@@ -158,8 +158,6 @@ static void page_fault(struct intr_frame *f) {
         kill(f);
     }
 
-    /* TODO: Not sure we should page fault for all non-user accesses. Also,
-       fix the error message? */
     /* Exit if the page fault was not a user address. */
     if (!is_user_vaddr(fault_addr)) {
         printf("Page fault at %p: Invalid address error %s page in %s context.\n",
@@ -193,8 +191,6 @@ static void page_fault(struct intr_frame *f) {
 
         /* Only allowing the fault address to be a pgsize away from where
            the current stack pointer is. */
-        /* TODO PGSIZE is really big, might want to make this smaller. Do you
-           need to check that its below PHYS_BASE as well? */
         else if (fault_addr < f->esp - PGSIZE && fault_addr > STACK_FLOOR) {
             printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
@@ -220,9 +216,6 @@ static void page_fault(struct intr_frame *f) {
         /* Get a page of memory. */
         uint8_t *kpage = frame_get_page(upage, PAL_USER);
         frame_pin_kaddr(kpage);
-
-        /* TODO: (Nick) Need to read evicted code and mmap files back into
-           a page from the files. */
 
         /* If the page was not swapped, then we page faulted because we still
            need to load the process from file. */
