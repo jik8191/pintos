@@ -106,6 +106,9 @@ struct frame * frame_evict(void)
             /* The page directory of the owner of the frame's contents */
             uint32_t *pagedir = f->owner->pagedir;
 
+            /* lock_acquire(&f->owner->pd_lock); */
+            sema_down(&f->owner->pd_sema);
+
             /* TODO: look at both physical and virtual address for aliasing */
             bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
             bool dirty    = pagedir_is_dirty(pagedir, f->uaddr);
@@ -114,16 +117,22 @@ struct frame * frame_evict(void)
 
                 /* If accessed bit is set, remove it */
                 pagedir_set_accessed(pagedir, f->uaddr, false);
+                /* lock_release(&f->owner->pd_lock); */
+                sema_up(&f->owner->pd_sema);
 
             } else if (dirty) {
 
                 /* Else if only dirty bit is set, remove it */
                 pagedir_set_dirty(pagedir, f->uaddr, false);
+                /* lock_release(&f->owner->pd_lock); */
+                sema_up(&f->owner->pd_sema);
 
                 /* Mark that this frame was at one point dirty */
                 f->dirty = true;
 
             } else if (toswap == NULL) {
+                /* lock_release(&f->owner->pd_lock); */
+                sema_up(&f->owner->pd_sema);
 
                 /* Frame the pin so we don't try to replace it twice. We don't
                    have to unpin because it will be freed later. */
@@ -134,6 +143,9 @@ struct frame * frame_evict(void)
                 frame_replace(f);
                 toswap = f;
 
+            } else {
+                /* lock_release(&f->owner->pd_lock); */
+                sema_up(&f->owner->pd_sema);
             }
         }
     }
@@ -188,9 +200,15 @@ void frame_replace(struct frame *f)
     if (page->writable) {
         bool dirty;
 
+        /* lock_acquire(&f->owner->pd_lock); */
+        sema_down(&f->owner->pd_sema);
+
         /* We check whether the frame has ever been dirty */
         dirty = pagedir_is_dirty(f->owner->pagedir, f->uaddr);
         dirty = dirty || f->dirty; /* f->dirty set in second-chance eviction. */
+
+        /* lock_release(&f->owner->pd_lock); */
+        sema_up(&f->owner->pd_sema);
 
         switch (page->type) {
             /* We only have to swap if the page is dirty */
@@ -232,7 +250,13 @@ void frame_replace(struct frame *f)
     }
 
 done:
+    /* lock_acquire(&f->owner->pd_lock); */
+    sema_down(&f->owner->pd_sema);
+
     pagedir_clear_page(f->owner->pagedir, f->uaddr);
+
+    /* lock_release(&f->owner->pd_lock); */
+    sema_up(&f->owner->pd_sema);
 }
 
 /*! Look up a frame by the address of the page occupying it.

@@ -8,7 +8,7 @@
 
 #define SIZE (2 * 1024 * 1024)
 /* #define SIZE (2 * 1024 * 756) */
-/* #define SIZE (2 * 1024 * 768) */
+/* #define SIZE (2 * 1024 * 756) */
 
 static char buf[SIZE];
 
@@ -38,12 +38,12 @@ test_main (void)
       fail ("byte %zu != 0x5a", i);
   }
 
-  /* Encrypt zeros. */
+  /* Encrypt the buffer. */
   msg ("read/modify/write pass one");
   arc4_init (&arc4, "foobar", 6);
   arc4_crypt (&arc4, buf, SIZE);
 
-  /* Decrypt back to zeros. */
+  /* Decrypt back the buffer. */
   msg ("read/modify/write pass two");
   arc4_init (&arc4, "foobar", 6);
   arc4_crypt (&arc4, buf, SIZE);

@@ -41,6 +41,7 @@ void swap_init(void)
     return the block index in the swap file we wrote to. */
 block_sector_t swap_page(struct frame *f)
 {
+    /* printf("Swapping page with user address %x\n", f->uaddr); */
     lock_acquire(&swaplock);
 
     /* Find a free block large enough for a page */
@@ -48,7 +49,7 @@ block_sector_t swap_page(struct frame *f)
         swap->slots,        /* The bitmap to search and flip bits inside */
         0,                  /* Start index of the search */
         BLOCKS_PER_PAGE,    /* Number of contiguous blocks we need */
-        false               /* We look for free (false) bits and flip to true */
+        false               /* We look for false (free) bits and flip to true */
     );
 
     /* Hopefully you never run out of swap */

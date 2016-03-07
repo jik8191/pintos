@@ -9,9 +9,10 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include "synch.h"
 #include <fixed_point.h>
 #include <hash.h>
+
+#include "synch.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -150,6 +151,8 @@ struct thread {
 #endif
 
     struct hash spt;                    /*!< Supplemental page table */
+
+    struct semaphore pd_sema;
 
     /*! Owned by thread.c. */
     /**@{*/

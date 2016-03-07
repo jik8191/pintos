@@ -211,7 +211,7 @@ static void page_fault(struct intr_frame *f) {
         }
 
         /* If we didn't have a page fault error, then grow the stack. */
-        printf("growing the stack...\n");
+        /* printf("growing the stack...\n"); */
 
         /* Where the next stack page starts */
         uint8_t *new_stack = (void *) ((unsigned long)
@@ -228,7 +228,7 @@ static void page_fault(struct intr_frame *f) {
         }
 
         /* Installing the page */
-        printf("installing page at user addr %x...\n", new_stack);
+        /* printf("installing page at user addr %x...\n", new_stack); */
         if (!install_page(new_stack, kpage, true)) {
             printf("Couldn't install the page\n");
             palloc_free_page(kpage);
@@ -241,6 +241,7 @@ static void page_fault(struct intr_frame *f) {
                     PTYPE_STACK, true);
 
         frame_unpin_paddr(kpage);
+
     } else {
 
         /* Get the user address for the page, and whether the page was swapped
@@ -260,7 +261,7 @@ static void page_fault(struct intr_frame *f) {
         /* If the page was not swapped, then we page faulted because we still
            need to load the process from file. */
         if (swap_index == NOTSWAPPED) {
-            printf("loading code segment...\n");
+            /* printf("loading code segment...\n"); */
             /* Get all of the necessary info to load the process. */
             struct file *file   = page_entry->file;
             off_t ofs           = page_entry->ofs;
@@ -290,8 +291,8 @@ static void page_fault(struct intr_frame *f) {
 
         /* Otherwise, the page was swapped and we need to load it from swap */
         else {
-            printf ("Loading from swap with user address %x and kernel addr %x\n",
-                    upage, kpage);
+            /* printf ("Loading from swap with user address %x and kernel addr %x\n", */
+                    /* upage, kpage); */
 
             swap_load(kpage, (block_sector_t) swap_index);
 
@@ -302,7 +303,7 @@ static void page_fault(struct intr_frame *f) {
                 palloc_free_page(kpage);
                 kill(f);
             }
-            printf ("done loading from swap\n");
+            /* printf ("done loading from swap\n"); */
 
             page_entry->swap_index = NOTSWAPPED;
         }
