@@ -59,15 +59,12 @@ block_sector_t swap_page(struct frame *f)
     /* Delta from the initial index */
     int del = 0;
 
-    /* printf("writing to swap from paddr %x\n", f->paddr); */
     /* Write the page to swap */
     for (; del < BLOCKS_PER_PAGE; del++) {
-        /* printf("writing to swap from paddr %x\n", f->paddr + del * BLOCK_SECTOR_SIZE); */
-        /* printf("first byte of writing is %x\n", *(uint8_t *) (f->paddr + del * BLOCK_SECTOR_SIZE)); */
         block_write(
             swap->file,
             idx + del,
-            f->paddr + (del * BLOCK_SECTOR_SIZE)
+            f->kaddr + (del * BLOCK_SECTOR_SIZE)
         );
     }
 
@@ -76,9 +73,8 @@ block_sector_t swap_page(struct frame *f)
     return idx;
 }
 
-void swap_load(uint8_t *paddr, block_sector_t idx)
+void swap_load(uint8_t *kaddr, block_sector_t idx)
 {
-    /* printf ("Loading from swap for paddr = %x\n", paddr); */
     lock_acquire(&swaplock);
 
     /* Delta from the initial index */
@@ -89,7 +85,7 @@ void swap_load(uint8_t *paddr, block_sector_t idx)
         block_read(
             swap->file,
             idx + del,
-            paddr + (del * BLOCK_SECTOR_SIZE)
+            kaddr + (del * BLOCK_SECTOR_SIZE)
         );
     }
 

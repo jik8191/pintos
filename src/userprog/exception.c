@@ -146,10 +146,6 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
-    /* printf("page faulting at %s addr %x...\n", */
-            /* write ? "writable" : "read-only", */
-            /* fault_addr); */
-
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
@@ -211,36 +207,7 @@ static void page_fault(struct intr_frame *f) {
         }
 
         /* If we didn't have a page fault error, then grow the stack. */
-        /* printf("growing the stack...\n"); */
-
-        /* Where the next stack page starts */
-        uint8_t *new_stack = (void *) ((unsigned long)
-                                fault_addr & (PTMASK | PDMASK));
-
-        /* TODO: Darius, come fix this. You wrote a function to do this. */
-        /* Getting a page */
-        uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
-        frame_pin_paddr(kpage);
-
-        if (kpage == NULL) {
-            printf("Couldn't get a frame\n");
-            kill(f);
-        }
-
-        /* Installing the page */
-        /* printf("installing page at user addr %x...\n", new_stack); */
-        if (!install_page(new_stack, kpage, true)) {
-            printf("Couldn't install the page\n");
-            palloc_free_page(kpage);
-            kill(f);
-        }
-        /* printf("done installing page...\n"); */
-
-        /* Putting it into the supplemental page table */
-        spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
-                    PTYPE_STACK, true);
-
-        frame_unpin_paddr(kpage);
+        expand_stack(f, fault_addr);
 
     } else {
 
@@ -249,11 +216,10 @@ static void page_fault(struct intr_frame *f) {
         uint8_t *upage = (uint8_t *) page_entry->upaddr;
         int swap_index = page_entry->swap_index;
         bool writable  = page_entry->writable;
-        /* printf("got spt for page at addr %x\n", upage); */
 
         /* Get a page of memory. */
         uint8_t *kpage = frame_get_page(upage, PAL_USER);
-        frame_pin_paddr(kpage);
+        frame_pin_kaddr(kpage);
 
         /* TODO: (Nick) Need to read evicted code and mmap files back into
            a page from the files. */
@@ -261,7 +227,6 @@ static void page_fault(struct intr_frame *f) {
         /* If the page was not swapped, then we page faulted because we still
            need to load the process from file. */
         if (swap_index == NOTSWAPPED) {
-            /* printf("loading code segment...\n"); */
             /* Get all of the necessary info to load the process. */
             struct file *file   = page_entry->file;
             off_t ofs           = page_entry->ofs;
@@ -281,8 +246,6 @@ static void page_fault(struct intr_frame *f) {
 
             /* Add the page to the process's address space. */
             if (!install_page(upage, kpage, writable)) {
-            /* if (!pagedir_set_page( */
-            /*         thread_current()->pagedir, upage, kpage, writable)) { */
                 printf("Couldn't install the page\n");
                 palloc_free_page(kpage);
                 kill(f);
@@ -291,26 +254,20 @@ static void page_fault(struct intr_frame *f) {
 
         /* Otherwise, the page was swapped and we need to load it from swap */
         else {
-            /* printf ("Loading from swap with user address %x and kernel addr %x\n", */
-                    /* upage, kpage); */
-
             swap_load(kpage, (block_sector_t) swap_index);
 
             if (!pagedir_set_page(
                     thread_current()->pagedir, upage, kpage, writable)) {
-            /* if (!install_page(upage, kpage, writable)) { */
                 printf("Couldn't install the page\n");
                 palloc_free_page(kpage);
                 kill(f);
             }
-            /* printf ("done loading from swap\n"); */
 
             page_entry->swap_index = NOTSWAPPED;
         }
 
-        frame_unpin_paddr(kpage);
+        frame_unpin_kaddr(kpage);
     }
-    /* printf("leaving handler...\n"); */
 }
 
 /*! When the stack pointer page faults because the stack has run out of room,
@@ -322,6 +279,7 @@ void expand_stack(struct intr_frame *f, void *addr) {
 
     /* Getting a page */
     uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
+    frame_pin_kaddr(kpage);
 
     if (kpage == NULL) {
         printf("Couldn't get a frame\n");
@@ -338,4 +296,6 @@ void expand_stack(struct intr_frame *f, void *addr) {
     /* Putting it into the supplemental page table */
     spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
                 PTYPE_STACK, true);
+
+    frame_unpin_kaddr(kpage);
 }

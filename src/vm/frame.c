@@ -24,8 +24,6 @@ static struct hash frametable;
 bool frame_less(const struct hash_elem *, const struct hash_elem *, void *);
 unsigned frame_hash(const struct hash_elem *, void *);
 
-/* static struct list frame_queue; */
-
 
 /* ----- Implementations ----- */
 
@@ -34,9 +32,7 @@ unsigned frame_hash(const struct hash_elem *, void *);
 void frame_init(void)
 {
     hash_init(&frametable, frame_hash, frame_less, NULL);
-    /* list_init(&frame_queue); */
 }
-
 
 /*! Return a virtual page and create a frame in the process. */
 void * frame_get_page(void *uaddr, enum palloc_flags flags)
@@ -47,7 +43,7 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
         struct frame *evicted = frame_evict();
 
         /* Free the page and remove the frame for the evicted frame */
-        palloc_free_page(evicted->paddr);
+        palloc_free_page(evicted->kaddr);
         /* list_remove(&evicted->lelem); */
         hash_delete(&frametable, &evicted->elem);
         free(evicted);
@@ -61,14 +57,13 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
     struct frame *f = malloc (sizeof (struct frame));
     frame_pin(f);
 
-    f->paddr  = page;
+    f->kaddr  = page;
     f->uaddr  = uaddr;
     f->dirty  = false;
     f->owner  = thread_current();
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
-    /* list_push_back(&frame_queue, &f->lelem); */
 
     frame_unpin(f);
 
@@ -90,14 +85,10 @@ struct frame * frame_evict(void)
 
     /* Keep looping until we actually evict a page */
     while (toswap == NULL) {
-        /* struct list_elem *e = list_begin(&frame_queue); */
         struct hash_iterator i;
         hash_first (&i, &frametable);
 
         while (hash_next (&i)) {
-        /* for (; e != list_end(&frame_queue); e = list_next(e)) { */
-            /* struct frame *f = list_entry(e, struct frame, lelem); */
-
             struct frame *f = hash_entry (hash_cur (&i), struct frame, elem);
 
             /* Skip pinned pages */
@@ -159,9 +150,9 @@ void frame_pin(struct frame *f)
     f->pinned = true;
 }
 
-void frame_pin_paddr(void *paddr)
+void frame_pin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(paddr);
+    struct frame *f = frame_lookup(kaddr);
     frame_pin(f);
 }
 
@@ -171,9 +162,9 @@ void frame_unpin(struct frame *f)
     f->pinned = false;
 }
 
-void frame_unpin_paddr(void *paddr)
+void frame_unpin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(paddr);
+    struct frame *f = frame_lookup(kaddr);
     frame_unpin(f);
 }
 
@@ -204,8 +195,9 @@ void frame_replace(struct frame *f)
         sema_down(&f->owner->pd_sema);
 
         /* We check whether the frame has ever been dirty */
-        dirty = pagedir_is_dirty(f->owner->pagedir, f->uaddr);
-        dirty = dirty || f->dirty; /* f->dirty set in second-chance eviction. */
+        dirty = f->dirty; /* f->dirty set in second-chance eviction. */
+        dirty = dirty || pagedir_is_dirty(f->owner->pagedir, f->uaddr);
+        dirty = dirty || pagedir_is_dirty(f->owner->pagedir, f->kaddr);
 
         /* lock_release(&f->owner->pd_lock); */
         sema_up(&f->owner->pd_sema);
@@ -238,12 +230,10 @@ void frame_replace(struct frame *f)
 
         /* Write these out to the files they belong to */
         case PTYPE_MMAP:
-            /* printf("NOT IMPLEMENTED\n"); */
-            /* TODO: Write to file */
             lock_acquire(&file_lock);
 
             /* Write out the file */
-            file_write_at(page->file, f->paddr, page->read_bytes, page->ofs);
+            file_write_at(page->file, f->kaddr, page->read_bytes, page->ofs);
 
             lock_release(&file_lock);
             break;
@@ -264,12 +254,12 @@ done:
     If a frame exists with the specified page address in the frame table, we
     return the address of the frame. Otherwise, we return NULL, suggesting that
     the specified page is not in a physical page frame at the moment. */
-struct frame * frame_lookup(void *paddr)
+struct frame * frame_lookup(void *kaddr)
 {
     struct frame f;
     struct hash_elem *e;
 
-    f.paddr = paddr;
+    f.kaddr = kaddr;
     e = hash_find (&frametable, &f.elem);
 
     return e != NULL ? hash_entry (e, struct frame, elem) : NULL;
@@ -288,12 +278,12 @@ bool frame_less(
     struct frame *aframe = hash_entry(a, struct frame, elem);
     struct frame *bframe = hash_entry(b, struct frame, elem);
 
-    return aframe->paddr < bframe->paddr;
+    return aframe->kaddr < bframe->kaddr;
 }
 
 /*! The function used to hash two frames */
 unsigned frame_hash(const struct hash_elem *e, void *aux UNUSED)
 {
     struct frame *f = hash_entry(e, struct frame, elem);
-    return hash_bytes (&f->paddr, sizeof (f->paddr));
+    return hash_bytes (&f->kaddr, sizeof (f->kaddr));
 }

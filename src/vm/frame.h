@@ -8,7 +8,7 @@
 #include "threads/palloc.h"
 
 struct frame {
-    void *paddr;    /*!< Address to the page that occupies the frame */
+    void *kaddr;    /*!< Kernal address to the page that occupies the frame */
     void *uaddr;    /*!< User virtual addres for the page */
     bool pinned;    /*!< Whether the frame is pinned so it can't be swapped */
 
@@ -25,9 +25,12 @@ struct frame {
 
 void frame_init(void);
 void * frame_get_page(void *uaddr, enum palloc_flags flags);
-struct frame * frame_lookup(void *paddr);
 
-void frame_pin_paddr(void *paddr);
-void frame_unpin_paddr(void *paddr);
+/* Lookup a frame by its kernel address */
+struct frame * frame_lookup(void *kaddr);
+
+/* Pin and unpin a frame by the kernel address of the page occupying it */
+void frame_pin_kaddr(void *kaddr);
+void frame_unpin_kaddr(void *kaddr);
 
 #endif /* VM_FRAME_H */
