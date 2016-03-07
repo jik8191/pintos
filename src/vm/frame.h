@@ -3,7 +3,6 @@
 
 #include <hash.h>
 #include <list.h>
-#include <hash.h>
 
 #include "threads/palloc.h"
 

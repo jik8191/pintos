@@ -42,6 +42,7 @@ int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 mapid_t sys_mmap(int fd, void *addr);
+void sys_munmap(mapid_t mapping);
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
@@ -161,6 +162,11 @@ static void syscall_handler(struct intr_frame *f) {
             void_arg = * (void **) validate_arg(arg1, CONVERT_NUMERIC,
                                                 sizeof(void *), f);
             f->eax = sys_mmap(int_arg, void_arg);
+            break;
+        case SYS_MUNMAP:
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int), f);
+            sys_munmap(int_arg);
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -345,7 +351,6 @@ void sys_exit(int status) {
         t->info->return_status = status;
         t->info->terminated = true;
     }
-
     thread_exit();
 }
 
@@ -575,7 +580,11 @@ void sys_close(int fd) {
     lock_acquire(&file_lock);
 
     struct fd_elem *file_info = get_file(fd);
+    if (debug_mode)
+        printf("Closing file with fd_elem: %p\n", file_info);
     if (file_info == NULL) {
+        if (debug_mode)
+            printf("Killing process due to invalid file access.\n");
         lock_release(&file_lock);
         thread_exit();
     }
@@ -584,6 +593,8 @@ void sys_close(int fd) {
     file_close(file_info->file_struct);
     free(file_info);
 
+    if (debug_mode)
+        printf("Done closing file.\n");
     lock_release(&file_lock);
 }
 
@@ -597,7 +608,6 @@ mapid_t sys_mmap(int fd, void *addr) {
     /* Fail if the address is 0. */
     if (addr == 0)
         return MAP_FAILED;
-
 
     /* Locking the filesys. */
     lock_acquire(&file_lock);
@@ -618,7 +628,23 @@ mapid_t sys_mmap(int fd, void *addr) {
     uint32_t page_offset = 0;
     uint32_t read_bytes, zero_bytes;
     int bytes_loaded = 0;
-    struct file *file = file_info->file_struct;
+    /* Need to use reopen so that the user can close the handle */
+    struct file *file = file_reopen(file_info->file_struct);
+
+    /* Need to add this file to the lit of files so it will be closed on exit
+     */
+
+
+    /*
+    int copy_fd = thread_current()->max_fd + 1;
+    thread_current()->max_fd++;
+
+    struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
+    new_fd->fd = copy_fd;
+    new_fd->file_struct = file;
+    list_push_back(&thread_current()->fd_list, &new_fd->elem);
+    */
+
     int size = file_length(file);
 
     /* Fail if the file has no size */
@@ -636,14 +662,24 @@ mapid_t sys_mmap(int fd, void *addr) {
         }
     }
 
+    /* Associate the thread with this mapped file. */
+    struct thread *cur = thread_current();
+    struct mmap_fileinfo *mf = malloc(sizeof (struct mmap_fileinfo));
+    mf->addr = addr;
+    mf->num_pgs = size/PGSIZE + 1;
+    mf->mapid = cur->num_mfiles;
+    /* The mapping will keep track of the file */
+    mf->file = file;
+
     while(bytes_loaded < size) {
         /* The variables for this supplemental page table entry */
-        read_bytes = bytes_loaded + PGSIZE <= size ? PGSIZE : size - bytes_loaded;
+        read_bytes = bytes_loaded + PGSIZE <= size ?
+            PGSIZE : size - bytes_loaded;
         zero_bytes = PGSIZE - read_bytes;
 
         /* Inserting into the supplemental page table */
-        spte_insert(thread_current(), (uint8_t *) page_addr, file, page_offset,
-                    read_bytes, zero_bytes, PTYPE_MMAP, file->deny_write);
+        spte_insert(cur, (uint8_t *) page_addr, file, page_offset,
+                    read_bytes, zero_bytes, PTYPE_MMAP, !file->deny_write);
 
         /* Updating variables. */
         bytes_loaded += read_bytes+ zero_bytes;
@@ -651,10 +687,79 @@ mapid_t sys_mmap(int fd, void *addr) {
         page_addr += PGSIZE;
     }
 
+    /* Now we can insert the element into the list of mapped files. */
+    list_push_back(&cur->mmap_files, &mf->elem);
+    cur->num_mfiles++;
+    if (debug_mode)
+        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n",
+               cur->name, fd, size, addr);
     lock_release(&file_lock);
 
-    return fd;
+    return mf->mapid;
 }
+
+
+/* Unmaps the mapping designated by mapping, which must be a
+   mapping ID returned by a previous call to mmap by the same process
+   that has not yet been unmapped. */
+void sys_munmap(mapid_t mapping) {
+    /* Locking the filesys. */
+    lock_acquire(&file_lock);
+    if (debug_mode)
+        printf("Unmap the mapping %d\n", (int) mapping);
+    struct thread *cur = thread_current();
+    // First check if the mapping is valid
+    if (mapping < cur->num_mfiles){
+        struct list *mmap_files = &cur->mmap_files;
+
+        // If it is, look up which file it corresponds to
+        struct list_elem *e;
+        struct mmap_fileinfo *mf = NULL;
+        for (e = list_begin (mmap_files); e != list_end (mmap_files);
+             e = list_next (e)) {
+            mf = list_entry (e, struct mmap_fileinfo, elem);
+            if (mf->mapid == mapping) break;
+        }
+        ASSERT(mf != NULL);
+        // Look up the address in the SPT
+        void *addr = mf->addr;
+        struct spte *spte = spte_lookup(addr);
+        ASSERT(spte != NULL);
+        struct file *f = mf->file;
+        if (debug_mode){
+            printf("Corresponding file at %p with size %d.\n", f, mf->num_pgs);
+        }
+
+        // for each page in the file, write if necessary, then clear, free it
+        int i;
+        for (i = 0; i < mf->num_pgs; i++){
+            if (debug_mode){
+                printf("Found spte at %p.\n", spte);
+            }
+            // check if the corresponding page has been modified
+            if (pagedir_is_dirty(cur->pagedir, addr)){
+                file_write_at(f, addr, PGSIZE, i * PGSIZE);
+            }
+            // remove page from the process's page directory
+            pagedir_clear_page(cur->pagedir, addr);
+            // remove corresponding spte from the thread's spt
+            // as the mapping is no longertrued
+            spte_remove(cur, spte);
+            addr = addr + PGSIZE;
+            spte = spte_lookup(addr);
+            if (spte == NULL) break;
+        }
+        file_close(f);
+        list_remove(&(mf->elem));
+        free(mf);
+        if (debug_mode){
+            printf("Unmapped file %p.\n", f);
+        }
+
+    }
+    lock_release(&file_lock);
+}
+
 
 /* Returns the file struct for a given fd */
 struct fd_elem *get_file(int fd) {

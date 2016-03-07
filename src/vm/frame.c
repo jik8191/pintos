@@ -24,6 +24,8 @@ static struct hash frametable;
 bool frame_less(const struct hash_elem *, const struct hash_elem *, void *);
 unsigned frame_hash(const struct hash_elem *, void *);
 
+static struct list frame_queue;
+
 
 /* ----- Implementations ----- */
 
@@ -32,6 +34,7 @@ unsigned frame_hash(const struct hash_elem *, void *);
 void frame_init(void)
 {
     hash_init(&frametable, frame_hash, frame_less, NULL);
+    list_init(&frame_queue);
 }
 
 /*! Return a virtual page and create a frame in the process. */
@@ -44,7 +47,6 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
 
         /* Free the page and remove the frame for the evicted frame */
         palloc_free_page(evicted->kaddr);
-        /* list_remove(&evicted->lelem); */
         hash_delete(&frametable, &evicted->elem);
         free(evicted);
 
@@ -64,6 +66,7 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
+    list_push_back(&frame_queue, &f->lelem);
 
     frame_unpin(f);
 
@@ -213,6 +216,9 @@ void frame_replace(struct frame *f)
             /* We have to write all stack pages */
             case PTYPE_STACK:
                 noswap = false;
+                break;
+
+            default:
                 break;
         }
     }

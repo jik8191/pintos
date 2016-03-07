@@ -54,7 +54,7 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 /*! Inserts an entry into the spt of thread t so that we know where to load
-    program segment data from later on. */
+    program segment data from later on. Return true if successful. */
 bool spte_insert (struct thread* t,
                   uint8_t *upage, struct file *file, off_t ofs,
                   uint32_t read_bytes, uint32_t zero_bytes,
@@ -74,6 +74,26 @@ bool spte_insert (struct thread* t,
     entry->swap_index = NOTSWAPPED;
 
     // insert entry into thread t's supplemental page table
-    /* TODO this is pretty stupid */
-    return (hash_insert(&(t->spt), &(entry->hash_elem)) == NULL);
+    return (hash_insert(&t->spt, &entry->hash_elem) == NULL);
+}
+
+/*! Removes an entry from the spt of thread t. Return true if successful. */
+bool spte_remove (struct thread* t, struct spte *entry){
+    struct hash_elem* removed = hash_delete(&(t->spt), &(entry->hash_elem));
+    free(entry);
+    return (removed != NULL);
+}
+
+
+/*! hash_action_func for spt_destroy, spt_remove. */
+void spte_delete(struct hash_elem *e, void *thr){
+    struct thread *t = (struct thread *) thr;
+    struct spte *entry = hash_entry(e, struct spte, hash_elem);
+    hash_delete(&(t->spt), e);
+    free(entry);
+};
+
+/*! Destroys the spt for a thread t on exit. */
+void spt_destroy (struct thread *t){
+    hash_destroy(&(t->spt), *spte_delete);
 }
