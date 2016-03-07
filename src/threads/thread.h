@@ -124,7 +124,6 @@ struct thread {
     struct lock *lock_waiton;           /*!< Lock the thread is waiting on. */
     /**@}*/
 
-#ifdef USERPROG
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
@@ -150,7 +149,6 @@ struct thread {
     struct list mmap_files;             /*!< List of memory mapped file info. */
     int num_mfiles;                      /*!< Number of memory mapped files. */
     /**@{*/
-#endif
 
     struct hash spt;                    /*!< Supplemental page table */
 

@@ -481,6 +481,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
+        memset(buffer, 0, size);
         struct fd_elem *file_info= get_file(fd);
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;

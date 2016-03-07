@@ -146,6 +146,7 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
+
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
@@ -158,6 +159,9 @@ static void page_fault(struct intr_frame *f) {
         kill(f);
     }
 
+
+    if (!user)
+        printf("Kernel page fault at address %x\n", (unsigned) fault_addr);
     /* Exit if the page fault was not a user address. */
     /*
     if (!is_user_vaddr(fault_addr)) {
@@ -174,6 +178,9 @@ static void page_fault(struct intr_frame *f) {
     /* If the error is not present, lookup the page in the supplemental
        page table. */
     struct spte *page_entry = spte_lookup(fault_addr);
+
+    /* printf("Page fault at address %x\n", (unsigned) fault_addr); */
+    /* printf("SPTE was found at %x\n", (unsigned) page_entry); */
 
     /* If the process was not found in the supplemental page entry kill
        the process. Unless it is from growing the stack. */
@@ -205,6 +212,8 @@ static void page_fault(struct intr_frame *f) {
 
         }
 
+        printf("%s expanding stack...\n",
+                user ? "User" : "Kernel");
         /* If we didn't have a page fault error, then grow the stack. */
         expand_stack(f, fault_addr);
 
@@ -229,6 +238,7 @@ static void page_fault(struct intr_frame *f) {
             uint32_t read_bytes = page_entry->read_bytes;
             uint32_t zero_bytes = page_entry->zero_bytes;
 
+            off_t prev_ofs = file->pos;
             file_seek(file, ofs);
 
             /* Load this page. */
@@ -237,6 +247,7 @@ static void page_fault(struct intr_frame *f) {
                 palloc_free_page(kpage);
                 kill(f);
             }
+            file_seek(file, prev_ofs);
 
             memset(kpage + read_bytes, 0, zero_bytes);
 

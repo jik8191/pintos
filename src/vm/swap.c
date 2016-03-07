@@ -41,7 +41,7 @@ void swap_init(void)
     return the block index in the swap file we wrote to. */
 block_sector_t swap_page(struct frame *f)
 {
-    /* printf("Swapping page with user address %x\n", f->uaddr); */
+    printf("Swapping page with user address %x and kernel addr %x\n", f->uaddr, f->kaddr);
     lock_acquire(&swaplock);
 
     /* Find a free block large enough for a page */
@@ -75,7 +75,10 @@ block_sector_t swap_page(struct frame *f)
 
 void swap_load(uint8_t *kaddr, block_sector_t idx)
 {
+    printf("Loading from swap into addr: %x\n", (unsigned) kaddr);
     lock_acquire(&swaplock);
+
+    frame_pin_kaddr(kaddr);
 
     /* Delta from the initial index */
     int del = 0;
@@ -91,6 +94,8 @@ void swap_load(uint8_t *kaddr, block_sector_t idx)
 
     /* Indicate the swap slots are free. */
     bitmap_set_multiple(swap->slots, idx, BLOCKS_PER_PAGE, false);
+
+    frame_unpin_kaddr(kaddr);
 
     lock_release(&swaplock);
 }

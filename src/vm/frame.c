@@ -22,6 +22,9 @@ void frame_unpin(struct frame *f);
 
 /* The hash used for the frame table, along with the required hash functions. */
 static struct hash frametable;
+static struct list framequeue;
+static struct list_elem *clockhand;
+struct frame * frame_qlookup(void *vaddr, bool user);
 bool frame_less(const struct hash_elem *, const struct hash_elem *, void *);
 unsigned frame_hash(const struct hash_elem *, void *);
 
@@ -33,6 +36,8 @@ unsigned frame_hash(const struct hash_elem *, void *);
 void frame_init(void)
 {
     hash_init(&frametable, frame_hash, frame_less, NULL);
+    list_init(&framequeue);
+    clockhand = NULL;
 }
 
 /*! Return a virtual page and create a frame in the process. */
@@ -46,6 +51,7 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
         /* Free the page and remove the frame for the evicted frame */
         palloc_free_page(evicted->kaddr);
         hash_delete(&frametable, &evicted->elem);
+        list_remove(&evicted->lelem);
         free(evicted);
 
         /* Allocate a new page now, which should work */
@@ -57,13 +63,19 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
     struct frame *f = malloc (sizeof (struct frame));
     frame_pin(f);
 
-    f->kaddr  = page;
-    f->uaddr  = uaddr;
-    f->dirty  = false;
-    f->owner  = thread_current();
+    f->kaddr = page;
+    f->uaddr = uaddr;
+    f->dirty = false;
+    f->owner = thread_current();
+
+    printf("Frame created with owning thread %s with addr %x and pagedir %x\n",
+            thread_current()->name,
+            thread_current(),
+            thread_current()->pagedir);
 
     /* Insert it into the frame table */
     hash_insert(&frametable, &f->elem);
+    list_push_back(&framequeue, &f->lelem);
 
     frame_unpin(f);
 
@@ -85,11 +97,22 @@ struct frame * frame_evict(void)
 
     /* Keep looping until we actually evict a page */
     while (toswap == NULL) {
-        struct hash_iterator i;
-        hash_first (&i, &frametable);
+        /* struct hash_iterator i; */
+        /* hash_first (&i, &frametable); */
 
-        while (hash_next (&i)) {
-            struct frame *f = hash_entry (hash_cur (&i), struct frame, elem);
+        /* struct list_elem *e = list_begin(&framequeue); */
+        struct list_elem *e =
+            clockhand == NULL ? list_begin(&framequeue) : clockhand;
+
+        /* while (hash_next (&i)) { */
+        for (; e != clockhand; e = list_next(e)) {
+
+            if (e == list_end(&framequeue)) {
+                e = list_begin(&framequeue);
+            }
+
+            /* struct frame *f = hash_entry (hash_cur (&i), struct frame, elem); */
+            struct frame *f = list_entry(e, struct frame, lelem);
 
             /* Skip pinned pages */
             if (f->pinned) continue;
@@ -98,6 +121,7 @@ struct frame * frame_evict(void)
             uint32_t *pagedir = f->owner->pagedir;
 
             /* lock_acquire(&f->owner->pd_lock); */
+            printf("Considering eviction of frame with owner: %x with name: %s from current thread: %s\n", f->owner, f->owner->name, thread_current()->name);
             sema_down(&f->owner->pd_sema);
 
             /* TODO: look at both physical and virtual address for aliasing */
@@ -106,7 +130,7 @@ struct frame * frame_evict(void)
                     (unsigned) pagedir,
                     (unsigned) f->uaddr);
             bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
-            bool dirty    = pagedir_is_dirty(pagedir, f->uaddr);
+            /* bool dirty    = pagedir_is_dirty(pagedir, f->uaddr); */
 
             if (accessed) {
 
@@ -115,28 +139,31 @@ struct frame * frame_evict(void)
                 /* lock_release(&f->owner->pd_lock); */
                 sema_up(&f->owner->pd_sema);
 
-            } else if (dirty) {
-
-                /* Else if only dirty bit is set, remove it */
-                pagedir_set_dirty(pagedir, f->uaddr, false);
-                /* lock_release(&f->owner->pd_lock); */
-                sema_up(&f->owner->pd_sema);
-
-                /* Mark that this frame was at one point dirty */
-                f->dirty = true;
+            /* } else if (dirty) { */
+            /*  */
+            /*     #<{(| Else if only dirty bit is set, remove it |)}># */
+            /*     pagedir_set_dirty(pagedir, f->uaddr, false); */
+            /*     #<{(| lock_release(&f->owner->pd_lock); |)}># */
+            /*     sema_up(&f->owner->pd_sema); */
+            /*  */
+            /*     #<{(| Mark that this frame was at one point dirty |)}># */
+            /*     f->dirty = true; */
 
             } else if (toswap == NULL) {
-                /* lock_release(&f->owner->pd_lock); */
-                sema_up(&f->owner->pd_sema);
-
                 /* Frame the pin so we don't try to replace it twice. We don't
                    have to unpin because it will be freed later. */
                 frame_pin(f);
+
+                /* lock_release(&f->owner->pd_lock); */
+                sema_up(&f->owner->pd_sema);
 
                 /* Else if we haven't gotten a new page, we can replace this
                    page with the new one */
                 frame_replace(f);
                 toswap = f;
+
+                clockhand = e;
+                break;
 
             } else {
                 /* lock_release(&f->owner->pd_lock); */
@@ -156,13 +183,15 @@ void frame_pin(struct frame *f)
 
 void frame_pin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(kaddr, false);
+    struct frame *f = frame_qlookup(kaddr, false);
+    ASSERT(f != NULL);
     frame_pin(f);
 }
 
 void frame_pin_uaddr(void *uaddr)
 {
-    struct frame *f = frame_lookup(uaddr, true);
+    struct frame *f = frame_qlookup(uaddr, true);
+    ASSERT(f != NULL);
     frame_pin(f);
 }
 
@@ -174,14 +203,34 @@ void frame_unpin(struct frame *f)
 
 void frame_unpin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(kaddr, false);
+    struct frame *f = frame_qlookup(kaddr, false);
+    ASSERT(f != NULL);
     frame_unpin(f);
 }
 
 void frame_unpin_uaddr(void *uaddr)
 {
-    struct frame *f = frame_lookup(uaddr, true);
+    struct frame *f = frame_qlookup(uaddr, true);
+    ASSERT(f != NULL);
     frame_unpin(f);
+}
+
+struct frame * frame_qlookup(void *vaddr, bool user)
+{
+    /* printf("look for %s %x\n", user ? "uaddr" : "kaddr", vaddr); */
+    struct list_elem *e = list_begin(&framequeue);
+
+    for (; e != list_end(&framequeue); e = list_next(e)) {
+        struct frame *f = list_entry(e, struct frame, lelem);
+        /* printf("looking at uaddr: %x paddr: %x\n", f->uaddr, f->kaddr); */
+
+        if ((user && f->uaddr == vaddr) || (!user && f->kaddr == vaddr)) {
+            /* printf("returning %x\n", f); */
+            return f;
+        }
+    }
+
+    return NULL;
 }
 
 /*! Evict the frame by clearing it out or swapping its contents.
@@ -198,6 +247,7 @@ void frame_unpin_uaddr(void *uaddr)
     We write dirty mmap-ed pages to their file. */
 void frame_replace(struct frame *f)
 {
+    printf("Replacing frame with user addr %x and kernel addr %x\n", f->uaddr, f->kaddr);
     struct spte *page = spte_lookup(f->uaddr);
 
     /* Whether we can deallocate without swapping */
