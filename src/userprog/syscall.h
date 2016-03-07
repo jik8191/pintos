@@ -3,6 +3,7 @@
 
 #include "threads/thread.h"
 #include <user/syscall.h>
+#include "filesys/file.h"
 
 struct lock file_lock;
 
@@ -23,6 +24,7 @@ struct mmap_fileinfo {
     mapid_t mapid;
     void *addr;
     int num_pgs;
+    struct file *file;
 };
 
 enum conversion_type {

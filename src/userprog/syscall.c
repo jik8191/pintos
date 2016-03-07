@@ -634,7 +634,8 @@ mapid_t sys_mmap(int fd, void *addr) {
     /* Need to add this file to the lit of files so it will be closed on exit
      */
 
-    /* Figure out what fd to give the file */
+
+    /*
     int copy_fd = thread_current()->max_fd + 1;
     thread_current()->max_fd++;
 
@@ -642,6 +643,7 @@ mapid_t sys_mmap(int fd, void *addr) {
     new_fd->fd = copy_fd;
     new_fd->file_struct = file;
     list_push_back(&thread_current()->fd_list, &new_fd->elem);
+    */
 
     int size = file_length(file);
 
@@ -666,6 +668,8 @@ mapid_t sys_mmap(int fd, void *addr) {
     mf->addr = addr;
     mf->num_pgs = size/PGSIZE + 1;
     mf->mapid = cur->num_mfiles;
+    /* The mapping will keep track of the file */
+    mf->file = file;
 
     while(bytes_loaded < size) {
         /* The variables for this supplemental page table entry */
@@ -675,7 +679,7 @@ mapid_t sys_mmap(int fd, void *addr) {
 
         /* Inserting into the supplemental page table */
         spte_insert(cur, (uint8_t *) page_addr, file, page_offset,
-                    read_bytes, zero_bytes, false, file->deny_write);
+                    read_bytes, zero_bytes, PTYPE_MMAP, !file->deny_write);
 
         /* Updating variables. */
         bytes_loaded += read_bytes+ zero_bytes;
@@ -721,7 +725,7 @@ void sys_munmap(mapid_t mapping) {
         void *addr = mf->addr;
         struct spte *spte = spte_lookup(addr);
         ASSERT(spte != NULL);
-        struct file *f = file_reopen(spte->file);
+        struct file *f = mf->file;
         if (debug_mode){
             printf("Corresponding file at %p with size %d.\n", f, mf->num_pgs);
         }
@@ -734,13 +738,16 @@ void sys_munmap(mapid_t mapping) {
             }
             // check if the corresponding page has been modified
             if (pagedir_is_dirty(cur->pagedir, addr)){
+                file_write_at(f, addr, PGSIZE, i * PGSIZE);
             }
             // remove page from the process's page directory
             pagedir_clear_page(cur->pagedir, addr);
             // remove corresponding spte from the thread's spt
             // as the mapping is no longertrued
             spte_remove(cur, spte);
-            spte = spte_lookup(addr + PGSIZE);
+            addr = addr + PGSIZE;
+            spte = spte_lookup(addr);
+            if (spte == NULL) break;
         }
         file_close(f);
         list_remove(&(mf->elem));

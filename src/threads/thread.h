@@ -146,12 +146,12 @@ struct thread {
     int return_status;                  /*!< The return status upon exiting */
     bool userprog;                      /*!< Whether or not this is a user
                                              spawned program. */
+    struct list mmap_files;             /*!< List of memory mapped file info. */
+    int num_mfiles;                      /*!< Number of memory mapped files. */
     /**@{*/
 #endif
 
     struct hash spt;                    /*!< Supplemental page table */
-    struct list mmap_files;             /*!< List of memory mapped file info. */
-    int num_mfiles;                      /*!< Number of memory mapped files. */
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */

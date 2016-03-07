@@ -329,6 +329,14 @@ void thread_exit(void) {
         sys_close(curr_fd->fd);
     }
 
+    /* Cleaning up the mmaps */
+    e = list_begin(&cur->mmap_files);
+    while (e != list_end(&cur->mmap_files)) {
+        struct mmap_fileinfo *mf = list_entry(e, struct mmap_fileinfo, elem);
+        e = list_next(e);
+        sys_munmap(mf->mapid);
+    }
+
     // Cleaning up the mapped files
     /* e = list_begin(&cur->mmap_files); */
     /* while (e != list_end(&cur->mmap_files)) { */
