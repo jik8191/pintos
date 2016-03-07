@@ -589,32 +589,9 @@ void sys_close(int fd) {
         thread_exit();
     }
 
-    bool mmaped = false;
-    struct thread *cur = thread_current();
-    struct list *mmap_files = &cur->mmap_files;
-    // If it is a memory mapped file, do not remove
-    struct list_elem *e;
-    struct mmap_fileinfo *mf = NULL;
-    struct spte *spte;
-    for (e = list_begin (mmap_files); e != list_end (mmap_files);
-         e = list_next (e)) {
-        mf = list_entry (e, struct mmap_fileinfo, elem);
-        spte = spte_lookup(mf->addr);
-        if (spte->file != NULL && spte->file == file_info->file_struct){
-            mmaped = true;
-            if (debug_mode)
-                printf("Closing a memory mapped file.\n");
-            break;
-        }
-    }
-    
-    if (!mmaped){
-        if (debug_mode)
-            printf("Closing a non-memory mapped file.\n");
-        list_remove(&file_info->elem);
-        file_close(file_info->file_struct);
-        free(file_info);
-    }
+    list_remove(&file_info->elem);
+    file_close(file_info->file_struct);
+    free(file_info);
 
     if (debug_mode)
         printf("Done closing file.\n");
@@ -651,7 +628,21 @@ mapid_t sys_mmap(int fd, void *addr) {
     uint32_t page_offset = 0;
     uint32_t read_bytes, zero_bytes;
     int bytes_loaded = 0;
-    struct file *file = file_info->file_struct;
+    /* Need to use reopen so that the user can close the handle */
+    struct file *file = file_reopen(file_info->file_struct);
+
+    /* Need to add this file to the lit of files so it will be closed on exit
+     */
+
+    /* Figure out what fd to give the file */
+    int copy_fd = thread_current()->max_fd + 1;
+    thread_current()->max_fd++;
+
+    struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
+    new_fd->fd = copy_fd;
+    new_fd->file_struct = file;
+    list_push_back(&thread_current()->fd_list, &new_fd->elem);
+
     int size = file_length(file);
 
     /* Fail if the file has no size */
@@ -678,7 +669,7 @@ mapid_t sys_mmap(int fd, void *addr) {
 
     while(bytes_loaded < size) {
         /* The variables for this supplemental page table entry */
-        read_bytes = bytes_loaded + PGSIZE <= size ? 
+        read_bytes = bytes_loaded + PGSIZE <= size ?
             PGSIZE : size - bytes_loaded;
         zero_bytes = PGSIZE - read_bytes;
 
@@ -691,12 +682,12 @@ mapid_t sys_mmap(int fd, void *addr) {
         page_offset += PGSIZE;
         page_addr += PGSIZE;
     }
-    
+
     /* Now we can insert the element into the list of mapped files. */
     list_push_back(&cur->mmap_files, &mf->elem);
     cur->num_mfiles++;
     if (debug_mode)
-        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n", 
+        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n",
                cur->name, fd, size, addr);
     lock_release(&file_lock);
 
@@ -704,8 +695,8 @@ mapid_t sys_mmap(int fd, void *addr) {
 }
 
 
-/* Unmaps the mapping designated by mapping, which must be a 
-   mapping ID returned by a previous call to mmap by the same process 
+/* Unmaps the mapping designated by mapping, which must be a
+   mapping ID returned by a previous call to mmap by the same process
    that has not yet been unmapped. */
 void sys_munmap(mapid_t mapping) {
     /* Locking the filesys. */
@@ -726,7 +717,7 @@ void sys_munmap(mapid_t mapping) {
             if (mf->mapid == mapping) break;
         }
         ASSERT(mf != NULL);
-        // Look up the address in the SPT 
+        // Look up the address in the SPT
         void *addr = mf->addr;
         struct spte *spte = spte_lookup(addr);
         ASSERT(spte != NULL);
@@ -747,7 +738,7 @@ void sys_munmap(mapid_t mapping) {
             // remove page from the process's page directory
             pagedir_clear_page(cur->pagedir, addr);
             // remove corresponding spte from the thread's spt
-            // as the mapping is no longer valid
+            // as the mapping is no longertrued
             spte_remove(cur, spte);
             spte = spte_lookup(addr + PGSIZE);
         }
