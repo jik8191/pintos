@@ -32,4 +32,8 @@ struct frame * frame_lookup(void *kaddr);
 void frame_pin_kaddr(void *kaddr);
 void frame_unpin_kaddr(void *kaddr);
 
+/* Pin and unpin a frame by the user address of the page occupying it */
+void frame_pin_uaddr(void *uaddr);
+void frame_unpin_uaddr(void *uaddr);
+
 #endif /* VM_FRAME_H */

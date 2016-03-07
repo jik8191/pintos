@@ -101,6 +101,10 @@ struct frame * frame_evict(void)
             sema_down(&f->owner->pd_sema);
 
             /* TODO: look at both physical and virtual address for aliasing */
+            printf("thread: %x pagedir: %x uaddr: %x\n",
+                    (unsigned) f->owner,
+                    (unsigned) pagedir,
+                    (unsigned) f->uaddr);
             bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
             bool dirty    = pagedir_is_dirty(pagedir, f->uaddr);
 
@@ -152,7 +156,13 @@ void frame_pin(struct frame *f)
 
 void frame_pin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(kaddr);
+    struct frame *f = frame_lookup(kaddr, false);
+    frame_pin(f);
+}
+
+void frame_pin_uaddr(void *uaddr)
+{
+    struct frame *f = frame_lookup(uaddr, true);
     frame_pin(f);
 }
 
@@ -164,7 +174,13 @@ void frame_unpin(struct frame *f)
 
 void frame_unpin_kaddr(void *kaddr)
 {
-    struct frame *f = frame_lookup(kaddr);
+    struct frame *f = frame_lookup(kaddr, false);
+    frame_unpin(f);
+}
+
+void frame_unpin_uaddr(void *uaddr)
+{
+    struct frame *f = frame_lookup(uaddr, true);
     frame_unpin(f);
 }
 
@@ -257,12 +273,16 @@ done:
     If a frame exists with the specified page address in the frame table, we
     return the address of the frame. Otherwise, we return NULL, suggesting that
     the specified page is not in a physical page frame at the moment. */
-struct frame * frame_lookup(void *kaddr)
+struct frame * frame_lookup(void *vaddr, bool user)
 {
     struct frame f;
     struct hash_elem *e;
 
-    f.kaddr = kaddr;
+    if (user)
+        f.uaddr = vaddr;
+    else
+        f.kaddr = vaddr;
+
     e = hash_find (&frametable, &f.elem);
 
     return e != NULL ? hash_entry (e, struct frame, elem) : NULL;
