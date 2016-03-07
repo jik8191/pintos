@@ -26,7 +26,7 @@ void frame_init(void);
 void * frame_get_page(void *uaddr, enum palloc_flags flags);
 
 /* Lookup a frame by its kernel address */
-struct frame * frame_lookup(void *kaddr);
+struct frame * frame_lookup(void *vaddr, bool user);
 
 /* Pin and unpin a frame by the kernel address of the page occupying it */
 void frame_pin_kaddr(void *kaddr);
