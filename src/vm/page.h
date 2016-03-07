@@ -26,7 +26,8 @@ enum page_type {
 struct spte {
     // see load_segment() in process.c for more about how these fields
     // are used
-    void *upaddr;               /*!< user page address, used as key. */
+    void *uaddr;               /*!< user page address, used as key. */
+    void *kaddr;
     struct file *file;
     off_t ofs;
     uint32_t read_bytes;
@@ -45,8 +46,8 @@ struct spte *spte_lookup(void *vaddr);
 bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
                 void *aux UNUSED);
 
-bool spte_insert (struct thread* t,
-                  uint8_t *upage, struct file *file, off_t ofs,
+bool spte_insert (struct thread* t, uint8_t *uaddr, uint8_t *kaddr,
+                  struct file *file, off_t ofs,
                   uint32_t read_bytes, uint32_t zero_bytes,
                   enum page_type type, bool writable);
 

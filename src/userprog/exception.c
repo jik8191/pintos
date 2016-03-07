@@ -159,14 +159,17 @@ static void page_fault(struct intr_frame *f) {
     }
 
     /* Exit if the page fault was not a user address. */
+    /*
     if (!is_user_vaddr(fault_addr)) {
-        printf("Page fault at %p: Invalid address error %s page in %s context.\n",
+        printf(
+            "Page fault at %p: Invalid kernel address %s page in %s context.\n",
             fault_addr,
             write ? "writing" : "reading",
             user ? "user" : "kernel");
 
         kill(f);
     }
+    */
 
     /* If the error is not present, lookup the page in the supplemental
        page table. */
@@ -209,7 +212,7 @@ static void page_fault(struct intr_frame *f) {
 
         /* Get the user address for the page, and whether the page was swapped
            before. */
-        uint8_t *upage = (uint8_t *) page_entry->upaddr;
+        uint8_t *upage = (uint8_t *) page_entry->uaddr;
         int swap_index = page_entry->swap_index;
         bool writable  = page_entry->writable;
 
@@ -243,6 +246,8 @@ static void page_fault(struct intr_frame *f) {
                 palloc_free_page(kpage);
                 kill(f);
             }
+
+            page_entry->kaddr = kpage;
         }
 
         /* Otherwise, the page was swapped and we need to load it from swap */
@@ -287,7 +292,7 @@ void expand_stack(struct intr_frame *f, void *addr) {
     }
 
     /* Putting it into the supplemental page table */
-    spte_insert(thread_current(), new_stack, NULL, 0, 0, PGSIZE,
+    spte_insert(thread_current(), new_stack, kpage, NULL, 0, 0, PGSIZE,
                 PTYPE_STACK, true);
 
     frame_unpin_kaddr(kpage);

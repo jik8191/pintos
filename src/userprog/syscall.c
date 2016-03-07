@@ -656,7 +656,7 @@ mapid_t sys_mmap(int fd, void *addr) {
     /* Checking if any of the page mapping exists. */
     int i = 0;
     for (; i < size; i++) {
-        if (spte_lookup(addr + i) != NULL) {
+        if (spte_lookup(addr + i)) {
             lock_release(&file_lock);
             return MAP_FAILED;
         }
@@ -678,7 +678,7 @@ mapid_t sys_mmap(int fd, void *addr) {
         zero_bytes = PGSIZE - read_bytes;
 
         /* Inserting into the supplemental page table */
-        spte_insert(cur, (uint8_t *) page_addr, file, page_offset,
+        spte_insert(cur, (uint8_t *) page_addr, NULL, file, page_offset,
                     read_bytes, zero_bytes, PTYPE_MMAP, !file->deny_write);
 
         /* Updating variables. */

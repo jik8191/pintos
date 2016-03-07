@@ -501,7 +501,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         uint32_t spte_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
 
-        if (spte_insert (t, upage, file, curr_ofs, spte_read_bytes,
+        if (spte_insert (t, upage, NULL, file, curr_ofs, spte_read_bytes,
                          spte_zero_bytes, PTYPE_CODE, writable) == false){
             return false;
         }
@@ -565,7 +565,8 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
 
             /* Inserting the stack page into the supplemental page table */
             spte_insert(
-                thread_current(), upage, NULL, 0, 0, PGSIZE, PTYPE_STACK, true);
+                thread_current(), upage, kpage, NULL, 0, 0,
+                PGSIZE, PTYPE_STACK, true);
         }
         else {
             palloc_free_page(kpage);

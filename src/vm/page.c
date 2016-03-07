@@ -11,6 +11,9 @@
 #include "threads/malloc.h"
 #include "threads/pte.h"
 
+/* Helper for looking up an SPTE */
+struct spte * spte_lookup_h(void *vaddr, bool user);
+
 /* Functions for manipulating the supplemental page table (spt) */
 
 /*! Initializes the spt for a thread t*/
@@ -23,12 +26,22 @@ bool spt_init (struct thread *t){
     Table Example in PintOS docs*/
 unsigned spte_hash (const struct hash_elem *p_, void *aux UNUSED) {
   const struct spte *p = hash_entry (p_, struct spte, hash_elem);
-  return hash_bytes (&p->upaddr, sizeof p->upaddr);
+  return hash_bytes (&p->uaddr, sizeof p->uaddr);
 }
 
-/*! Look up the page for the given virtual address. */
+/*! Look up the page for the given virtual address. Checks for the spte for the
+    page using both its user virtual address and kernel virtual address. */
 struct spte *spte_lookup(void *vaddr) {
+    struct spte *s = spte_lookup_h(vaddr, true);
 
+    if (s != NULL)
+        return s;
+    else
+        return spte_lookup_h(vaddr, false);
+}
+
+struct spte * spte_lookup_h(void *vaddr, bool user)
+{
     /* The supplemental page table for this thread */
     struct hash spt = thread_current()->spt;
 
@@ -37,7 +50,11 @@ struct spte *spte_lookup(void *vaddr) {
 
     /* Need to round down the virtual address to the closest page size.
      * We can do so by zeroing out the lower bytes. */
-    s.upaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
+    if (user)
+        s.uaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
+    else
+        s.kaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
+
     e = hash_find (&spt, &s.hash_elem);
 
     return e != NULL ? hash_entry (e, struct spte, hash_elem) : NULL;
@@ -50,13 +67,13 @@ bool spte_less (const struct hash_elem *a_, const struct hash_elem *b_,
   const struct spte *a = hash_entry (a_, struct spte, hash_elem);
   const struct spte *b = hash_entry (b_, struct spte, hash_elem);
 
-  return a->upaddr < b->upaddr;
+  return a->uaddr < b->uaddr;
 }
 
 /*! Inserts an entry into the spt of thread t so that we know where to load
     program segment data from later on. Return true if successful. */
-bool spte_insert (struct thread* t,
-                  uint8_t *upage, struct file *file, off_t ofs,
+bool spte_insert (struct thread* t, uint8_t *uaddr, uint8_t *kaddr,
+                  struct file *file, off_t ofs,
                   uint32_t read_bytes, uint32_t zero_bytes,
                   enum page_type type, bool writable){
     struct spte *entry;
@@ -64,7 +81,8 @@ bool spte_insert (struct thread* t,
     if (entry == NULL)
         return false;
 
-    entry->upaddr     = (void *) upage;
+    entry->uaddr      = (void *) uaddr;
+    entry->kaddr      = (void *) kaddr;
     entry->file       = file;
     entry->ofs        = ofs;
     entry->read_bytes = read_bytes;
