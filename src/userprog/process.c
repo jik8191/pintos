@@ -557,22 +557,20 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    kpage = frame_get_page(upage, PAL_USER | PAL_ZERO);
-    if (kpage != NULL) {
-        success = install_page(upage, kpage, true);
-        if (success) {
-            *esp = PHYS_BASE;  // start at top of user address space
+    struct frame *f = frame_get_page(upage, PAL_USER | PAL_ZERO);
+    kpage = f->kaddr;
 
-            /* Inserting the stack page into the supplemental page table */
-            spte_insert(
-                thread_current(), upage, kpage, NULL, 0, 0,
-                PGSIZE, PTYPE_STACK, true);
-        }
-        else {
-            palloc_free_page(kpage);
-            return success;
-        }
-    } else {
+    success = install_page(upage, kpage, true);
+    if (success) {
+        *esp = PHYS_BASE;  // start at top of user address space
+
+        /* Inserting the stack page into the supplemental page table */
+        spte_insert(
+            thread_current(), upage, kpage, NULL, 0, 0,
+            PGSIZE, PTYPE_STACK, true);
+    }
+    else {
+        palloc_free_page(kpage);
         return success;
     }
 

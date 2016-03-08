@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "vm/frame.h"
 
 #define BLOCKS_PER_PAGE ((int) (PGSIZE) / (BLOCK_SECTOR_SIZE))
 
@@ -43,7 +44,7 @@ void swap_init(void)
 block_sector_t swap_page(struct frame *f)
 {
     /* printf("Swapping page with user address %x and kernel addr %x\n", f->uaddr, f->kaddr); */
-    lock_acquire(&swaplock);
+    /* lock_acquire(&swaplock); */
 
     /* Find a free block large enough for a page */
     block_sector_t idx = bitmap_scan_and_flip(
@@ -69,7 +70,7 @@ block_sector_t swap_page(struct frame *f)
         );
     }
 
-    lock_release(&swaplock);
+    /* lock_release(&swaplock); */
 
     return idx;
 }
@@ -77,7 +78,7 @@ block_sector_t swap_page(struct frame *f)
 void swap_load(uint8_t *kaddr, block_sector_t idx)
 {
     /* printf("Loading from swap into addr: %x\n", (unsigned) kaddr); */
-    lock_acquire(&swaplock);
+    /* lock_acquire(&swaplock); */
 
     frame_pin_kaddr(kaddr);
 
@@ -98,6 +99,6 @@ void swap_load(uint8_t *kaddr, block_sector_t idx)
 
     frame_unpin_kaddr(kaddr);
 
-    lock_release(&swaplock);
+    /* lock_release(&swaplock); */
 }
 
