@@ -27,6 +27,7 @@ void frame_init(void);
 // void * frame_get_page(void *uaddr, enum palloc_flags flags);
 struct frame * frame_get_page(void *uaddr, enum palloc_flags flags);
 void frame_clean(struct thread *t);
+void frame_free(struct frame *f);
 
 /* Lookup a frame by its kernel or user address */
 struct frame * frame_lookup(void *vaddr, bool user);
