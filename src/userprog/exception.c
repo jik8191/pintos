@@ -160,8 +160,8 @@ static void page_fault(struct intr_frame *f) {
     }
 
 
-    if (!user)
-        printf("Kernel page fault at address %x\n", (unsigned) fault_addr);
+    /* if (!user) */
+    /*     printf("Kernel page fault at address %x\n", (unsigned) fault_addr); */
     /* Exit if the page fault was not a user address. */
     /*
     if (!is_user_vaddr(fault_addr)) {
@@ -212,8 +212,8 @@ static void page_fault(struct intr_frame *f) {
 
         }
 
-        printf("%s expanding stack...\n",
-                user ? "User" : "Kernel");
+        /* printf("%s expanding stack...\n", */
+        /*         user ? "User" : "Kernel"); */
         /* If we didn't have a page fault error, then grow the stack. */
         expand_stack(f, fault_addr);
 
@@ -236,15 +236,15 @@ void * frame_from_spt(struct spte *page_entry)
     /* Get a page of memory. */
     uint8_t *kpage = frame_get_page(upage, PAL_USER);
     frame_pin_kaddr(kpage);
-    printf("Installing page w/ upage\t%x & kpage %x for thread %s\n",
-            (uint32_t) upage,
-            (uint32_t) kpage,
-            thread_current()->name);
+    /* printf("Installing page w/ upage\t%x & kpage %x for thread %s\n", */
+    /*         (uint32_t) upage, */
+    /*         (uint32_t) kpage, */
+    /*         thread_current()->name); */
 
     /* If the page was not swapped, then we page faulted because we still
         need to load the process from file. */
     if (swap_index == NOTSWAPPED) {
-        printf("Loading from file...\n");
+        /* printf("Loading from file...\n"); */
 
         /* Get all of the necessary info to load the process. */
         struct file *file   = page_entry->file;
@@ -252,6 +252,8 @@ void * frame_from_spt(struct spte *page_entry)
         uint32_t read_bytes = page_entry->read_bytes;
         uint32_t zero_bytes = page_entry->zero_bytes;
 
+        /* printf("Loading into memory from file with addr %x\n", */
+        /*         (unsigned int) file); */
         off_t prev_ofs = file->pos;
         file_seek(file, ofs);
 
@@ -268,7 +270,8 @@ void * frame_from_spt(struct spte *page_entry)
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
             printf("Couldn't install the page with upage %x and kpage %x\n",
-                    upage, kpage);
+                    (unsigned int) upage,
+                    (unsigned int) kpage);
             palloc_free_page(kpage);
             return NULL;
         }
@@ -279,7 +282,7 @@ void * frame_from_spt(struct spte *page_entry)
 
     /* Otherwise, the page was swapped and we need to load it from swap */
     else {
-        printf("Loading from swap...\n");
+        /* printf("Loading from swap...\n"); */
 
         swap_load(kpage, (block_sector_t) swap_index);
 

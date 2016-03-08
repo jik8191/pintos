@@ -22,6 +22,7 @@ void frame_unpin(struct frame *f);
 
 /* The hash used for the frame table, along with the required hash functions. */
 static struct list framequeue;
+static struct lock framelock;
 struct frame * frame_qlookup(void *vaddr, bool user);
 
 
@@ -32,11 +33,13 @@ struct frame * frame_qlookup(void *vaddr, bool user);
 void frame_init(void)
 {
     list_init(&framequeue);
+    lock_init(&framelock);
 }
 
 /*! Return a virtual page and create a frame in the process. */
 void * frame_get_page(void *uaddr, enum palloc_flags flags)
 {
+    lock_acquire(&framelock);
     void *page = palloc_get_page (flags);
 
     if (page == NULL) {
@@ -66,6 +69,8 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
 
     frame_unpin(f);
 
+    lock_release(&framelock);
+
     return page;
 }
 
@@ -81,7 +86,6 @@ void frame_clean(struct thread *t)
         e = list_next(e);
 
         if (f->owner == t) {
-            /* palloc_free_page(f->kaddr); */
             list_remove(prev);
             free(f);
         }
@@ -112,11 +116,11 @@ struct frame * frame_evict(void)
         /* The page directory of the owner of the frame's contents */
         uint32_t *pagedir = f->owner->pagedir;
 
-        printf("Considering eviction of frame with owner: %x with name: %s from current thread: %s\n", f->owner, f->owner->name, thread_current()->name);
-        printf("thread: %x pagedir: %x uaddr: %x\n",
-                (unsigned) f->owner,
-                (unsigned) pagedir,
-                (unsigned) f->uaddr);
+        /* printf("Considering eviction of frame with owner: %x with name: %s from current thread: %s\n", f->owner, f->owner->name, thread_current()->name); */
+        /* printf("thread: %x pagedir: %x uaddr: %x\n", */
+        /*         (unsigned) f->owner, */
+        /*         (unsigned) pagedir, */
+        /*         (unsigned) f->uaddr); */
 
         /* TODO: look at both physical and virtual address for aliasing */
         bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
@@ -162,16 +166,24 @@ void frame_pin(struct frame *f)
 
 void frame_pin_kaddr(void *kaddr)
 {
+    lock_acquire(&framelock);
+
     struct frame *f = frame_qlookup(kaddr, false);
     ASSERT(f != NULL);
     frame_pin(f);
+
+    lock_release(&framelock);
 }
 
 void frame_pin_uaddr(void *uaddr)
 {
+    lock_acquire(&framelock);
+
     struct frame *f = frame_qlookup(uaddr, true);
     ASSERT(f != NULL);
     frame_pin(f);
+
+    lock_release(&framelock);
 }
 
 /*! Unpin a frame */
@@ -182,16 +194,24 @@ void frame_unpin(struct frame *f)
 
 void frame_unpin_kaddr(void *kaddr)
 {
+    lock_acquire(&framelock);
+
     struct frame *f = frame_qlookup(kaddr, false);
     ASSERT(f != NULL);
     frame_unpin(f);
+
+    lock_release(&framelock);
 }
 
 void frame_unpin_uaddr(void *uaddr)
 {
+    lock_acquire(&framelock);
+
     struct frame *f = frame_qlookup(uaddr, true);
     ASSERT(f != NULL);
     frame_unpin(f);
+
+    lock_release(&framelock);
 }
 
 /*! Look up a frame by the address of the page occupying it.
@@ -228,7 +248,7 @@ struct frame * frame_qlookup(void *vaddr, bool user)
     We write dirty mmap-ed pages to their file. */
 void frame_replace(struct frame *f)
 {
-    printf("Replacing frame with user addr %x and kernel addr %x\n", f->uaddr, f->kaddr);
+    /* printf("Replacing frame with user addr %x and kernel addr %x\n", f->uaddr, f->kaddr); */
     struct spte *page = spte_lookup(f->uaddr);
 
     /* Whether we can deallocate without swapping */
