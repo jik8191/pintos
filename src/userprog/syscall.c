@@ -481,8 +481,21 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
-        memset(buffer, 0, size);
+        /* memset(buffer, 0, size); */
         struct fd_elem *file_info= get_file(fd);
+
+        int i;
+        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
+            struct spte *page_entry = spte_lookup((void *) i);
+
+            if (!page_entry->loaded) {
+                void *kpage = frame_from_spt(page_entry);
+                page_entry->kaddr = kpage;
+            }
+
+            frame_pin_kaddr(page_entry->kaddr);
+        }
+
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_read = file_read(file, buffer, size);
@@ -496,6 +509,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
                 printf("The file struct was null\n");
             lock_release(&file_lock);
             thread_exit();
+        }
+        for (i = (uint32_t) pg_round_down(buffer); i < (uint32_t) pg_round_up(buffer + size); i += PGSIZE) {
+            frame_unpin_uaddr((void *) i);
         }
     }
 
@@ -532,6 +548,14 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
     else {
         struct fd_elem *file_info = get_file(fd);
+        int i;
+        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
+            struct spte *page_entry = spte_lookup((void *) i);
+            if (!page_entry->loaded) {
+                void *kpage = frame_from_spt(page_entry);
+            }
+            frame_pin_kaddr(page_entry->kaddr);
+        }
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_written = file_write(file, buffer, size);
@@ -539,6 +563,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         else {
             lock_release(&file_lock);
             thread_exit();
+        }
+        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
+            frame_unpin_uaddr((void *) i);
         }
     }
 
@@ -778,8 +805,8 @@ struct fd_elem *get_file(int fd) {
  * have already been checked that it is mapped. */
 bool can_write(void *addr, int size) {
     int i = 0;
-    for (; i < size; i++) {
-        struct spte *page_entry = spte_lookup(addr);
+    for (i = pg_round_down(addr); i < pg_round_up(addr + size); i += PGSIZE) {
+        struct spte *page_entry = spte_lookup(i);
         ASSERT(page_entry != NULL);
         if (page_entry->writable != true)
             return false;

@@ -8,10 +8,12 @@
 /*! @} */
 
 #include "threads/interrupt.h"
+#include "vm/page.h"
 
 void exception_init(void);
 void exception_print_stats(void);
 void expand_stack(struct intr_frame *f, void *addr);
+void * frame_from_spt(struct spte *page_entry);
 
 #endif /* userprog/exception.h */
 

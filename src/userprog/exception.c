@@ -218,65 +218,85 @@ static void page_fault(struct intr_frame *f) {
         expand_stack(f, fault_addr);
 
     } else {
-
-        /* Get the user address for the page, and whether the page was swapped
-           before. */
-        uint8_t *upage = (uint8_t *) page_entry->uaddr;
-        int swap_index = page_entry->swap_index;
-        bool writable  = page_entry->writable;
-
-        /* Get a page of memory. */
-        uint8_t *kpage = frame_get_page(upage, PAL_USER);
-        frame_pin_kaddr(kpage);
-
-        /* If the page was not swapped, then we page faulted because we still
-           need to load the process from file. */
-        if (swap_index == NOTSWAPPED) {
-            /* Get all of the necessary info to load the process. */
-            struct file *file   = page_entry->file;
-            off_t ofs           = page_entry->ofs;
-            uint32_t read_bytes = page_entry->read_bytes;
-            uint32_t zero_bytes = page_entry->zero_bytes;
-
-            off_t prev_ofs = file->pos;
-            file_seek(file, ofs);
-
-            /* Load this page. */
-            if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
-                printf("Couldn't load the page\n");
-                palloc_free_page(kpage);
-                kill(f);
-            }
-            file_seek(file, prev_ofs);
-
-            memset(kpage + read_bytes, 0, zero_bytes);
-
-            /* Add the page to the process's address space. */
-            if (!install_page(upage, kpage, writable)) {
-                printf("Couldn't install the page\n");
-                palloc_free_page(kpage);
-                kill(f);
-            }
-
-            page_entry->kaddr = kpage;
+        if (!frame_from_spt(page_entry)) {
+            printf("Could not load frame.\n");
+            kill(f);
         }
-
-        /* Otherwise, the page was swapped and we need to load it from swap */
-        else {
-            swap_load(kpage, (block_sector_t) swap_index);
-
-            if (!pagedir_set_page(
-                    thread_current()->pagedir, upage, kpage, writable)) {
-                printf("Couldn't install the page\n");
-                palloc_free_page(kpage);
-                kill(f);
-            }
-
-            page_entry->swap_index = NOTSWAPPED;
-        }
-
-        frame_unpin_kaddr(kpage);
     }
+}
+
+void * frame_from_spt(struct spte *page_entry)
+{
+    /* Get the user address for the page, and whether the page was swapped
+        before. */
+    uint8_t *upage = (uint8_t *) page_entry->uaddr;
+    int swap_index = page_entry->swap_index;
+    bool writable  = page_entry->writable;
+
+    /* Get a page of memory. */
+    uint8_t *kpage = frame_get_page(upage, PAL_USER);
+    frame_pin_kaddr(kpage);
+    printf("Installing page w/ upage\t%x & kpage %x for thread %s\n",
+            (uint32_t) upage,
+            (uint32_t) kpage,
+            thread_current()->name);
+
+    /* If the page was not swapped, then we page faulted because we still
+        need to load the process from file. */
+    if (swap_index == NOTSWAPPED) {
+        printf("Loading from file...\n");
+
+        /* Get all of the necessary info to load the process. */
+        struct file *file   = page_entry->file;
+        off_t ofs           = page_entry->ofs;
+        uint32_t read_bytes = page_entry->read_bytes;
+        uint32_t zero_bytes = page_entry->zero_bytes;
+
+        off_t prev_ofs = file->pos;
+        file_seek(file, ofs);
+
+        /* Load this page. */
+        if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
+            printf("Couldn't load the page\n");
+            palloc_free_page(kpage);
+            return NULL;
+        }
+        file_seek(file, prev_ofs);
+
+        memset(kpage + read_bytes, 0, zero_bytes);
+
+        /* Add the page to the process's address space. */
+        if (!install_page(upage, kpage, writable)) {
+            printf("Couldn't install the page with upage %x and kpage %x\n",
+                    upage, kpage);
+            palloc_free_page(kpage);
+            return NULL;
+        }
+
+        page_entry->kaddr = kpage;
+        page_entry->loaded = true;
+    }
+
+    /* Otherwise, the page was swapped and we need to load it from swap */
+    else {
+        printf("Loading from swap...\n");
+
+        swap_load(kpage, (block_sector_t) swap_index);
+
+        if (!pagedir_set_page(
+                thread_current()->pagedir, upage, kpage, writable)) {
+            printf("Couldn't set the page\n");
+            palloc_free_page(kpage);
+            return NULL;
+        }
+
+        page_entry->swap_index = NOTSWAPPED;
+        page_entry->loaded = true;
+    }
+
+    frame_unpin_kaddr(kpage);
+
+    return kpage;
 }
 
 /*! When the stack pointer page faults because the stack has run out of room,

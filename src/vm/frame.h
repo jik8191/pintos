@@ -17,8 +17,6 @@ struct frame {
                      dirtied since its creation. We need this information since
                      we reset the actual dirty bit in our eviction policy */
 
-
-    struct hash_elem elem;  /*!< Element used to put frame in frame table. */
     struct list_elem lelem; /*!< Element used to put frame in frame queue. */
 };
 

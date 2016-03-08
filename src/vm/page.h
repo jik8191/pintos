@@ -37,6 +37,8 @@ struct spte {
 
     enum page_type type;    /*!< Type of user page */
     int swap_index;         /*!< Index of the swapped data, if any */
+
+    bool loaded;
 };
 
 bool spt_init (struct thread *t);

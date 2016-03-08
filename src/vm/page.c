@@ -90,6 +90,7 @@ bool spte_insert (struct thread* t, uint8_t *uaddr, uint8_t *kaddr,
     entry->writable   = writable;
     entry->type       = type;
     entry->swap_index = NOTSWAPPED;
+    entry->loaded     = type == PTYPE_STACK ? true : false;
 
     // insert entry into thread t's supplemental page table
     return (hash_insert(&t->spt, &entry->hash_elem) == NULL);
