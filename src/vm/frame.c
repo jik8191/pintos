@@ -36,7 +36,11 @@ void frame_init(void)
     lock_init(&evictlock);
 }
 
-/*! Return a virtual page and create a frame in the process. */
+/*! Return a virtual page and create a frame in the process.
+
+    NOTE: The frame is returned pinned. To unpin it, you must call
+        frame_unpin(frame_get_page(...))
+    afterwards. */
 struct frame * frame_get_page(void *uaddr, enum palloc_flags flags)
 {
     lock_acquire(&framelock);
@@ -59,17 +63,16 @@ struct frame * frame_get_page(void *uaddr, enum palloc_flags flags)
     }
 
     struct frame *f = malloc (sizeof (struct frame));
-    frame_pin(f);
+    /* frame_pin(f); */
 
-    f->kaddr = page;
-    f->uaddr = uaddr;
-    f->dirty = false;
-    f->owner = thread_current();
+    f->kaddr  = page;
+    f->uaddr  = uaddr;
+    f->dirty  = false;
+    f->owner  = thread_current();
+    f->pinned = true;
 
     /* Insert it into the frame table */
     list_push_back(&framequeue, &f->lelem);
-
-    frame_unpin(f);
 
     lock_release(&framelock);
 
@@ -343,12 +346,17 @@ void frame_replace(struct frame *f)
     /* pagedir_clear_page(thread_current()->pagedir, f->uaddr); */
 
 done:
-    palloc_free_page(f->kaddr);
-    list_remove(&f->lelem);
-    free(f);
+    frame_free(f);
 
     page->loaded = false;
 
     lock_release(&evictlock);
     if (locked) lock_release(&framelock);
+}
+
+void frame_free(struct frame *f)
+{
+    palloc_free_page(f->kaddr);
+    list_remove(&f->lelem);
+    free(f);
 }

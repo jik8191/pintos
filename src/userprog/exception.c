@@ -239,7 +239,7 @@ void * frame_from_spt(struct spte *page_entry)
     struct frame *fr = frame_get_page(upage, PAL_USER);
 
     /* We pin so that we don't swap out the page while we load its contents */
-    frame_pin(fr);
+    /* frame_pin(fr); */
 
     uint8_t *kpage = fr->kaddr;
 
@@ -279,7 +279,7 @@ void * frame_from_spt(struct spte *page_entry)
         /* Load this page. */
         if (file_read(file, kpage, read_bytes) != (int) read_bytes) {
             printf("Couldn't load the page\n");
-            palloc_free_page(kpage);
+            frame_free(fr);
             return NULL;
         }
 
@@ -290,7 +290,7 @@ void * frame_from_spt(struct spte *page_entry)
             printf("Couldn't install the page with upage %x and kpage %x\n",
                     (unsigned int) upage,
                     (unsigned int) kpage);
-            palloc_free_page(kpage);
+            frame_free(fr);
             return NULL;
         }
 
@@ -332,18 +332,14 @@ void expand_stack(struct intr_frame *f, void *addr) {
 
     /* Getting a page */
     struct frame *fr = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
-    frame_pin(fr);
+    /* frame_pin(fr); */
     uint8_t *kpage = fr->kaddr;
-
-    if (kpage == NULL) {
-        printf("Couldn't get a frame\n");
-        kill(f);
-    }
 
     /* Installing the page */
     if (!install_page(new_stack, kpage, true)) {
         printf("Couldn't install the page\n");
-        palloc_free_page(kpage);
+        /* palloc_free_page(kpage); */
+        frame_free(fr);
         kill(f);
     }
 

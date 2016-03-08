@@ -557,8 +557,8 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     uint8_t *kpage;
     bool success = false;
 
-    struct frame *f = frame_get_page(upage, PAL_USER | PAL_ZERO);
-    kpage = f->kaddr;
+    struct frame *fr = frame_get_page(upage, PAL_USER | PAL_ZERO);
+    kpage = fr->kaddr;
 
     success = install_page(upage, kpage, true);
     if (success) {
@@ -570,7 +570,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
             PGSIZE, PTYPE_STACK, true);
     }
     else {
-        palloc_free_page(kpage);
+        frame_free(fr);
         return success;
     }
 
@@ -644,6 +644,8 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     // fake return address
     *esp -= sizeof(void *);
     *((void **) *esp) = 0;
+
+    frame_unpin(fr);
 
     free(argv);
     return success;
