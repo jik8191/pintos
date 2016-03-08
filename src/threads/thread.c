@@ -316,7 +316,6 @@ void thread_exit(void) {
     ASSERT(!intr_context());
     struct thread *cur = thread_current();
 
-#ifdef USERPROG
     if (cur->userprog) {
         printf("%s: exit(%d)\n", cur->name, cur->return_status);
     }
@@ -337,20 +336,13 @@ void thread_exit(void) {
         sys_munmap(mf->mapid);
     }
 
-    // Cleaning up the mapped files
-    /* e = list_begin(&cur->mmap_files); */
-    /* while (e != list_end(&cur->mmap_files)) { */
-    /*     struct mmap_fileinfo *mf = list_entry(e, struct mmap_fileinfo, elem); */
-    /*     e = list_next(e); */
-    /*     sys_munmap(mf->mapid); */
-    /* } */
+    frame_clean(cur);
 
     // spt_destroy(cur);
     // Allow parent waiting to run.
     sema_up(&cur->child_wait);
 
     process_exit();
-#endif
 
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us

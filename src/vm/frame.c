@@ -69,6 +69,25 @@ void * frame_get_page(void *uaddr, enum palloc_flags flags)
     return page;
 }
 
+void frame_clean(struct thread *t)
+{
+    struct list_elem *e, *prev;
+    struct frame *f;
+
+    for (e = list_begin(&framequeue); e != list_end(&framequeue);) {
+        f = list_entry(e, struct frame, lelem);
+
+        prev = e;
+        e = list_next(e);
+
+        if (f->owner == t) {
+            /* palloc_free_page(f->kaddr); */
+            list_remove(prev);
+            free(f);
+        }
+    }
+}
+
 /*! Evict a page to swap.
 
     The eviction policy is the second chance policy. If a frame has been used

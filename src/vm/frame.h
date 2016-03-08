@@ -5,6 +5,7 @@
 #include <list.h>
 
 #include "threads/palloc.h"
+#include "threads/thread.h"
 
 struct frame {
     void *kaddr;    /*!< Kernal address to the page that occupies the frame */
@@ -22,6 +23,7 @@ struct frame {
 
 void frame_init(void);
 void * frame_get_page(void *uaddr, enum palloc_flags flags);
+void frame_clean(struct thread *t);
 
 /* Lookup a frame by its kernel or user address */
 struct frame * frame_lookup(void *vaddr, bool user);
