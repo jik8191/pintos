@@ -12,13 +12,13 @@ Nicholas    Cho         ncho2@caltech.edu
 Darius      Simmons     dsimmons@caltech.edu
 Austin      Liu         yliu2@caltech.edu
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment:
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL:
    commit ...
 
 ---- PRELIMINARIES ----
@@ -146,6 +146,13 @@ not required by the question.
 
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
+
+First when pointers are verified initially we make sure the whole
+area is actually mapped to memory. This means that when we get into
+sys_mmap we are guarenteed that all of the memory has been allocated.
+Next a function called can_write is called. It takes the address and the
+size to check. It makes sure that every page in the area is writable so that
+we do not overwrite any segments.
 
 ---- RATIONALE ----
 
