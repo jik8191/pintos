@@ -40,6 +40,7 @@ struct spte *spte_lookup(void *vaddr) {
         return spte_lookup_h(vaddr, false);
 }
 
+/* TODO: Fix, you can't use kaddr */
 struct spte * spte_lookup_h(void *vaddr, bool user)
 {
     /* The supplemental page table for this thread */

@@ -218,10 +218,12 @@ static void page_fault(struct intr_frame *f) {
         expand_stack(f, fault_addr);
 
     } else {
+
         if (!frame_from_spt(page_entry)) {
             printf("Could not load frame.\n");
             kill(f);
         }
+
     }
 }
 
@@ -234,12 +236,32 @@ void * frame_from_spt(struct spte *page_entry)
     bool writable  = page_entry->writable;
 
     /* Get a page of memory. */
-    uint8_t *kpage = frame_get_page(upage, PAL_USER);
-    frame_pin_kaddr(kpage);
-    /* printf("Installing page w/ upage\t%x & kpage %x for thread %s\n", */
+    struct frame *fr = frame_get_page(upage, PAL_USER);
+
+    /* We pin so that we don't swap out the page while we load its contents */
+    frame_pin(fr);
+
+    uint8_t *kpage = fr->kaddr;
+
+    /* printf("Getting frame w/ upage\t%x & kpage %x for thread %s\n", */
     /*         (uint32_t) upage, */
     /*         (uint32_t) kpage, */
     /*         thread_current()->name); */
+
+    if (page_entry->type == PTYPE_MMAP || page_entry->type == PTYPE_CODE) {
+        /* printf ("page fault for file code\n"); */
+    } else {
+        if (page_entry->type == PTYPE_STACK) {
+            printf ("page fault for stack %x\n",
+                    (unsigned int) upage);
+        } else {
+            /* printf ("page fault for data \n"); */
+        }
+    }
+
+    /* We need this lock so that if we were in the process of swapping out
+       a page, we know that it is swapped before we check if it is swapped. */
+    lock_acquire(&evictlock);
 
     /* If the page was not swapped, then we page faulted because we still
         need to load the process from file. */
@@ -252,9 +274,6 @@ void * frame_from_spt(struct spte *page_entry)
         uint32_t read_bytes = page_entry->read_bytes;
         uint32_t zero_bytes = page_entry->zero_bytes;
 
-        /* printf("Loading into memory from file with addr %x\n", */
-        /*         (unsigned int) file); */
-        off_t prev_ofs = file->pos;
         file_seek(file, ofs);
 
         /* Load this page. */
@@ -263,7 +282,6 @@ void * frame_from_spt(struct spte *page_entry)
             palloc_free_page(kpage);
             return NULL;
         }
-        file_seek(file, prev_ofs);
 
         memset(kpage + read_bytes, 0, zero_bytes);
 
@@ -282,7 +300,6 @@ void * frame_from_spt(struct spte *page_entry)
 
     /* Otherwise, the page was swapped and we need to load it from swap */
     else {
-        /* printf("Loading from swap...\n"); */
 
         swap_load(kpage, (block_sector_t) swap_index);
 
@@ -296,9 +313,12 @@ void * frame_from_spt(struct spte *page_entry)
         page_entry->kaddr = kpage;
         page_entry->swap_index = NOTSWAPPED;
         page_entry->loaded = true;
+
     }
 
-    frame_unpin_kaddr(kpage);
+    frame_unpin(fr);
+
+    lock_release(&evictlock);
 
     return kpage;
 }
@@ -311,8 +331,9 @@ void expand_stack(struct intr_frame *f, void *addr) {
                             addr & (PTMASK | PDMASK));
 
     /* Getting a page */
-    uint8_t *kpage = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
-    frame_pin_kaddr(kpage);
+    struct frame *fr = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
+    frame_pin(fr);
+    uint8_t *kpage = fr->kaddr;
 
     if (kpage == NULL) {
         printf("Couldn't get a frame\n");
@@ -330,5 +351,5 @@ void expand_stack(struct intr_frame *f, void *addr) {
     spte_insert(thread_current(), new_stack, kpage, NULL, 0, 0, PGSIZE,
                 PTYPE_STACK, true);
 
-    frame_unpin_kaddr(kpage);
+    frame_unpin(fr);
 }
