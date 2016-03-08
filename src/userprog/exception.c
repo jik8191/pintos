@@ -218,6 +218,8 @@ static void page_fault(struct intr_frame *f) {
         expand_stack(f, fault_addr);
 
     } else {
+        /* Otherwise we found the page in the supplemental page table
+         * entry and we just need to get a frame for it. */
         if (!frame_from_spt(page_entry)) {
             printf("Could not load frame.\n");
             kill(f);
