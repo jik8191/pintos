@@ -555,6 +555,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             struct spte *page_entry = spte_lookup((void *) i);
             if (!page_entry->loaded) {
                 void *kpage = frame_from_spt(page_entry);
+                page_entry->kaddr = kpage;
             }
             frame_pin_kaddr(page_entry->kaddr);
         }

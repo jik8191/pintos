@@ -2,6 +2,7 @@
 
 #include <bitmap.h>
 #include <debug.h>
+#include <stdio.h>
 
 #include "devices/block.h"
 #include "threads/synch.h"
@@ -41,7 +42,7 @@ void swap_init(void)
     return the block index in the swap file we wrote to. */
 block_sector_t swap_page(struct frame *f)
 {
-    printf("Swapping page with user address %x and kernel addr %x\n", f->uaddr, f->kaddr);
+    /* printf("Swapping page with user address %x and kernel addr %x\n", f->uaddr, f->kaddr); */
     lock_acquire(&swaplock);
 
     /* Find a free block large enough for a page */
@@ -75,7 +76,7 @@ block_sector_t swap_page(struct frame *f)
 
 void swap_load(uint8_t *kaddr, block_sector_t idx)
 {
-    printf("Loading from swap into addr: %x\n", (unsigned) kaddr);
+    /* printf("Loading from swap into addr: %x\n", (unsigned) kaddr); */
     lock_acquire(&swaplock);
 
     frame_pin_kaddr(kaddr);

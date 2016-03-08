@@ -62,8 +62,6 @@ static uint32_t * lookup_page(uint32_t *pd, const void *vaddr, bool create) {
     /* Check for a page table for VADDR.
        If one is missing, create one if requested. */
     pde = pd + pd_no(vaddr);
-    if (pd > 0xcc000000)
-        printf("pde : %x pd_no: %x\n", pde, pd_no(vaddr));
     if (*pde == 0)  {
         if (create) {
             pt = palloc_get_page(PAL_ZERO);
