@@ -290,6 +290,7 @@ void * frame_from_spt(struct spte *page_entry)
             return NULL;
         }
 
+        page_entry->kaddr = kpage;
         page_entry->swap_index = NOTSWAPPED;
         page_entry->loaded = true;
     }
