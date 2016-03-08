@@ -14,6 +14,8 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 
+#include "vm/frame.h"
+
 #include "vm/page.h"
 #include "userprog/exception.h"
 
@@ -484,7 +486,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
         /* memset(buffer, 0, size); */
         struct fd_elem *file_info= get_file(fd);
 
-        int i;
+        void *i;
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
             struct spte *page_entry = spte_lookup((void *) i);
 
@@ -510,8 +512,8 @@ int sys_read(int fd, void *buffer, unsigned size) {
             lock_release(&file_lock);
             thread_exit();
         }
-        for (i = (uint32_t) pg_round_down(buffer); i < (uint32_t) pg_round_up(buffer + size); i += PGSIZE) {
-            frame_unpin_uaddr((void *) i);
+        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
+            frame_unpin_uaddr(i);
         }
     }
 
@@ -548,7 +550,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
     else {
         struct fd_elem *file_info = get_file(fd);
-        int i;
+        void *i;
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
             struct spte *page_entry = spte_lookup((void *) i);
             if (!page_entry->loaded) {
@@ -565,7 +567,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             thread_exit();
         }
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
-            frame_unpin_uaddr((void *) i);
+            frame_unpin_uaddr(i);
         }
     }
 
@@ -804,7 +806,7 @@ struct fd_elem *get_file(int fd) {
 /* A function that verifies that you can write to an area of memory. Should
  * have already been checked that it is mapped. */
 bool can_write(void *addr, int size) {
-    int i = 0;
+    void *i;
     for (i = pg_round_down(addr); i < pg_round_up(addr + size); i += PGSIZE) {
         struct spte *page_entry = spte_lookup(i);
         ASSERT(page_entry != NULL);
