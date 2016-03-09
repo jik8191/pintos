@@ -1,4 +1,4 @@
-                    +---------------------------+
+       	       	    +---------------------------+
                     |           CS 124          |
                     | PROJECT 5: VIRTUAL MEMORY |
                     |      DESIGN DOCUMENT      |
@@ -41,15 +41,25 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+   Austin Liu: 20
+   Darius Simmons: 50
+   Nicholas Cho: 50
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+    Austin Liu: Making the supplemental page table and switching code in
+        process.c and mmap and munmap.
+    Darius Simmons: Bringing together supplemental page table and frame table
+        code, stack growth, mmap, debugging
+    Nicholas Cho: Making the frame table, swapping, and debugging
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
 not required by the question.
 
-            PAGE TABLE MANAGEMENT
-            =====================
+			PAGE TABLE MANAGEMENT
+			=====================
 
 ---- DATA STRUCTURES ----
 
@@ -96,10 +106,15 @@ frame is located using the previously stored information.
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
 
+
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
+
+We have a lock for the frame code. Processes ask for a frame through
+frame_get_page, and this has a global lock such that only one process
+can give out frames at a time.
 
 ---- RATIONALE ----
 
@@ -112,14 +127,46 @@ search, insert and delete are of constant time complexity, this allows
 page faults to be handled quickly in the kernel.
 
 
-               PAGING TO AND FROM DISK
-               =======================
+		       PAGING TO AND FROM DISK
+		       =======================
 
 ---- DATA STRUCTURES ----
 
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+/* Bottom address that the stack can have. */
+#define STACK_FLOOR (PHYS_BASE - (PGSIZE * 2048))
+
+/*! Struct representing the swap disk */
+struct swapdisk {
+    struct block *file;     /*!< Block/file for writing pages to */
+    unsigned int size;      /*!< Size of the swap block */
+    struct bitmap *slots;   /*!< Bitmap of occupancy. 0 = free, 1 = occupied.
+                                 The use of a bitmap requires that the number
+                                 of block sectors per page is a whole number,
+                                 which it does happen to be. */
+};
+
+/* A struct to hold frames. */
+struct frame {
+    void *kaddr;    /*!< Kernal address to the page that occupies the frame */
+    void *uaddr;    /*!< User virtual addres for the page */
+    bool pinned;    /*!< Whether the frame is pinned so it can't be swapped */
+
+    struct thread *owner; /*!< The thread that owns the contents of the frame */
+
+    bool dirty; /*!< This bit is set so we know if the frame contents have been
+                     dirtied since its creation. We need this information since
+                     we reset the actual dirty bit in our eviction policy */
+
+    struct list_elem lelem; /*!< Element used to put frame in frame queue. */
+};
+
+/* A lock used so that the supplemental page table knows that a page has
+   been evited in the page fault handler. */
+static struct lock evictlock;
 
 ---- ALGORITHMS ----
 
@@ -133,6 +180,14 @@ page faults to be handled quickly in the kernel.
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+First you need to check if it is because of a push or a pusha. This is the
+only case where the fault address can be below the stack pointer. If this
+is the case then it will either be 4 or 32 bytes away from the stack pointer.
+Next you make sure that it is close enough to above the stack pointer.
+We set it to be a PGSIZE away from the stackpointer. The last consideration was
+that it has to be above the stack floor. we had a set size for the stack.
+We set it such that you could have 2048 pages in the stack.
 
 ---- SYNCHRONIZATION ----
 
@@ -167,8 +222,8 @@ page faults to be handled quickly in the kernel.
 
 Currently, a single lock is used for the entire filesystem.
 
-             MEMORY MAPPED FILES
-             ===================
+			 MEMORY MAPPED FILES
+			 ===================
 
 ---- DATA STRUCTURES ----
 
@@ -196,6 +251,10 @@ struct mmap_fileinfo {
 Memory mapped files provide a mapping between the virtual address of files
 used by a program and some file or file-like resource, allowing the
 program to treat the mapped file as if it were part of physical memory.
+The eviction policy is different because of where you look for for the data.
+Swap files are written to and written back from the swap while other pages
+could never need to be written back if they are read only or they have a
+file that they are written back to.
 
 
 >> C3: Explain how you determine whether a new file mapping overlaps
@@ -217,8 +276,13 @@ we do not overwrite any segments.
 >> implementation either does or does not share much of the code for
 >> the two situations.
 
-               SURVEY QUESTIONS
-               ================
+We used most of the same code. The only differences is, as stated, where you
+write to. So we used a switch statement and had an enum for the page type.
+We switch based off this enough and either swap or write back to the
+file.
+
+			   SURVEY QUESTIONS
+			   ================
 
 Answering these questions is optional, but it will help us improve the
 course in future years.  Feel free to tell us anything you want - these
@@ -228,10 +292,6 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> In your opinion, was this assignment, or any of the parts of it, too
 >> easy or too hard?  Did it take too long or too little time?
-
-It was incredibly difficult to debug a lot of things. Additionally, GDB pauses
-on every page fault, so it made it pretty much worthless. If there is a
-workaround, it would have been nice to know.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
