@@ -19,7 +19,7 @@ void frame_evict(void);
 void frame_replace(struct frame *f);
 
 
-/* The hash used for the frame table, along with the required hash functions. */
+/* The list used for the frame table, along with the required hash functions. */
 static struct list framequeue;
 struct frame * frame_qlookup(void *vaddr, bool user);
 
