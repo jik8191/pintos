@@ -21,8 +21,17 @@ void frame_replace(struct frame *f);
 
 /* The hash used for the frame table, along with the required hash functions. */
 static struct list framequeue;
-static struct lock framelock;
 struct frame * frame_qlookup(void *vaddr, bool user);
+
+/* Lock for getting frames */
+static struct lock framelock;
+void lock_frame() { lock_acquire(&framelock); }
+void unlock_frame() { lock_release(&framelock); }
+
+/* Eviction lock */
+static struct lock evictlock;
+void lock_evict(void) { lock_acquire(&evictlock); }
+void unlock_evict(void) { lock_release(&evictlock); }
 
 
 /* ----- Implementations ----- */
@@ -51,11 +60,6 @@ struct frame * frame_get_page(void *uaddr, enum palloc_flags flags)
         /* struct frame *evicted = frame_evict(); */
         frame_evict();
 
-        /* Free the page and remove the frame for the evicted frame */
-        /* palloc_free_page(evicted->kaddr); */
-        /* list_remove(&evicted->lelem); */
-        /* free(evicted); */
-
         /* Allocate a new page now, which should work */
         page = palloc_get_page (flags);
 
@@ -80,28 +84,6 @@ struct frame * frame_get_page(void *uaddr, enum palloc_flags flags)
     return f;
 }
 
-void frame_clean(struct thread *t)
-{
-    lock_acquire(&framelock);
-
-    struct list_elem *e, *prev;
-    struct frame *f;
-
-    for (e = list_begin(&framequeue); e != list_end(&framequeue);) {
-        f = list_entry(e, struct frame, lelem);
-
-        prev = e;
-        e = list_next(e);
-
-        if (f->owner == t) {
-            list_remove(prev);
-            free(f);
-        }
-    }
-
-    lock_release(&framelock);
-}
-
 /*! Evict a page to swap.
 
     The eviction policy is the second chance policy. If a frame has been used
@@ -112,29 +94,21 @@ void frame_clean(struct thread *t)
     with neither bit set is the frame whose page we evict. */
 void frame_evict(void)
 {
-    /* Address of frame to evict */
-    /* struct frame *toswap = NULL; */
-    /* bool swapped = false; */
-
     /* Keep looping until we actually evict a page */
     while (true) {
+
         struct list_elem *e = list_pop_front(&framequeue);
         struct frame *f = list_entry(e, struct frame, lelem);
 
         /* Skip pinned pages */
-        if (f->pinned) continue;
+        if (f->pinned) goto next;
 
         /* The page directory of the owner of the frame's contents */
         uint32_t *pagedir = f->owner->pagedir;
 
-        /* printf("Considering eviction of frame with owner: %x with name: %s from current thread: %s\n", f->owner, f->owner->name, thread_current()->name); */
-        /* printf("thread: %x pagedir: %x uaddr: %x\n", */
-        /*         (unsigned) f->owner, */
-        /*         (unsigned) pagedir, */
-        /*         (unsigned) f->uaddr); */
+        /* If the thread is dying, the frame is going to be freed. */
+        if (pagedir == NULL) goto next;
 
-        /* TODO: look at both physical and virtual address for aliasing */
-        /* sema_down(&f->owner->pd_sema); */
         bool accessed = pagedir_is_accessed(pagedir, f->uaddr);
         bool dirty    = pagedir_is_dirty(pagedir, f->uaddr);
 
@@ -159,19 +133,12 @@ void frame_evict(void)
             /* Else if we haven't gotten a new page, we can replace this
                 page with the new one */
             frame_replace(f);
-            /* toswap = f; */
-            /* swapped = true; */
 
-            /* sema_up(&f->owner->pd_sema); */
             break;
         }
-
-        /* sema_up(&f->owner->pd_sema); */
-
+next:
         list_push_back(&framequeue, e);
     }
-
-    /* return toswap; */
 }
 
 /*! Pin a frame */
@@ -182,26 +149,18 @@ void frame_pin(struct frame *f)
 
 void frame_pin_kaddr(void *kaddr)
 {
-    /* lock_acquire(&framelock); */
-
     struct frame *f = frame_qlookup(kaddr, false);
     ASSERT(f != NULL);
     /* if (f != NULL) */
     frame_pin(f);
-
-    /* lock_release(&framelock); */
 }
 
 void frame_pin_uaddr(void *uaddr)
 {
-    /* lock_acquire(&framelock); */
-
     struct frame *f = frame_qlookup(uaddr, true);
     ASSERT(f != NULL);
     /* if (f != NULL) */
     frame_pin(f);
-
-    /* lock_release(&framelock); */
 }
 
 /*! Unpin a frame */
@@ -212,26 +171,18 @@ void frame_unpin(struct frame *f)
 
 void frame_unpin_kaddr(void *kaddr)
 {
-    /* lock_acquire(&framelock); */
-
     struct frame *f = frame_qlookup(kaddr, false);
-    /* ASSERT(f != NULL); */
-    if (f != NULL)
+    ASSERT(f != NULL);
+    /* if (f != NULL) */
         frame_unpin(f);
-
-    /* lock_release(&framelock); */
 }
 
 void frame_unpin_uaddr(void *uaddr)
 {
-    /* lock_acquire(&framelock); */
-
     struct frame *f = frame_qlookup(uaddr, true);
-    /* ASSERT(f != NULL); */
-    if (f != NULL)
+    ASSERT(f != NULL);
+    /* if (f != NULL) */
         frame_unpin(f);
-
-    /* lock_release(&framelock); */
 }
 
 /*! Look up a frame by the address of the page occupying it.
@@ -268,22 +219,20 @@ struct frame * frame_qlookup(void *vaddr, bool user)
     We write dirty mmap-ed pages to their file. */
 void frame_replace(struct frame *f)
 {
+    /* In case we got here from the page fault handler, which would be holding
+       the lock. */
     bool locked = false;
-    if (!lock_held_by_current_thread(&framelock)) {
-        lock_acquire(&framelock);
+    if (!lock_held_by_current_thread(&evictlock)) {
+        lock_acquire(&evictlock);
         locked = true;
     }
 
-    lock_acquire(&evictlock);
-
-    printf("Replacing frame with user addr %x and kernel addr %x\n", f->uaddr, f->kaddr);
     struct spte *page = spte_lookup(f->uaddr);
 
     /* Whether we can deallocate without swapping */
     bool noswap = true;
 
     /* Read-only pages don't have to be written to swap */
-    /* printf("Page with addr: %x\n", page); */
     if (page->writable) {
         bool dirty;
 
@@ -297,8 +246,7 @@ void frame_replace(struct frame *f)
             case PTYPE_CODE:
             case PTYPE_DATA:
             case PTYPE_MMAP:
-                /* noswap = !dirty; */
-                noswap = false;
+                noswap = !dirty;
                 break;
 
             /* We have to write all stack pages */
@@ -311,15 +259,12 @@ void frame_replace(struct frame *f)
         }
     }
 
-    /* pagedir_clear_page(f->owner->pagedir, f->uaddr); */
 
     // We can quit here if we don't have to swap.
     if (noswap) {
         pagedir_clear_page(f->owner->pagedir, f->uaddr);
         goto done;
     }
-
-    /* install_page(f->uaddr, f->kaddr, page->writable); */
 
     switch (page->type) {
         /* Write these out to the swap file */
@@ -343,20 +288,30 @@ void frame_replace(struct frame *f)
             break;
     }
 
-    /* pagedir_clear_page(thread_current()->pagedir, f->uaddr); */
-
 done:
     frame_free(f);
 
     page->loaded = false;
 
-    lock_release(&evictlock);
-    if (locked) lock_release(&framelock);
+    if (locked) lock_release(&evictlock);
 }
 
+/*! Free frame from memory. */
 void frame_free(struct frame *f)
 {
-    palloc_free_page(f->kaddr);
     list_remove(&f->lelem);
+    palloc_free_page(f->kaddr);
+    free(f);
+}
+
+/*! Free frame from memory by its kernel address. */
+void frame_free_kaddr(void *kaddr)
+{
+    struct frame *f = frame_qlookup(kaddr, false);
+
+    ASSERT(f != NULL);
+
+    list_remove(&f->lelem);
+    palloc_free_page(f->kaddr);
     free(f);
 }

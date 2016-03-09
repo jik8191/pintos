@@ -204,9 +204,7 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
                 return NULL;
             }
             /* If you reach this point it means that you want to expand the
-             * stack. */
-            /* TODO find a way to trigger a pagefault on addr. Or find a way
-             * to get a new page for the stack. */
+               stack. */
             expand_stack(f, addr);
         }
     }
@@ -365,7 +363,6 @@ pid_t sys_exec(const char *cmd_line) {
     }
 
     return tid;
-    /*return (int) get_thread(tid);*/
 }
 
 int sys_wait(pid_t pid) {
@@ -483,9 +480,10 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     }
     else {
-        /* memset(buffer, 0, size); */
         struct fd_elem *file_info= get_file(fd);
 
+        /* Go through and force each page into memory so we don't page fault.
+           Also pin each frame. */
         void *i;
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
             struct spte *page_entry = spte_lookup((void *) i);
@@ -505,13 +503,14 @@ int sys_read(int fd, void *buffer, unsigned size) {
                 if (debug_mode)
                     printf("No bytes were read\n");
             }
-        }
-        else {
+        } else {
             if (debug_mode)
                 printf("The file struct was null\n");
             lock_release(&file_lock);
             thread_exit();
         }
+
+        /* Unpin all the frames we just pinned */
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
             frame_unpin_uaddr(i);
         }
@@ -550,8 +549,14 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
     else {
         struct fd_elem *file_info = get_file(fd);
+
+        /* Go through and force each page into memory so we don't page fault.
+           Also pin each frame. */
         void *i;
-        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
+        for (i = pg_round_down(buffer);
+             i < pg_round_up(buffer + size);
+             i += PGSIZE) {
+
             struct spte *page_entry = spte_lookup((void *) i);
             if (!page_entry->loaded) {
                 void *kpage = frame_from_spt(page_entry);
@@ -559,14 +564,16 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             }
             frame_pin_kaddr(page_entry->kaddr);
         }
+
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_written = file_write(file, buffer, size);
-        }
-        else {
+        } else {
             lock_release(&file_lock);
             thread_exit();
         }
+
+        /* Unpin the frames we pinned. */
         for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
             frame_unpin_uaddr(i);
         }
@@ -645,6 +652,7 @@ mapid_t sys_mmap(int fd, void *addr) {
 
     /* Getting the fd struct */
     struct fd_elem *file_info = get_file(fd);
+
     /* If the file wasn't found just release the lock and kill the process. */
     if (file_info == NULL) {
         lock_release(&file_lock);
@@ -659,22 +667,9 @@ mapid_t sys_mmap(int fd, void *addr) {
     uint32_t page_offset = 0;
     uint32_t read_bytes, zero_bytes;
     int bytes_loaded = 0;
+
     /* Need to use reopen so that the user can close the handle */
     struct file *file = file_reopen(file_info->file_struct);
-
-    /* Need to add this file to the lit of files so it will be closed on exit
-     */
-
-
-    /*
-    int copy_fd = thread_current()->max_fd + 1;
-    thread_current()->max_fd++;
-
-    struct fd_elem *new_fd = malloc(sizeof(struct fd_elem));
-    new_fd->fd = copy_fd;
-    new_fd->file_struct = file;
-    list_push_back(&thread_current()->fd_list, &new_fd->elem);
-    */
 
     int size = file_length(file);
 

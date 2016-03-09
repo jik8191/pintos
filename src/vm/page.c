@@ -10,6 +10,7 @@
 
 #include "threads/malloc.h"
 #include "threads/pte.h"
+#include "vm/swap.h"
 
 /* Helper for looking up an SPTE */
 struct spte * spte_lookup_h(void *vaddr, bool user);
@@ -30,18 +31,8 @@ unsigned spte_hash (const struct hash_elem *p_, void *aux UNUSED) {
 }
 
 /*! Look up the page for the given virtual address. Checks for the spte for the
-    page using both its user virtual address and kernel virtual address. */
-struct spte *spte_lookup(void *vaddr) {
-    struct spte *s = spte_lookup_h(vaddr, true);
-
-    if (s != NULL)
-        return s;
-    else
-        return spte_lookup_h(vaddr, false);
-}
-
-/* TODO: Fix, you can't use kaddr */
-struct spte * spte_lookup_h(void *vaddr, bool user)
+    page using its user virtual address. */
+struct spte *spte_lookup(void *vaddr)
 {
     /* The supplemental page table for this thread */
     struct hash spt = thread_current()->spt;
@@ -51,10 +42,7 @@ struct spte * spte_lookup_h(void *vaddr, bool user)
 
     /* Need to round down the virtual address to the closest page size.
      * We can do so by zeroing out the lower bytes. */
-    if (user)
-        s.uaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
-    else
-        s.kaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
+    s.uaddr = (void *) ((unsigned long) vaddr & (PTMASK | PDMASK));
 
     e = hash_find (&spt, &s.hash_elem);
 
@@ -106,12 +94,16 @@ bool spte_remove (struct thread* t, struct spte *entry){
 
 
 /*! hash_action_func for spt_destroy, spt_remove. */
-void spte_delete(struct hash_elem *e, void *thr){
-    struct thread *t = (struct thread *) thr;
+void spte_delete(struct hash_elem *e, void *thr UNUSED){
     struct spte *entry = hash_entry(e, struct spte, hash_elem);
-    hash_delete(&(t->spt), e);
+
+    /*! Free swap slots when a thread dies */
+    if (entry->swap_index >= 0) {
+        swap_free(entry->swap_index);
+    }
+
     free(entry);
-};
+}
 
 /*! Destroys the spt for a thread t on exit. */
 void spt_destroy (struct thread *t){

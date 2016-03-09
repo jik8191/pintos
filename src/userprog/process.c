@@ -561,6 +561,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     kpage = fr->kaddr;
 
     success = install_page(upage, kpage, true);
+    /* printf("Installed at %x\n", upage); */
     if (success) {
         *esp = PHYS_BASE;  // start at top of user address space
 

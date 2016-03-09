@@ -30,7 +30,7 @@ main (int argc, char *argv[])
   /* Check that it's all zeros. */
   for (i = 0; i < SIZE; i++)
     if (buf[i] != '\0')
-      fail ("byte %zu is %d != 0", i, buf[i]);
+      fail ("byte %zu != 0", i);
 
   return 0x42;
 }

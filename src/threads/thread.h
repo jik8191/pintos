@@ -152,8 +152,6 @@ struct thread {
 
     struct hash spt;                    /*!< Supplemental page table */
 
-    struct semaphore pd_sema;
-
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */

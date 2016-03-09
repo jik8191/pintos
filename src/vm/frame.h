@@ -21,13 +21,20 @@ struct frame {
     struct list_elem lelem; /*!< Element used to put frame in frame queue. */
 };
 
-struct lock evictlock;
+void lock_frame(void);
+void unlock_frame(void);
+
+void lock_evict(void);
+void unlock_evict(void);
 
 void frame_init(void);
-// void * frame_get_page(void *uaddr, enum palloc_flags flags);
+
+/* Allocate a new page and frame */
 struct frame * frame_get_page(void *uaddr, enum palloc_flags flags);
-void frame_clean(struct thread *t);
+
+/* Free a frame (or by its kernel address) */
 void frame_free(struct frame *f);
+void frame_free_kaddr(void *kaddr);
 
 /* Lookup a frame by its kernel or user address */
 struct frame * frame_lookup(void *vaddr, bool user);
