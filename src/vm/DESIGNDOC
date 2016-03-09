@@ -21,12 +21,16 @@ Austin      Liu         yliu2@caltech.edu
    on Moodle.)
 
    Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
-   commit ...
+   commit f466783
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
+
+    Please use bochs.
+    
+    `make check SIMULATOR=--bochs`
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
