@@ -44,7 +44,7 @@ void swap_init(void)
 block_sector_t swap_page(struct frame *f)
 {
     /* printf("Swapping page with user address %x and kernel addr %x\n", f->uaddr, f->kaddr); */
-    /* lock_acquire(&swaplock); */
+    lock_acquire(&swaplock);
 
     /* Find a free block large enough for a page */
     block_sector_t idx = bitmap_scan_and_flip(
@@ -70,7 +70,9 @@ block_sector_t swap_page(struct frame *f)
         );
     }
 
-    /* lock_release(&swaplock); */
+    lock_release(&swaplock);
+
+    /* printf("Swapped to index %d\n", idx); */
 
     return idx;
 }
@@ -78,7 +80,7 @@ block_sector_t swap_page(struct frame *f)
 void swap_load(uint8_t *kaddr, block_sector_t idx)
 {
     /* printf("Loading from swap into addr: %x\n", (unsigned) kaddr); */
-    /* lock_acquire(&swaplock); */
+    lock_acquire(&swaplock);
 
     frame_pin_kaddr(kaddr);
 
@@ -97,8 +99,17 @@ void swap_load(uint8_t *kaddr, block_sector_t idx)
     /* Indicate the swap slots are free. */
     bitmap_set_multiple(swap->slots, idx, BLOCKS_PER_PAGE, false);
 
+    /* printf("Swapped from index %d\n", idx); */
+
     frame_unpin_kaddr(kaddr);
 
-    /* lock_release(&swaplock); */
+    lock_release(&swaplock);
 }
 
+
+/*! Free swap slots when a thread dies */
+void swap_free(block_sector_t idx)
+{
+    /* Indicate the swap slots are free. */
+    bitmap_set_multiple(swap->slots, idx, BLOCKS_PER_PAGE, false);
+}

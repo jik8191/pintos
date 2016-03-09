@@ -22,17 +22,17 @@ enum page_type {
 /* Supplemental page table entry (spte) struct.
  * Each thread will have its own spte. The entry holds additional
  * data about each page for virtual memory management. */
-/* TODO might be helpful to add the physical address of the frame */
 struct spte {
-    // see load_segment() in process.c for more about how these fields
-    // are used
-    void *uaddr;               /*!< user page address, used as key. */
-    void *kaddr;
+    void *uaddr;                /*!< User page address, used as key. */
+    void *kaddr;                /*!< Kernel address of the page */
+
+    /* These are used by load_segment to load code segments */
     struct file *file;
     off_t ofs;
     uint32_t read_bytes;
     uint32_t zero_bytes;
-    bool writable;
+
+    bool writable;              /*!< Whether or not the page is writable */
     struct hash_elem hash_elem; /*!< To put spte in spt. */
 
     enum page_type type;    /*!< Type of user page */

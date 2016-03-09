@@ -335,7 +335,7 @@ void thread_exit(void) {
         sys_munmap(mf->mapid);
     }
 
-    frame_clean(cur);
+    /* frame_clean(cur); */
 
     // spt_destroy(cur);
     // Allow parent waiting to run.
@@ -705,9 +705,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 
     /* The max fd starts off at 1 */
     t->max_fd = 1;
-
-    /* Initialize the page directory lock */
-    sema_init(&t->pd_sema, 1);
 
     /* Start with 0 memory mapped files */
     t->num_mfiles = 0;

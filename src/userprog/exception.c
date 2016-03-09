@@ -12,6 +12,7 @@
 #include "userprog/process.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "vm/page.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
@@ -146,7 +147,6 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
-
     /* If the error is because of writing to read only memory then print
      * out the error message and kill the process. */
     if (!not_present) {
@@ -159,28 +159,9 @@ static void page_fault(struct intr_frame *f) {
         kill(f);
     }
 
-
-    /* if (!user) */
-    /*     printf("Kernel page fault at address %x\n", (unsigned) fault_addr); */
-    /* Exit if the page fault was not a user address. */
-    /*
-    if (!is_user_vaddr(fault_addr)) {
-        printf(
-            "Page fault at %p: Invalid kernel address %s page in %s context.\n",
-            fault_addr,
-            write ? "writing" : "reading",
-            user ? "user" : "kernel");
-
-        kill(f);
-    }
-    */
-
     /* If the error is not present, lookup the page in the supplemental
        page table. */
     struct spte *page_entry = spte_lookup(fault_addr);
-
-    /* printf("Page fault at address %x\n", (unsigned) fault_addr); */
-    /* printf("SPTE was found at %x\n", (unsigned) page_entry); */
 
     /* If the process was not found in the supplemental page entry kill
        the process. Unless it is from growing the stack. */
@@ -212,8 +193,6 @@ static void page_fault(struct intr_frame *f) {
 
         }
 
-        /* printf("%s expanding stack...\n", */
-        /*         user ? "User" : "Kernel"); */
         /* If we didn't have a page fault error, then grow the stack. */
         expand_stack(f, fault_addr);
 
@@ -228,6 +207,8 @@ static void page_fault(struct intr_frame *f) {
     }
 }
 
+/*! Load something into memory given an entry from the supplemental
+    page table. */
 void * frame_from_spt(struct spte *page_entry)
 {
     /* Get the user address for the page, and whether the page was swapped
@@ -239,35 +220,15 @@ void * frame_from_spt(struct spte *page_entry)
     /* Get a page of memory. */
     struct frame *fr = frame_get_page(upage, PAL_USER);
 
-    /* We pin so that we don't swap out the page while we load its contents */
-    /* frame_pin(fr); */
-
     uint8_t *kpage = fr->kaddr;
-
-    /* printf("Getting frame w/ upage\t%x & kpage %x for thread %s\n", */
-    /*         (uint32_t) upage, */
-    /*         (uint32_t) kpage, */
-    /*         thread_current()->name); */
-
-    if (page_entry->type == PTYPE_MMAP || page_entry->type == PTYPE_CODE) {
-        /* printf ("page fault for file code\n"); */
-    } else {
-        if (page_entry->type == PTYPE_STACK) {
-            printf ("page fault for stack %x\n",
-                    (unsigned int) upage);
-        } else {
-            /* printf ("page fault for data \n"); */
-        }
-    }
 
     /* We need this lock so that if we were in the process of swapping out
        a page, we know that it is swapped before we check if it is swapped. */
-    lock_acquire(&evictlock);
+    lock_evict();
 
     /* If the page was not swapped, then we page faulted because we still
         need to load the process from file. */
     if (swap_index == NOTSWAPPED) {
-        /* printf("Loading from file...\n"); */
 
         /* Get all of the necessary info to load the process. */
         struct file *file   = page_entry->file;
@@ -319,7 +280,7 @@ void * frame_from_spt(struct spte *page_entry)
 
     frame_unpin(fr);
 
-    lock_release(&evictlock);
+    unlock_evict();
 
     return kpage;
 }
@@ -331,15 +292,15 @@ void expand_stack(struct intr_frame *f, void *addr) {
     uint8_t *new_stack = (void *) ((unsigned long)
                             addr & (PTMASK | PDMASK));
 
+    lock_evict();
+
     /* Getting a page */
     struct frame *fr = frame_get_page(new_stack, PAL_USER | PAL_ZERO);
-    /* frame_pin(fr); */
     uint8_t *kpage = fr->kaddr;
 
     /* Installing the page */
     if (!install_page(new_stack, kpage, true)) {
         printf("Couldn't install the page\n");
-        /* palloc_free_page(kpage); */
         frame_free(fr);
         kill(f);
     }
@@ -349,4 +310,6 @@ void expand_stack(struct intr_frame *f, void *addr) {
                 PTYPE_STACK, true);
 
     frame_unpin(fr);
+
+    unlock_evict();
 }
