@@ -1,4 +1,4 @@
-       	       	    +---------------------------+
+                    +---------------------------+
                     |           CS 124          |
                     | PROJECT 5: VIRTUAL MEMORY |
                     |      DESIGN DOCUMENT      |
@@ -60,8 +60,8 @@ Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
 not required by the question.
 
-			PAGE TABLE MANAGEMENT
-			=====================
+            PAGE TABLE MANAGEMENT
+            =====================
 
 ---- DATA STRUCTURES ----
 
@@ -73,14 +73,22 @@ In page.c:
 
 supplemental page table entry (spte)
 struct spte {
-    void *upaddr;               /*!< user page address, used as key. */
+    void *uaddr;                /*!< User page address, used as key. */
+    void *kaddr;                /*!< Kernel address of the page */
+
+    /* These are used by load_segment to load code segments */
     struct file *file;
     off_t ofs;
     uint32_t read_bytes;
     uint32_t zero_bytes;
-    bool writable;
+
+    bool writable;              /*!< Whether or not the page is writable */
     struct hash_elem hash_elem; /*!< To put spte in spt. */
-    enum page_type type;        /*!< Type of user page */
+
+    enum page_type type;    /*!< Type of user page */
+    int swap_index;         /*!< Index of the swapped data, if any */
+
+    bool loaded;
 };
 
 Page type used for identification.
@@ -136,8 +144,8 @@ search, insert and delete are of constant time complexity, this allows
 page faults to be handled quickly in the kernel.
 
 
-		       PAGING TO AND FROM DISK
-		       =======================
+               PAGING TO AND FROM DISK
+               =======================
 
 ---- DATA STRUCTURES ----
 
@@ -180,6 +188,9 @@ static struct lock evictlock;
 /* A lock used to prevent two threads from trying to acquire a new frame at the
    same time. */
 static struct lock framelock;
+
+/* A list used for the frame table. */
+static struct list framequeue;
 
 ---- ALGORITHMS ----
 
@@ -236,6 +247,12 @@ to acquire locks from each other before one of them releases one of the locks.
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
 
+We have a lock called evictlock for this purpose. When process P
+is evicting a frame from Q, it will acquire evictlock. Pagefault
+needs to acquire evictlock in order to bring a page back in. We make
+sure that it will pagefault instead of accessing it by clearning
+the page from the pagedir.
+
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
@@ -264,10 +281,12 @@ up for eviction.
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
 
-Currently, a single lock is used for the entire filesystem.
+We are using two locks for virtual memory, not including the previous
+lock we had for the filesystem. This means that we are on the side of
+a lot of synchronization but little parallelism.
 
-			 MEMORY MAPPED FILES
-			 ===================
+             MEMORY MAPPED FILES
+             ===================
 
 ---- DATA STRUCTURES ----
 
@@ -285,6 +304,9 @@ struct mmap_fileinfo {
     struct file *file;
 };
 
+/* Validates an argument, can be a numeric or a pointer. */
+static void *validate_arg(void *addr, enum conversion_type ct, int size,
+                          struct intr_frame *f);
 
 ---- ALGORITHMS ----
 
@@ -325,8 +347,8 @@ write to. So we used a switch statement and had an enum for the page type.
 We switch based off this enough and either swap or write back to the
 file.
 
-			   SURVEY QUESTIONS
-			   ================
+               SURVEY QUESTIONS
+               ================
 
 Answering these questions is optional, but it will help us improve the
 course in future years.  Feel free to tell us anything you want - these
