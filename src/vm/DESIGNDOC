@@ -85,11 +85,11 @@ enum page_type {
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
 
-The data of a program is loaded lazily, i.e. load_segment in process.c 
+The data of a program is loaded lazily, i.e. load_segment in process.c
 simply records the necessary information to load a segment without
-loading it into physical memory yet. When the program needs to access 
-the page, it triggers a page fault which is handled in exception.c, if 
-there is a corresponding supplemental page table entry, the corresponding 
+loading it into physical memory yet. When the program needs to access
+the page, it triggers a page fault which is handled in exception.c, if
+there is a corresponding supplemental page table entry, the corresponding
 frame is located using the previously stored information.
 
 >> A3: How does your code coordinate accessed and dirty bits between
@@ -106,9 +106,9 @@ frame is located using the previously stored information.
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
 
-The supplemental page table is implemented with the provided hash table 
-implementation. It maps user addresses to entries in the SPT. Since 
-search, insert and delete are of constant time complexity, this allows 
+The supplemental page table is implemented with the provided hash table
+implementation. It maps user addresses to entries in the SPT. Since
+search, insert and delete are of constant time complexity, this allows
 page faults to be handled quickly in the kernel.
 
 
@@ -176,7 +176,7 @@ Currently, a single lock is used for the entire filesystem.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-Additional struct used by threads to keep track of the 
+Additional struct used by threads to keep track of the
 files that they have memory mapped.
 struct mmap_fileinfo {
     struct list_elem elem;
@@ -193,9 +193,9 @@ struct mmap_fileinfo {
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
 
-Memory mapped files provide a mapping between the virtual address of files 
-used by a program and some file or file-like resource, allowing the 
-program to treat the mapped file as if it were part of physical memory. 
+Memory mapped files provide a mapping between the virtual address of files
+used by a program and some file or file-like resource, allowing the
+program to treat the mapped file as if it were part of physical memory.
 
 
 >> C3: Explain how you determine whether a new file mapping overlaps
