@@ -14,11 +14,13 @@ Austin      Liu         yliu2@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:
 
+    6
+
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:
+   Repository URL: login.cms.caltech.edu:/cs/courses/cs124/teams/Donbots
    commit ...
 
 ---- PRELIMINARIES ----
@@ -106,6 +108,13 @@ frame is located using the previously stored information.
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
 
+We simply check the bits using both the user address and kernel address. We
+have the kernel address because the supplemental page table entry for the page
+stores both. In the case of the eviction policy, we don't actually do this, and
+we use only the user address, which makes our eviction policy slightly less
+than optimal, but it still approximates the optimal policy as we keep most of
+our accesses to user pages using the user address.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -168,14 +177,36 @@ struct frame {
    been evited in the page fault handler. */
 static struct lock evictlock;
 
+/* A lock used to prevent two threads from trying to acquire a new frame at the
+   same time. */
+static struct lock framelock;
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
+We implemented a second chance policy for frame eviction using both the accessed
+and dirty bits. We pop the front of the frame queue. If the page has been
+dirtied, we reset its dirty bit (saving the fact that the page was at one point
+dirty in the frame struct) and then re-add it to the queue. If the page has been
+accessed, but not dirtied, we reset its accessed bit and add it back to the
+queue. If a page has had neither done, we choose it for eviction and we are
+done.
+
+Using this method, we actually give a "third" chance to pages that were dirty
+since it is more expensive (we have to write to swap) to deal with dirty pages
+compared to ones that were just accessed (we can usually just free it and it can
+be loaded back later).
+
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
+
+We end up just freeing and deallocating the page entirely from Q and its page
+table before allocaitng a new frame for P. Therefore, there is no conflict
+between the page table entries and we ensure that things are deleted and reset
+properly.
 
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
@@ -196,6 +227,10 @@ We set it such that you could have 2048 pages in the stack.
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+We only have two locks and the code paths that lead to either of those locks
+being acquired don't intersect, so that we cannot end up with two threads trying
+to acquire locks from each other before one of them releases one of the locks.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
@@ -206,11 +241,20 @@ We set it such that you could have 2048 pages in the stack.
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
+The frame is pinned by default when it is created and only unpinned after the
+data is loaded into the frame. In the eviction code, we don't consider pinned
+frames, so we can't evict that page until it is loaded.
+
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+
+We first bring all the pages into memory then pin them so they cannot be
+evicted. The system calls are then free to handle the data without page
+faulting. Then, when we are done with the pages, we unpin them again so they are
+up for eviction.
 
 ---- RATIONALE ----
 
