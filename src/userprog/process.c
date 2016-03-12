@@ -18,9 +18,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+
 #include "userprog/syscall.h"
-#include "vm/frame.h"
-#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *program_name, void (**eip) (void), void **esp,
@@ -65,7 +64,6 @@ tid_t process_execute(const char *file_name) {
 
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
-        palloc_free_page(program_name);
     } else {
         /* Add the thread to the children of the current thread. */
         struct childinfo *ci = malloc(sizeof(struct childinfo));
@@ -310,12 +308,6 @@ bool load(const char *program_name, void (**eip) (void), void **esp,
     t->pagedir = pagedir_create();
     if (t->pagedir == NULL)
         goto done;
-
-    /* Initialize the supplemental page table. */
-    if (spt_init(t) == 0)
-        goto done;
-
-    /* Record the necessary information in the SPT later as well. */
     process_activate();
 
     /* Open executable file. */
@@ -423,8 +415,7 @@ done:
 
 /* load() helpers. */
 
-/* TODO changing this from a static function */
-/*static bool install_page(void *upage, void *kpage, bool writable);*/
+static bool install_page(void *upage, void *kpage, bool writable);
 
 /*! Checks whether PHDR describes a valid, loadable segment in
     FILE and returns true if so, false otherwise. */
@@ -488,31 +479,6 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     ASSERT(pg_ofs(upage) == 0);
     ASSERT(ofs % PGSIZE == 0);
 
-#ifdef VM
-    struct thread *t = thread_current();
-
-    off_t curr_ofs = ofs;
-
-    // Store the necessary information instead of actually loading anything yet
-    while (read_bytes > 0 || zero_bytes > 0) {
-        /* Calculate how to fill this page when it is fetched.
-           We will read SPTE_READ_BYTES bytes from FILE
-           and zero the final SPTE_ZERO_BYTES bytes. */
-        uint32_t spte_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-        uint32_t spte_zero_bytes = PGSIZE - spte_read_bytes;
-
-        if (spte_insert (t, upage, NULL, file, curr_ofs, spte_read_bytes,
-                         spte_zero_bytes, PTYPE_CODE, writable) == false){
-            return false;
-        }
-
-        /* Advance. */
-        read_bytes -= spte_read_bytes;
-        zero_bytes -= spte_zero_bytes;
-        upage += PGSIZE;
-        curr_ofs += PGSIZE;
-    }
-#else
     file_seek(file, ofs);
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.
@@ -544,8 +510,6 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
     }
-#endif // VM
-
     return true;
 }
 
@@ -553,25 +517,19 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     user virtual memory. Do stack initialization as
     outlined in Pintos Documentation 5.5.1 */
 static bool setup_stack(void **esp, const char *program_name, char **args) {
-    uint8_t *upage = PHYS_BASE - PGSIZE;
     uint8_t *kpage;
     bool success = false;
 
-    struct frame *fr = frame_get_page(upage, PAL_USER | PAL_ZERO);
-    kpage = fr->kaddr;
-
-    success = install_page(upage, kpage, true);
-    /* printf("Installed at %x\n", upage); */
-    if (success) {
-        *esp = PHYS_BASE;  // start at top of user address space
-
-        /* Inserting the stack page into the supplemental page table */
-        spte_insert(
-            thread_current(), upage, kpage, NULL, 0, 0,
-            PGSIZE, PTYPE_STACK, true);
-    }
-    else {
-        frame_free(fr);
+    kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    if (kpage != NULL) {
+        success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+        if (success)
+            *esp = PHYS_BASE;  // start at top of user address space
+        else {
+            palloc_free_page(kpage);
+            return success;
+        }
+    } else {
         return success;
     }
 
@@ -646,8 +604,6 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     *esp -= sizeof(void *);
     *((void **) *esp) = 0;
 
-    frame_unpin(fr);
-
     free(argv);
     return success;
 }
@@ -661,7 +617,7 @@ static bool setup_stack(void **esp, const char *program_name, char **args) {
     with palloc_get_page().
     Returns true on success, false if UPAGE is already mapped or
     if memory allocation fails. */
-bool install_page(void *upage, void *kpage, bool writable) {
+static bool install_page(void *upage, void *kpage, bool writable) {
     struct thread *t = thread_current();
 
     /* Verify that there's not already a page at that virtual

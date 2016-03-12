@@ -14,22 +14,20 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 
-#include "vm/frame.h"
-
-#include "vm/page.h"
-#include "userprog/exception.h"
-
 bool debug_mode = false;
 
 static void syscall_handler(struct intr_frame *);
 
 /* Checking pointer validity */
-static void *valid_pointer(void **pointer, int size, struct intr_frame *f);
+static void *valid_pointer(void **pointer, int size);
 static void *valid_numeric(void *addr, int size);
 
 /* Conversion functions */
-static void *validate_arg(void *addr, enum conversion_type ct, int size,
-                          struct intr_frame *f);
+static int to_int(void *addr);
+static const char *to_cchar_p(void *addr);
+static unsigned to_unsigned(void *addr);
+static const void *to_cvoid_p(void *addr, unsigned size);
+static void *to_void_p(void *addr, unsigned size);
 
 /* Specific handlers */
 void sys_halt(void);
@@ -43,12 +41,9 @@ int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
-mapid_t sys_mmap(int fd, void *addr);
-void sys_munmap(mapid_t mapping);
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
-bool can_write(void *buffer, int size);
 
 void syscall_init(void) {
     lock_init(&file_lock);
@@ -59,116 +54,60 @@ static void syscall_handler(struct intr_frame *f) {
 
     /* Getting the callers stack pointer */
     void *caller_esp = f->esp;
-    int call_number = * (int *) validate_arg(caller_esp, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-    if (debug_mode)
-        printf("The stack pointer: %p\n", f->esp);
+    int call_number = to_int(caller_esp);
 
     /* Getting the args, the calls at most have 3 */
     void *arg0 = f->esp + 4;
     void *arg1 = f->esp + 8;
     void *arg2 = f->esp + 12;
 
-    /* Some variables to put dereferenced args into. */
-    int int_arg;
-    const char *cchar_arg;
-    unsigned unsigned_arg;
-    void *void_arg;
-    const void *cvoid_arg;
-
     if (debug_mode) {
         printf("system call!: %d\n", call_number);
     }
 
     /* Calling the appropriate handler */
+    unsigned temp;
     switch (call_number) {
         case SYS_HALT:
             sys_halt();
             break;
         case SYS_EXIT:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            sys_exit(int_arg);
+            sys_exit(to_int(arg0));
             break;
         case SYS_EXEC:
-            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
-            f->eax = sys_exec(cchar_arg);
+            f->eax = sys_exec(to_cchar_p(arg0));
             break;
         case SYS_WAIT:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            f->eax = sys_wait(int_arg);
+            f->eax = sys_wait(to_int(arg0));
             break;
         case SYS_CREATE:
-            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
-            unsigned_arg = * (unsigned *) validate_arg(arg1, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
-            f->eax = sys_create(cchar_arg, unsigned_arg);
+            f->eax = sys_create(to_cchar_p(arg0), to_unsigned(arg1));
             break;
         case SYS_REMOVE:
-            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
-            f->eax = sys_remove(cchar_arg);
+            f->eax = sys_remove(to_cchar_p(arg0));
             break;
         case SYS_FILESIZE:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            f->eax = sys_filesize(int_arg);
+            f->eax = sys_filesize(to_int(arg0));
             break;
         case SYS_OPEN:
-            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
-            f->eax = sys_open(cchar_arg);
+            f->eax = sys_open(to_cchar_p(arg0));
             break;
         case SYS_READ:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            unsigned_arg = * (unsigned *) validate_arg(arg2, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
-            void_arg = * (void **) validate_arg(arg1, CONVERT_POINTER,
-                                                unsigned_arg, f);
-            f->eax = sys_read(int_arg, void_arg, unsigned_arg);
+            temp = to_unsigned(arg2);
+            f->eax = sys_read(to_int(arg0), to_void_p(arg1, temp), temp);
             break;
         case SYS_WRITE:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            unsigned_arg = * (unsigned *) validate_arg(arg2, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
-            cvoid_arg = * (const void **) validate_arg(arg1, CONVERT_POINTER,
-                                                       unsigned_arg, f);
-            f->eax = sys_write(int_arg, cvoid_arg, unsigned_arg);
+            temp = to_unsigned(arg2);
+            f->eax = sys_write(to_int(arg0), to_cvoid_p(arg1, temp), temp);
             break;
         case SYS_SEEK:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            unsigned_arg = * (unsigned *) validate_arg(arg1, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
-            sys_seek(int_arg, unsigned_arg);
+            sys_seek(to_int(arg0), to_unsigned(arg1));
             break;
         case SYS_TELL:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            f->eax = sys_tell(int_arg);
+            f->eax = sys_tell(to_int(arg0));
             break;
         case SYS_CLOSE:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            sys_close(int_arg);
-            break;
-        case SYS_MMAP:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            /* TODO This should be unmapped, validate as numeric? */
-            void_arg = * (void **) validate_arg(arg1, CONVERT_NUMERIC,
-                                                sizeof(void *), f);
-            f->eax = sys_mmap(int_arg, void_arg);
-            break;
-        case SYS_MUNMAP:
-            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
-            sys_munmap(int_arg);
+            sys_close(to_int(arg0));
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
@@ -177,7 +116,7 @@ static void syscall_handler(struct intr_frame *f) {
 }
 
 /* Returns true if addr to addr + size is valid */
-void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
+void *valid_pointer(void **pointer, int size) {
     int i = 0;
     void *kernel_addr = NULL;
 
@@ -192,27 +131,9 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
 
     /* Get the kernel address, if its unmapped return NULL */
     kernel_addr = pagedir_get_page(thread_current()->pagedir, addr);
-
     if (kernel_addr == NULL) {
-        /* See if the address is in the supplemental page table */
-        if (!spte_lookup(addr)) {
-            /* Check if the stack should be expanded */
-            if (addr < f->esp && addr != f->esp - 4 && addr != f->esp - 32) {
-                return NULL;
-            }
-            if (addr > f->esp && addr < STACK_FLOOR) {
-                return NULL;
-            }
-            /* If you reach this point it means that you want to expand the
-               stack. */
-            expand_stack(f, addr);
-        }
+        return kernel_addr;
     }
-
-    /* See if the address is in the supplemental page table */
-    /*if (spte_lookup(addr)) {*/
-        /*return addr;*/
-    /*}*/
 
     /* Now to check the rest of the data from the start to size - 1 */
     /* If size is -1 then its for a char * and we want to check memory until
@@ -230,17 +151,7 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                if (!spte_lookup(addr)) {
-                    /* Check if the stack should be expanded */
-                    if (addr < f->esp && addr != f->esp - 4 &&
-                        addr != f->esp - 32) {
-                        return NULL;
-                    }
-                    if (addr > f->esp && addr < STACK_FLOOR) {
-                        return NULL;
-                    }
-                    expand_stack(f, addr);
-                }
+                return NULL;
             }
 
             byte_read = * (char *) addr;
@@ -250,32 +161,20 @@ void *valid_pointer(void **pointer, int size, struct intr_frame *f) {
 
     } else {
         /* Check each byte in the specified byte range. */
-        if (debug_mode)
-            printf("Size of area to check: %d\n", size);
         for (i = 1; i < size; i++) {
             addr = *(pointer) + i;
-            /*printf("The address being checked: %p\n", addr);*/
 
             if (!is_user_vaddr(addr)) {
                 return NULL;
             }
 
             if (pagedir_get_page(thread_current()->pagedir, addr) == NULL) {
-                if (!spte_lookup(addr)) {
-                    /* Check if the stack should be expanded */
-                    if (addr < f->esp && addr != f->esp - 4 &&
-                        addr != f->esp - 32) {
-                        return NULL;
-                    }
-                    if (addr > f->esp && addr < STACK_FLOOR) {
-                        return NULL;
-                    }
-                    expand_stack(f, addr);
-                }
+                return NULL;
             }
         }
+
     }
-    return addr;
+    return kernel_addr;
 }
 
 /* Returns true if addr to addr + size is valid */
@@ -298,41 +197,65 @@ void *valid_numeric(void *addr, int size) {
     return kernel_addr;
 }
 
-static void *validate_arg(void *addr, enum conversion_type ct, int size,
-                          struct intr_frame *f) {
-    void *kernel_addr;
 
-    switch(ct) {
+/* Gets the integer starting from the given address. */
+static int to_int(void *addr) {
+    void *kernel_addr = valid_numeric(addr, sizeof(int));
 
-        case(CONVERT_NUMERIC):
-
-            kernel_addr = valid_numeric(addr, size);
-
-            if (kernel_addr == NULL) {
-                if (debug_mode)
-                    printf("Invalid numeric argument\n");
-                thread_exit();
-            }
-
-            return addr;
-
-        case(CONVERT_POINTER):
-
-            kernel_addr = valid_pointer(addr, size, f);
-
-            if (kernel_addr == NULL) {
-                if (debug_mode) {
-                    printf("Invalid pointer argument at: %p\n", addr);
-                    printf("The stack is at: %p\n", f->esp);
-                }
-                thread_exit();
-            }
-
-            return addr;
-
-        default:
-            thread_exit();
+    if (kernel_addr == NULL) {
+        thread_exit();
     }
+
+    return * (int *) kernel_addr;
+}
+
+/* Gets a const char * pointer from the given address. Terminates the process
+ * if the pointer is invalid */
+static const char *to_cchar_p(void *addr) {
+    /* Check if the pointer is invalid */
+    void *kernel_addr = valid_pointer(addr, -1);
+
+    if (kernel_addr == NULL) {
+        thread_exit();
+    }
+
+    return * (const char **) addr;
+}
+
+/* Gets an unsigned starting from the given address. */
+static unsigned to_unsigned(void *addr) {
+    /* Check if the pointer is invalid */
+
+    void *kernel_addr = valid_numeric(addr, sizeof(unsigned));
+    if (kernel_addr == NULL) {
+        thread_exit();
+    }
+
+    return * (unsigned *) addr;
+}
+
+/* Gets a void pointer from the given address. */
+static const void*to_cvoid_p(void *addr, unsigned size) {
+    /* Check if the pointer is invalid */
+    void *kernel_addr = valid_pointer(addr, size);
+
+    if (kernel_addr == NULL) {
+        thread_exit();
+    }
+
+    return * (const void **) addr;
+}
+
+/* Gets a void pointer from the given address. */
+static void *to_void_p(void *addr, unsigned size) {
+    /* Check if the pointer is invalid */
+    void *kernel_addr = valid_pointer(addr, size);
+
+    if (kernel_addr == NULL) {
+        thread_exit();
+    }
+
+    return * (void **) addr;
 }
 
 void sys_halt(void) {
@@ -351,6 +274,7 @@ void sys_exit(int status) {
         t->info->return_status = status;
         t->info->terminated = true;
     }
+
     thread_exit();
 }
 
@@ -363,6 +287,7 @@ pid_t sys_exec(const char *cmd_line) {
     }
 
     return tid;
+    /*return (int) get_thread(tid);*/
 }
 
 int sys_wait(pid_t pid) {
@@ -462,10 +387,6 @@ int sys_read(int fd, void *buffer, unsigned size) {
     if (debug_mode)
         printf("in sys_read with thread: %d\n", thread_current()->tid);
 
-    if (!can_write(buffer, size)) {
-        lock_release(&file_lock);
-        thread_exit();
-    }
 
     if (fd == 0) {
         /* Switching to a char * buffer */
@@ -481,38 +402,15 @@ int sys_read(int fd, void *buffer, unsigned size) {
     }
     else {
         struct fd_elem *file_info= get_file(fd);
-
-        /* Go through and force each page into memory so we don't page fault.
-           Also pin each frame. */
-        void *i;
-        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
-            struct spte *page_entry = spte_lookup((void *) i);
-
-            if (!page_entry->loaded) {
-                void *kpage = frame_from_spt(page_entry);
-                page_entry->kaddr = kpage;
-            }
-
-            frame_pin_kaddr(page_entry->kaddr);
-        }
-
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_read = file_read(file, buffer, size);
-            if (bytes_read == 0) {
-                if (debug_mode)
-                    printf("No bytes were read\n");
-            }
-        } else {
+        }
+        else {
             if (debug_mode)
                 printf("The file struct was null\n");
             lock_release(&file_lock);
             thread_exit();
-        }
-
-        /* Unpin all the frames we just pinned */
-        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
-            frame_unpin_uaddr(i);
         }
     }
 
@@ -549,33 +447,13 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 
     else {
         struct fd_elem *file_info = get_file(fd);
-
-        /* Go through and force each page into memory so we don't page fault.
-           Also pin each frame. */
-        void *i;
-        for (i = pg_round_down(buffer);
-             i < pg_round_up(buffer + size);
-             i += PGSIZE) {
-
-            struct spte *page_entry = spte_lookup((void *) i);
-            if (!page_entry->loaded) {
-                void *kpage = frame_from_spt(page_entry);
-                page_entry->kaddr = kpage;
-            }
-            frame_pin_kaddr(page_entry->kaddr);
-        }
-
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
             bytes_written = file_write(file, buffer, size);
-        } else {
+        }
+        else {
             lock_release(&file_lock);
             thread_exit();
-        }
-
-        /* Unpin the frames we pinned. */
-        for (i = pg_round_down(buffer); i < pg_round_up(buffer + size); i += PGSIZE) {
-            frame_unpin_uaddr(i);
         }
     }
 
@@ -618,11 +496,7 @@ void sys_close(int fd) {
     lock_acquire(&file_lock);
 
     struct fd_elem *file_info = get_file(fd);
-    if (debug_mode)
-        printf("Closing file with fd_elem: %p\n", file_info);
     if (file_info == NULL) {
-        if (debug_mode)
-            printf("Killing process due to invalid file access.\n");
         lock_release(&file_lock);
         thread_exit();
     }
@@ -631,161 +505,8 @@ void sys_close(int fd) {
     file_close(file_info->file_struct);
     free(file_info);
 
-    if (debug_mode)
-        printf("Done closing file.\n");
     lock_release(&file_lock);
 }
-
-/* Make a memory mapping for the given file. */
-mapid_t sys_mmap(int fd, void *addr) {
-
-    /* Fail if the addr is not page aligned. */
-    if (addr != pg_round_down(addr))
-        return MAP_FAILED;
-
-    /* Fail if the address is 0. */
-    if (addr == 0)
-        return MAP_FAILED;
-
-    /* Locking the filesys. */
-    lock_acquire(&file_lock);
-
-    /* Getting the fd struct */
-    struct fd_elem *file_info = get_file(fd);
-
-    /* If the file wasn't found just release the lock and kill the process. */
-    if (file_info == NULL) {
-        lock_release(&file_lock);
-        return MAP_FAILED;
-    }
-
-    /* Loop through and take pagesize chunks of the file and put them in
-     * the supplemental page table. */
-
-    /* Variables to use. */
-    void * page_addr = addr;
-    uint32_t page_offset = 0;
-    uint32_t read_bytes, zero_bytes;
-    int bytes_loaded = 0;
-
-    /* Need to use reopen so that the user can close the handle */
-    struct file *file = file_reopen(file_info->file_struct);
-
-    int size = file_length(file);
-
-    /* Fail if the file has no size */
-    if (size == 0) {
-        lock_release(&file_lock);
-        return MAP_FAILED;
-    }
-
-    /* Checking if any of the page mapping exists. */
-    int i = 0;
-    for (; i < size; i++) {
-        if (spte_lookup(addr + i)) {
-            lock_release(&file_lock);
-            return MAP_FAILED;
-        }
-    }
-
-    /* Associate the thread with this mapped file. */
-    struct thread *cur = thread_current();
-    struct mmap_fileinfo *mf = malloc(sizeof (struct mmap_fileinfo));
-    mf->addr = addr;
-    mf->num_pgs = size/PGSIZE + 1;
-    mf->mapid = cur->num_mfiles;
-    /* The mapping will keep track of the file */
-    mf->file = file;
-
-    while(bytes_loaded < size) {
-        /* The variables for this supplemental page table entry */
-        read_bytes = bytes_loaded + PGSIZE <= size ?
-            PGSIZE : size - bytes_loaded;
-        zero_bytes = PGSIZE - read_bytes;
-
-        /* Inserting into the supplemental page table */
-        spte_insert(cur, (uint8_t *) page_addr, NULL, file, page_offset,
-                    read_bytes, zero_bytes, PTYPE_MMAP, !file->deny_write);
-
-        /* Updating variables. */
-        bytes_loaded += read_bytes+ zero_bytes;
-        page_offset += PGSIZE;
-        page_addr += PGSIZE;
-    }
-
-    /* Now we can insert the element into the list of mapped files. */
-    list_push_back(&cur->mmap_files, &mf->elem);
-    cur->num_mfiles++;
-    if (debug_mode)
-        printf("Thread %s mapped fd %d with size %d to vm addr %p.\n",
-               cur->name, fd, size, addr);
-    lock_release(&file_lock);
-
-    return mf->mapid;
-}
-
-
-/* Unmaps the mapping designated by mapping, which must be a
-   mapping ID returned by a previous call to mmap by the same process
-   that has not yet been unmapped. */
-void sys_munmap(mapid_t mapping) {
-    /* Locking the filesys. */
-    lock_acquire(&file_lock);
-    if (debug_mode)
-        printf("Unmap the mapping %d\n", (int) mapping);
-    struct thread *cur = thread_current();
-    // First check if the mapping is valid
-    if (mapping < cur->num_mfiles){
-        struct list *mmap_files = &cur->mmap_files;
-
-        // If it is, look up which file it corresponds to
-        struct list_elem *e;
-        struct mmap_fileinfo *mf = NULL;
-        for (e = list_begin (mmap_files); e != list_end (mmap_files);
-             e = list_next (e)) {
-            mf = list_entry (e, struct mmap_fileinfo, elem);
-            if (mf->mapid == mapping) break;
-        }
-        ASSERT(mf != NULL);
-        // Look up the address in the SPT
-        void *addr = mf->addr;
-        struct spte *spte = spte_lookup(addr);
-        ASSERT(spte != NULL);
-        struct file *f = mf->file;
-        if (debug_mode){
-            printf("Corresponding file at %p with size %d.\n", f, mf->num_pgs);
-        }
-
-        // for each page in the file, write if necessary, then clear, free it
-        int i;
-        for (i = 0; i < mf->num_pgs; i++){
-            if (debug_mode){
-                printf("Found spte at %p.\n", spte);
-            }
-            // check if the corresponding page has been modified
-            if (pagedir_is_dirty(cur->pagedir, addr)){
-                file_write_at(f, addr, PGSIZE, i * PGSIZE);
-            }
-            // remove page from the process's page directory
-            pagedir_clear_page(cur->pagedir, addr);
-            // remove corresponding spte from the thread's spt
-            // as the mapping is no longertrued
-            spte_remove(cur, spte);
-            addr = addr + PGSIZE;
-            spte = spte_lookup(addr);
-            if (spte == NULL) break;
-        }
-        file_close(f);
-        list_remove(&(mf->elem));
-        free(mf);
-        if (debug_mode){
-            printf("Unmapped file %p.\n", f);
-        }
-
-    }
-    lock_release(&file_lock);
-}
-
 
 /* Returns the file struct for a given fd */
 struct fd_elem *get_file(int fd) {
@@ -797,17 +518,4 @@ struct fd_elem *get_file(int fd) {
         }
     }
     return NULL;
-}
-
-/* A function that verifies that you can write to an area of memory. Should
- * have already been checked that it is mapped. */
-bool can_write(void *addr, int size) {
-    void *i;
-    for (i = pg_round_down(addr); i < pg_round_up(addr + size); i += PGSIZE) {
-        struct spte *page_entry = spte_lookup(i);
-        ASSERT(page_entry != NULL);
-        if (page_entry->writable != true)
-            return false;
-    }
-    return true;
 }

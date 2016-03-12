@@ -12,10 +12,10 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
+#ifdef USERPROG
 #include "userprog/process.h"
 #include "userprog/syscall.h"
-#include "vm/page.h"
-#include "vm/frame.h"
+#endif
 
 /*! Random value for struct thread's `magic' member.
     Used to detect stack overflow.  See the big comment at the top
@@ -315,6 +315,7 @@ void thread_exit(void) {
     ASSERT(!intr_context());
     struct thread *cur = thread_current();
 
+#ifdef USERPROG
     if (cur->userprog) {
         printf("%s: exit(%d)\n", cur->name, cur->return_status);
     }
@@ -327,21 +328,11 @@ void thread_exit(void) {
         sys_close(curr_fd->fd);
     }
 
-    /* Cleaning up the mmaps */
-    e = list_begin(&cur->mmap_files);
-    while (e != list_end(&cur->mmap_files)) {
-        struct mmap_fileinfo *mf = list_entry(e, struct mmap_fileinfo, elem);
-        e = list_next(e);
-        sys_munmap(mf->mapid);
-    }
-
-    /* frame_clean(cur); */
-
-    // spt_destroy(cur);
     // Allow parent waiting to run.
     sema_up(&cur->child_wait);
 
     process_exit();
+#endif
 
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
@@ -686,11 +677,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&(t->locks));
     t->lock_waiton = NULL;
 
-    // Initialize the list of file descriptors held by the thread.
+    // Initialize the list of file descripters held by the thread.
     list_init(&(t->fd_list));
-
-    // Initialize the list of memory mapped files held by the thread.
-    list_init(&(t->mmap_files));
 
 #ifdef USERPROG
     // Initialize the list of child process information.
@@ -705,9 +693,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 
     /* The max fd starts off at 1 */
     t->max_fd = 1;
-
-    /* Start with 0 memory mapped files */
-    t->num_mfiles = 0;
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

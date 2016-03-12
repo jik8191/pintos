@@ -2,4 +2,3 @@
 
 src/examples/*
 !src/examples/*.c
-*~

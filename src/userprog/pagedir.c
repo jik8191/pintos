@@ -11,7 +11,6 @@
 #include "threads/init.h"
 #include "threads/pte.h"
 #include "threads/palloc.h"
-#include "vm/frame.h"
 
 static uint32_t *active_pd(void);
 static void invalidate_pagedir(uint32_t *);
@@ -33,9 +32,6 @@ void pagedir_destroy(uint32_t *pd) {
     if (pd == NULL)
         return;
 
-    /* lock_acquire(&framelock); */
-    lock_frame();
-
     ASSERT(pd != init_page_dir);
     for (pde = pd; pde < pd + pd_no(PHYS_BASE); pde++)
     if (*pde & PTE_P) {
@@ -44,17 +40,11 @@ void pagedir_destroy(uint32_t *pd) {
 
         for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++) {
             if (*pte & PTE_P)
-                frame_free_kaddr(pte_get_page(*pte));
-                /* palloc_free_page(pte_get_page(*pte)); */
+                palloc_free_page(pte_get_page(*pte));
         }
-        /* frame_free_kaddr(pt); */
         palloc_free_page(pt);
     }
-    /* frame_free_kaddr(pd); */
     palloc_free_page(pd);
-
-    /* lock_release(&framelock); */
-    unlock_frame();
 }
 
 /*! Returns the address of the page table entry for virtual address VADDR in
