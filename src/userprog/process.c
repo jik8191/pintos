@@ -47,7 +47,7 @@ tid_t process_execute(const char *file_name) {
     strtok_r(fn_copy, " ", &save_ptr);
 
     /* Save the program name by itself */
-    program_name = palloc_get_page(0);
+    program_name = malloc(strlen(fn_copy) + 1);
     if (program_name == NULL)
         return TID_ERROR;
     strlcpy(program_name, fn_copy, PGSIZE);
@@ -64,6 +64,7 @@ tid_t process_execute(const char *file_name) {
 
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
+        palloc_free_page(program_name);
     } else {
         /* Add the thread to the children of the current thread. */
         struct childinfo *ci = malloc(sizeof(struct childinfo));
