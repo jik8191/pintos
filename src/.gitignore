@@ -5,3 +5,4 @@ tags
 doc
 *.dsk
 *.a
+.syntastic_c_config
