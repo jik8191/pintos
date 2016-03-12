@@ -148,7 +148,7 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         default:
             printf("Call: %d Went to default\n", call_number);
-            thread_exit();
+            sys_exit(-1);
     }
 }
 
@@ -169,7 +169,7 @@ void *valid_pointer(void **pointer, int size) {
     /* Get the kernel address, if its unmapped return NULL */
     kernel_addr = pagedir_get_page(thread_current()->pagedir, addr);
     if (kernel_addr == NULL) {
-        return kernel_addr;
+        return NULL;
     }
 
     /* Now to check the rest of the data from the start to size - 1 */
@@ -219,7 +219,7 @@ void *valid_numeric(void *addr, int size) {
 
     /* Making sure the memory is in user space */
     if (!is_user_vaddr(addr) || !is_user_vaddr(addr + size - 1)) {
-        return kernel_addr;
+        return NULL;
     }
 
     /* Getting the kernel virtual address if the address is mapped */
@@ -243,7 +243,7 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size) {
             kernel_addr = valid_numeric(addr, size);
 
             if (kernel_addr == NULL) {
-                thread_exit();
+                sys_exit(-1);
             }
 
             return addr;
@@ -253,14 +253,16 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size) {
             kernel_addr = valid_pointer(addr, size);
 
             if (kernel_addr == NULL) {
-                thread_exit();
+                sys_exit(-1);
             }
 
             return addr;
 
         default:
-            thread_exit();
+            sys_exit(-1);
     }
+
+    return NULL;
 }
 
 void sys_halt(void) {
@@ -292,7 +294,6 @@ pid_t sys_exec(const char *cmd_line) {
     }
 
     return tid;
-    /*return (int) get_thread(tid);*/
 }
 
 int sys_wait(pid_t pid) {
@@ -308,7 +309,7 @@ bool sys_create(const char *file, unsigned initial_size) {
 
     if (file == NULL) {
         lock_release(&file_lock);
-        thread_exit();
+        sys_exit(-1);
     }
     return_value = filesys_create(file, initial_size);
     lock_release(&file_lock);
@@ -415,7 +416,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
             if (debug_mode)
                 printf("The file struct was null\n");
             lock_release(&file_lock);
-            thread_exit();
+            sys_exit(-1);
         }
     }
 
@@ -458,7 +459,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         }
         else {
             lock_release(&file_lock);
-            thread_exit();
+            sys_exit(-1);
         }
     }
 
@@ -473,7 +474,7 @@ void sys_seek(int fd, unsigned position) {
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
         lock_release(&file_lock);
-        thread_exit();
+        sys_exit(-1);
     }
     file_seek(file, position);
     lock_release(&file_lock);
@@ -486,7 +487,7 @@ unsigned sys_tell(int fd) {
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
         lock_acquire(&file_lock);
-        thread_exit();
+        sys_exit(-1);
     }
     return_value = file_tell(file);
     lock_release(&file_lock);
@@ -503,7 +504,7 @@ void sys_close(int fd) {
     struct fd_elem *file_info = get_file(fd);
     if (file_info == NULL) {
         lock_release(&file_lock);
-        thread_exit();
+        sys_exit(-1);
     }
 
     list_remove(&file_info->elem);

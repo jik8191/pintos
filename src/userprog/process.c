@@ -70,6 +70,7 @@ tid_t process_execute(const char *file_name) {
         ci->tid = tid;
         ci->terminated = false;
         ci->return_status = -1;
+        ci->t = NULL;
 
         list_push_back(&thread_current()->children, &ci->elem);
 
@@ -92,7 +93,6 @@ tid_t process_execute(const char *file_name) {
             if (!load_status) {
                 tid = -1;
             }
-
         }
     }
 
@@ -180,8 +180,7 @@ int process_wait(tid_t child_tid) {
     // If the child thread has not terminated yet, we need to block until it
     // does.
     if (ci->terminated == false) {
-        struct thread *child = get_thread(child_tid);
-        sema_down(&child->child_wait);
+        sema_down(&ci->t->child_wait);
     }
 
     return ci->return_status;

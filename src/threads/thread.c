@@ -8,6 +8,7 @@
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
@@ -316,9 +317,19 @@ void thread_exit(void) {
     struct thread *cur = thread_current();
 
 #ifdef USERPROG
+    /* Handle some extra cleanup for user spawned threads. */
     if (cur->userprog) {
+        /* In case sys_exit was not called, we set this redundantly */
+        if (cur->info != NULL)
+            cur->info->terminated = true;
+
+        /* Print the exit status. */
         printf("%s: exit(%d)\n", cur->name, cur->return_status);
     }
+
+    /* We don't want the parent accessing this thread after it dies. */
+    if (cur->info != NULL)
+        cur->info->t = NULL;
 
     /* Cleaning up the file descriptors */
     struct list_elem *e = list_begin(&cur->fd_list);
@@ -328,7 +339,22 @@ void thread_exit(void) {
         sys_close(curr_fd->fd);
     }
 
-    // Allow parent waiting to run.
+    /* Free all the child info structs of children we were waiting on. */
+    struct list_elem *ce = list_begin(&cur->children);
+    while (ce != list_end(&cur->children)) {
+        struct childinfo *ci = list_entry(ce, struct childinfo, elem);
+
+        /* If the child thread is still alive, tell it not to write into a
+           childinfo struct. */
+        if (ci->t != NULL)
+            ci->t->info = NULL;
+
+        ce = list_next(ce);
+
+        free(ci);
+    }
+
+    /* Allow parent waiting to run. */
     sema_up(&cur->child_wait);
 
     process_exit();
@@ -671,24 +697,28 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->priority = priority;
     t->magic = THREAD_MAGIC;
 
-    sema_init(&(t->sema_wait), 0);  // Thread is initially not blocked
+    sema_init(&(t->sema_wait), 0);  /* Thread is initially not blocked */
 
-    // Initialize the list of locks held by the thread (starts empty).
+    /* Initialize the list of locks held by the thread (starts empty). */
     list_init(&(t->locks));
     t->lock_waiton = NULL;
 
-    // Initialize the list of file descripters held by the thread.
+    /* Initialize the list of file descripters held by the thread. */
     list_init(&(t->fd_list));
 
 #ifdef USERPROG
-    // Initialize the list of child process information.
+    /* Initialize the list of child process information. */
     list_init(&(t->children));
 
-    // Initialize the semaphore used to wait on children.
+    /* Initialize the semaphore used to wait on children. */
     sema_init(&(t->child_wait), 0);
 
     t->return_status = -1;
     t->userprog = false;
+
+    /* The struct used to inform waiting parents is set to NULL initially and
+       can be set to a meaningful value later in process_execute. */
+    t->info = NULL;
 #endif
 
     /* The max fd starts off at 1 */

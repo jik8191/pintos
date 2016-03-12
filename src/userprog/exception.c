@@ -1,6 +1,8 @@
 #include "userprog/exception.h"
+
 #include <inttypes.h>
 #include <stdio.h>
+
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -79,6 +81,7 @@ static void kill(struct intr_frame *f) {
         printf("%s: dying due to interrupt %#04x (%s).\n",
                thread_name(), f->vec_no, intr_name(f->vec_no));
         intr_dump_frame(f);
+
         thread_exit();
 
     case SEL_KCSEG:
@@ -94,6 +97,7 @@ static void kill(struct intr_frame *f) {
            kernel. */
         printf("Interrupt %#04x (%s) in unknown segment %04x\n",
                f->vec_no, intr_name(f->vec_no), f->cs);
+
         thread_exit();
     }
 }
