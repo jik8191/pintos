@@ -23,8 +23,7 @@ static void *valid_pointer(void **pointer, int size);
 static void *valid_numeric(void *addr, int size);
 
 /* Conversion functions */
-static void *validate_arg(void *addr, enum conversion_type ct, int size,
-                          struct intr_frame *f);
+static void *validate_arg(void *addr, enum conversion_type ct, int size);
 
 /* Specific handlers */
 void sys_halt(void);
@@ -52,7 +51,7 @@ static void syscall_handler(struct intr_frame *f) {
     /* Getting the callers stack pointer */
     void *caller_esp = f->esp;
     int call_number = * (int *) validate_arg(caller_esp, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
 
     /* Getting the args, the calls at most have 3 */
     void *arg0 = f->esp + 4;
@@ -77,74 +76,74 @@ static void syscall_handler(struct intr_frame *f) {
             break;
         case SYS_EXIT:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             sys_exit(int_arg);
             break;
         case SYS_EXEC:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
+                                                       -1);
             f->eax = sys_exec(cchar_arg);
             break;
         case SYS_WAIT:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             f->eax = sys_wait(int_arg);
             break;
         case SYS_CREATE:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
+                                                       -1);
             unsigned_arg = * (unsigned *) validate_arg(arg1, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
+                                                       sizeof(unsigned));
             f->eax = sys_create(cchar_arg, unsigned_arg);
             break;
         case SYS_REMOVE:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
+                                                       -1);
             f->eax = sys_remove(cchar_arg);
             break;
         case SYS_FILESIZE:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             f->eax = sys_filesize(int_arg);
             break;
         case SYS_OPEN:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
-                                                       -1, f);
+                                                       -1);
             f->eax = sys_open(cchar_arg);
             break;
         case SYS_READ:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             unsigned_arg = * (unsigned *) validate_arg(arg2, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
+                                                       sizeof(unsigned));
             void_arg = * (void **) validate_arg(arg1, CONVERT_POINTER,
-                                                unsigned_arg, f);
+                                                unsigned_arg);
             f->eax = sys_read(int_arg, void_arg, unsigned_arg);
             break;
         case SYS_WRITE:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             unsigned_arg = * (unsigned *) validate_arg(arg2, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
+                                                       sizeof(unsigned));
             cvoid_arg = * (const void **) validate_arg(arg1, CONVERT_POINTER,
-                                                       unsigned_arg, f);
+                                                       unsigned_arg);
             f->eax = sys_write(int_arg, cvoid_arg, unsigned_arg);
             break;
         case SYS_SEEK:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             unsigned_arg = * (unsigned *) validate_arg(arg1, CONVERT_NUMERIC,
-                                                       sizeof(unsigned), f);
+                                                       sizeof(unsigned));
             sys_seek(int_arg, unsigned_arg);
             break;
         case SYS_TELL:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             f->eax = sys_tell(int_arg);
             break;
         case SYS_CLOSE:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
-                                             sizeof(int), f);
+                                             sizeof(int));
             sys_close(int_arg);
             break;
         default:
@@ -234,8 +233,7 @@ void *valid_numeric(void *addr, int size) {
     return kernel_addr;
 }
 
-static void *validate_arg(void *addr, enum conversion_type ct, int size,
-                          struct intr_frame *f) {
+static void *validate_arg(void *addr, enum conversion_type ct, int size) {
     void *kernel_addr;
 
     switch(ct) {
