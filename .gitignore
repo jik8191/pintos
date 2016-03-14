@@ -2,3 +2,5 @@
 
 src/examples/*
 !src/examples/*.c
+
+notes
