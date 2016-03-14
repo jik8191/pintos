@@ -10,17 +10,44 @@
 /*! Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+/* Functions for single indirect nodes */
+static bool is_single_indirect(off_t pos);
+static block_sector_t indirect_node_index(off_t pos);
+static block_sector_t indirect_pos_index(off_t pos);
+static block_sector_t get_indirect(const struct inode *inode, off_t pos);
+
+/* Functions for double indirect nodes */
+static bool is_double_indirect(off_t pos);
+static block_sector_t double_node_index(off_t pos);
+static block_sector_t double_node_second(off_t pos);
+static block_sector_t double_pos_index(off_t pos);
+
+
 /*! On-disk inode.
     Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
-    block_sector_t start;               /*!< First data sector. */
     off_t length;                       /*!< File size in bytes. */
+
+    /* Arrays to hold the pointers to the locations of the sectors where
+     * the file is located. */
+    block_sector_t direct[NUM_DIRECT];
+    block_sector_t indirect[NUM_INDIRECT];
+    block_sector_t double_indirect[NUM_DOUBLE_INDIRECT];
+
     unsigned magic;                     /*!< Magic number. */
-    uint32_t unused[125];               /*!< Not used. */
+};
+
+/* Index Block. Holds indicies of sectors that can be either other
+ * index blocks or actual data. */
+struct index_block {
+    /* TODO does this need a magic number? Would having the length or the
+     * number of sectors it actually holds be useful here? */
+    block_sector_t sectors[INDEX_BLOCK_SIZE]; /*!< Array of sectors. */
 };
 
 /*! Returns the number of sectors to allocate for an inode SIZE
     bytes long. */
+/* TODO should this account for indirect and double indirect blocks */
 static inline size_t bytes_to_sectors(off_t size) {
     return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE);
 }
@@ -35,16 +62,145 @@ struct inode {
     struct inode_disk data;             /*!< Inode content. */
 };
 
+/* Returns true if the index is for a single indirect node */
+static bool is_single_indirect(off_t pos) {
+    return pos < NUM_DIRECT + (NUM_INDIRECT * INDEX_BLOCK_SIZE);
+}
+
+/* Gets the index for the single indirect node given pos */
+static block_sector_t indirect_node_index(off_t pos) {
+    return (pos - NUM_DIRECT) / INDEX_BLOCK_SIZE;
+}
+
+/* Gets the actual index of the data for an indirect node given pos */
+static block_sector_t indirect_pos_index(off_t pos) {
+    return (pos - NUM_DIRECT) % INDEX_BLOCK_SIZE;
+}
+
+/* Returns the sector of an indirect node */
+/* TODO check this math */
+static block_sector_t get_indirect(const struct inode *inode, off_t pos) {
+    ASSERT(inode != NULL);
+
+    /* The sector that the indirect node points to */
+    block_sector_t node_index = indirect_node_index(pos);
+    /*printf("The indirect index that it points to is: %d\n", node_index);*/
+    block_sector_t indirect_node_sector = inode->data.indirect[node_index];
+    /*printf("It has sector: %d\n", indirect_node_sector);*/
+
+    /* Casting the raw data into an index block */
+    /* TODO I am sort of guessing in how to do this. */
+    struct index_block *indices = malloc(sizeof(struct index_block));
+    if (indices == NULL) {
+        return -1;
+    }
+
+    /* Getting the indirect block */
+    block_read(fs_device, indirect_node_sector, indices);
+
+    /* Returning the sector at the given pos */
+    block_sector_t pos_index = indirect_pos_index(pos);
+    /*printf("The end result sector is: %d\n", indices->sectors[pos_index]);*/
+    block_sector_t result = indices->sectors[pos_index];
+    free(indices);
+    return result;
+
+}
+
+/* Returns true if the index is for a double indirect node */
+static bool is_double_indirect(off_t pos) {
+    return pos < NUM_DIRECT + (NUM_INDIRECT * INDEX_BLOCK_SIZE) +
+                 (NUM_DOUBLE_INDIRECT * INDEX_BLOCK_SIZE * INDEX_BLOCK_SIZE);
+}
+
+/* Gets the index for the double indirect node given pos */
+static block_sector_t double_node_index(off_t pos) {
+    return (pos - NUM_DIRECT - (NUM_INDIRECT * INDEX_BLOCK_SIZE))
+            / (INDEX_BLOCK_SIZE * INDEX_BLOCK_SIZE);
+}
+
+/* Gets the index in the first indirect block for a double indirect pos */
+static block_sector_t double_node_second(off_t pos) {
+    return (pos - NUM_DIRECT - (NUM_INDIRECT * INDEX_BLOCK_SIZE))
+            / INDEX_BLOCK_SIZE;
+}
+
+/* Gets the actual index of the data for a double indirect node given pos */
+static block_sector_t double_pos_index(off_t pos) {
+    return (pos - NUM_DIRECT - (NUM_INDIRECT * INDEX_BLOCK_SIZE))
+            % INDEX_BLOCK_SIZE;
+}
+
+/* Returns the sector of a doubly indirect node */
+/* TODO check this math */
+static block_sector_t get_double_indirect(const struct inode *inode, off_t pos) {
+    ASSERT(inode != NULL);
+
+    struct index_block *indices = malloc(sizeof(struct index_block));
+    if (indices == NULL) {
+        return -1;
+    }
+
+    /* The sector that the double indirect node points to */
+    off_t first_node_index = double_node_index(pos);
+    block_sector_t first_sector = inode->data.double_indirect[first_node_index];
+
+    /* Getting the first indirect block */
+    block_read(fs_device, first_sector, indices);
+
+    /* The sector that the single indirect node points to */
+    off_t second_node_index = double_node_second(pos);
+
+    /* Getting the second indirect block */
+    block_read(fs_device, indices->sectors[second_node_index], indices);
+
+    /* Computing the final index */
+    off_t pos_index = double_pos_index(pos);
+
+    off_t result = indices->sectors[pos_index];
+
+    free(indices);
+    return result;
+
+}
+
 /*! Returns the block device sector that contains byte offset POS
     within INODE.
     Returns -1 if INODE does not contain data for a byte at offset
     POS. */
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
-    if (pos < inode->data.length)
-        return inode->data.start + pos / BLOCK_SECTOR_SIZE;
-    else
-        return -1;
+
+    /*printf("Getting the sector for byte: %d\n", pos);*/
+    if (pos < inode->data.length) {
+
+        /* TODO does pos start from 0? */
+        /* If the position is less than the number of direct nodes then
+         * you can simply return value at the index pos in the direct node
+         * array. */
+
+        /* The number of the sector of actual data this is */
+        /* TODO I realize that all these functions should be taking a data_num
+         * rather than a pos. Just semantic though */
+        off_t data_num = pos / BLOCK_SECTOR_SIZE;
+
+        /*printf("It is data number: %d\n", data_num);*/
+
+        if (data_num < NUM_DIRECT) {
+            /*printf("It was a direct sector and it is: %d\n", inode->data.direct[data_num]);*/
+            return inode->data.direct[data_num];
+
+        } else if (is_single_indirect(data_num)) {
+            /*printf("Its an indirect node, uh oh...\n");*/
+            return get_indirect(inode, data_num);
+
+        } else if (is_double_indirect(data_num)) {
+
+            return get_double_indirect(inode, data_num);
+
+        }
+    }
+    return -1;
 }
 
 /*! List of open inodes, so that opening a single inode twice
@@ -55,6 +211,12 @@ static struct list open_inodes;
 void inode_init(void) {
     list_init(&open_inodes);
 }
+
+/* One sector in a list */
+struct sector_elem {
+    struct list_elem elem;
+    block_sector_t sector;
+};
 
 /*! Initializes an inode with LENGTH bytes of data and
     writes the new inode to sector SECTOR on the file system
@@ -71,24 +233,200 @@ bool inode_create(block_sector_t sector, off_t length) {
        one sector in size, and you should fix that. */
     ASSERT(sizeof *disk_inode == BLOCK_SECTOR_SIZE);
 
+    /* Allocating space for the inode_disk */
     disk_inode = calloc(1, sizeof *disk_inode);
     if (disk_inode != NULL) {
+
+        /* The number of sectors the data requires */
         size_t sectors = bytes_to_sectors(length);
+
+        /* Setting inode_disk variables */
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
-        if (free_map_allocate(sectors, &disk_inode->start)) {
-            block_write(fs_device, sector, disk_inode);
-            if (sectors > 0) {
-                static char zeros[BLOCK_SECTOR_SIZE];
-                size_t i;
 
-                for (i = 0; i < sectors; i++)
-                    block_write(fs_device, disk_inode->start + i, zeros);
+        /* A list that holds what sectors have been allocated so that we
+         * can flip them back if we fail */
+        struct list allocated_sectors;
+        list_init(&allocated_sectors);
+
+        struct sector_elem disk_sector;
+
+        /* A variable to store which free sector to use */
+        block_sector_t cur_sec;
+
+        if (free_map_allocate(1, &cur_sec)) {
+
+            /* Putting the disk sector in the list of sectors */
+            disk_sector.sector = cur_sec;
+            list_push_back(&allocated_sectors, &disk_sector.elem);
+
+            /* An index block varialbe for making an indirect block */
+            struct index_block *single_block;
+
+            /* An index block variable for making a double indirect block */
+            struct index_block *double_block;
+
+            size_t i = 0;
+            for (; i < sectors; i++) {
+
+                /* Getting a new sector for the data */
+                if (!free_map_allocate(1, &cur_sec)) {
+                    free(disk_inode);
+                    return success;
+                }
+
+                /* Adding the data sector to the list of sectors */
+                struct sector_elem data_sector;
+                data_sector.sector = cur_sec;
+                list_push_back(&allocated_sectors, &data_sector.elem);
+
+                /* The case where its just a direct node. */
+                if (i < NUM_DIRECT) {
+                    /* Just update the direct list to have this sector */
+                    disk_inode->direct[i] = data_sector.sector;
+                }
+
+                /* Now the case where its a single indirect node */
+                else if (is_single_indirect(i)) {
+
+                    /*printf("Creating a sector for an indirect node\n");*/
+
+                    /* The index in the indirect list */
+                    off_t node_index = indirect_node_index(i);
+
+                    /*printf("It has node index: %d\n", node_index);*/
+
+                    /* Index of the position of the data */
+                    off_t pos_index = indirect_pos_index(i);
+
+                    /*printf("It has position: %d\n", pos_index);*/
+
+                    /*printf("Want to give it sector: %d\n", data_sector.sector);*/
+
+                    /* This means you need to make a new indirect block */
+                    if (pos_index == 0) {
+                        /* Making the indirect block zeroes */
+                        /* TODO does this do the job */
+                        struct index_block *new_indirect = malloc(sizeof(struct index_block));
+                        if (new_indirect == NULL) {
+                            free(disk_inode);
+                            return success;
+                        }
+                        single_block = new_indirect;
+
+                        /* Getting a sector for the new indirect block */
+                        if (!free_map_allocate(1, &cur_sec)) {
+                            free(disk_inode);
+                            return success;
+                        }
+
+                        struct sector_elem single_sector;
+                        single_sector.sector = cur_sec;
+                        list_push_back(&allocated_sectors, &single_sector.elem);
+
+                        /*printf("New indirect with sector: %d\n", single_sector.sector);*/
+
+                        /* Setting the sector for the indirect list */
+                        disk_inode->indirect[node_index] = single_sector.sector;
+
+                    }
+
+                    /* Adding to the index block */
+                    single_block->sectors[pos_index] = data_sector.sector;
+
+                    /* When you are writing the last instance of the indirect block */
+                    if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
+                        /* Writing the index block to disk */
+                        /*printf("Writing out indirect block to: %d\n", disk_inode->indirect[node_index]);*/
+                        block_write(fs_device, disk_inode->indirect[node_index], (const void *) single_block);
+                        free(single_block);
+                    }
+
+                }
+                else if (is_double_indirect(i)) {
+                    /* This is the case where it is doubly indirect */
+
+                    /* Index in the double indirect list */
+                    off_t first_node_index = double_node_index(i);
+
+                    /* Index in the single indirect list */
+                    off_t second_node_index = double_node_second(i);
+
+                    /* The final index */
+                    off_t pos_index = double_pos_index(i);
+
+                    /* If we need to make a new double indirect block */
+                    if (first_node_index == 0 && second_node_index == 0) {
+                        /* Making the indirect block zeroes */
+                        struct index_block *new_double = malloc(sizeof(struct index_block));
+                        if (new_double == NULL) {
+                            free(disk_inode);
+                            return success;
+                        }
+
+                        double_block = new_double;
+
+                        if (!free_map_allocate(1, &cur_sec)) {
+                            free(disk_inode);
+                            return success;
+                        }
+
+                        struct sector_elem double_sector;
+                        double_sector.sector = cur_sec;
+                        list_push_back(&allocated_sectors, &double_sector.elem);
+
+                        /* Setting the sector for the double indirect list */
+                        disk_inode->double_indirect[first_node_index] = double_sector.sector;
+
+                    }
+
+                    /* We need to make a new single indirect block for the
+                     * double indirect block */
+                    if (second_node_index == 0) {
+                        struct index_block *new_indirect = malloc(sizeof(struct index_block));
+                        if (new_indirect == NULL) {
+                            free(disk_inode);
+                            return success;
+                        }
+
+                        single_block = new_indirect;
+
+                        /* Getting a sector for the new indirect block */
+                        if (!free_map_allocate(1, &cur_sec)) {
+                            free(disk_inode);
+                            return success;
+                        }
+
+                        struct sector_elem single_sector;
+                        single_sector.sector = cur_sec;
+                        list_push_back(&allocated_sectors, &single_sector.elem);
+
+                        /* Setting the sector for double indirect block */
+                        double_block->sectors[second_node_index] = single_sector.sector;
+                    }
+
+                    /* Setting the position to the single block */
+                    single_block->sectors[pos_index] = data_sector.sector;
+
+                    /* When you are writing the last sector */
+                    if (i == sectors - 1) {
+                        block_write(fs_device, disk_inode->double_indirect[first_node_index], (const void *) double_block);
+                        free(double_block);
+                    }
+
+                    /* When its the last sector for an indirect block */
+                    if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
+                        block_write(fs_device, double_block->sectors[second_node_index], (const void *) single_block);
+                        free(single_block);
+                    }
+                }
             }
-            success = true;
         }
-        free(disk_inode);
+        success = true;
+        block_write(fs_device, sector, disk_inode);
     }
+    /* TODO need make all the sectors available on failure */
+    free(disk_inode);
     return success;
 }
 
@@ -152,10 +490,52 @@ void inode_close(struct inode *inode) {
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
-            free_map_release(inode->data.start,
-                             bytes_to_sectors(inode->data.length));
-        }
 
+            size_t sectors = bytes_to_sectors(inode->data.length);
+            size_t i = 0;
+            for (; i < sectors; i++) {
+                /* Freeing the direct nodes */
+                if (i < NUM_DIRECT) {
+                    free_map_release(inode->data.direct[i], 1);
+                }
+                else if (is_single_indirect(i)) {
+                    off_t node_index = indirect_node_index(i);
+                    off_t pos_index = indirect_pos_index(i);
+
+                    /* Freeing the actual data */
+                    free_map_release(get_indirect(inode, i), 1);
+
+                    /* If its the last index to free, free the actual indirect
+                     * sector. */
+                    if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
+                        free_map_release(inode->data.indirect[node_index], 1);
+                    }
+                }
+                else if (is_double_indirect(i)) {
+                    off_t first_node_index = double_node_index(i);
+                    off_t second_node_index = double_node_second(i);
+                    off_t pos_index = double_pos_index(i);
+
+                    /* Freeing the actual data */
+                    free_map_release(get_double_indirect(inode, i), 1);
+
+                    /* If its the last sector for an indirect block */
+                    if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
+                        struct index_block *indices = malloc(sizeof(struct index_block));
+                        ASSERT(indices != NULL);
+                        block_read(fs_device, inode->data.double_indirect[first_node_index], indices);
+                        free_map_release(indices->sectors[second_node_index], 1);
+                        free(indices);
+                    }
+
+                    /* If its the last index to free, free the double indirect
+                     * sector */
+                    if (i == sectors - 1) {
+                        free_map_release(inode->data.double_indirect[first_node_index], 1);
+                    }
+                }
+            }
+        }
         free(inode);
     }
 }

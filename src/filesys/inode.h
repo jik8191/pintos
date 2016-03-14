@@ -20,4 +20,13 @@ void inode_deny_write(struct inode *);
 void inode_allow_write(struct inode *);
 off_t inode_length(const struct inode *);
 
+/* Constants for the number of direct, indirect, and doubly indirect node in
+ * the inode_disk structure. */
+#define NUM_DIRECT 100
+#define NUM_INDIRECT 25
+#define NUM_DOUBLE_INDIRECT 1
+
+/* The number of sectors an index block holds */
+#define INDEX_BLOCK_SIZE 128
+
 #endif /* filesys/inode.h */
