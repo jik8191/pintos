@@ -48,6 +48,25 @@ void cond_wait(struct condition *, struct lock *);
 void cond_signal(struct condition *, struct lock *);
 void cond_broadcast(struct condition *, struct lock *);
 
+struct rwlock {
+    struct lock lock;
+
+    struct condition reader_cond;
+    struct condition writer_cond;
+
+    int readers;
+    int writers;
+
+    int waiting_readers;
+    int waiting_writers;
+};
+
+void rwlock_init(struct rwlock *);
+void rwlock_acquire_reader(struct rwlock *);
+void rwlock_release_reader(struct rwlock *);
+void rwlock_acquire_writer(struct rwlock *);
+void rwlock_release_writer(struct rwlock *);
+
 /* A function that returns if threads A's priority is greater than B's */
 bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
         void *aux);

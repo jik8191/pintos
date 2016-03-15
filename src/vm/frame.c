@@ -278,13 +278,13 @@ void frame_replace(struct frame *f)
 
         /* Write these out to the files they belong to */
         case PTYPE_MMAP:
-            lock_acquire(&file_lock);
+            /* lock_acquire(&file_lock); */
 
             pagedir_clear_page(f->owner->pagedir, f->uaddr);
             /* Write out the file */
             file_write_at(page->file, f->kaddr, page->read_bytes, page->ofs);
 
-            lock_release(&file_lock);
+            /* lock_release(&file_lock); */
             break;
     }
 

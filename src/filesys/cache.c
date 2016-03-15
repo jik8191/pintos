@@ -1,5 +1,6 @@
 #include "filesys/cache.h"
 
+#include <debug.h>
 #include <string.h>
 
 #include "devices/block.h"
@@ -18,7 +19,7 @@ static struct lock cache_lock;
 static int clock_idx;
 
 /* Private function declarations. */
-struct cache_entry * cache_get (block_sector_t sector, bool dirty);
+struct cache_entry * cache_get (block_sector_t sector);
 struct cache_entry * cache_lookup (block_sector_t sector);
 struct cache_entry * cache_new_entry (void);
 struct cache_entry * cache_evict (void);
@@ -33,6 +34,8 @@ void cache_init (void)
         cache[i].valid = false;
         cache[i].dirty = false;
         cache[i].accessed = false;
+
+        rwlock_init(&cache[i].rw_lock);
     }
 
     lock_init(&cache_lock);
@@ -53,22 +56,6 @@ void cache_flush (void)
     lock_release(&cache_lock);
 }
 
-/*! Looks up a disk sector in the cache and returns the entry address.
-
-    Returns NULL if the sector is not in the cache. */
-struct cache_entry * cache_lookup (block_sector_t sector)
-{
-    int i;
-
-    /* Find a valid cache entry that represents the sector. */
-    for (i = 0; i < CACHE_SIZE; i++) {
-        if (cache[i].valid && cache[i].sector == sector)
-            return &cache[i];
-    }
-
-    return NULL;
-}
-
 /*! Read a block sector from cache into a buffer. If it is not in the cache,
     load it into the cache from disk, evicting a cache entry if necessary. */
 void cache_read (block_sector_t sector, void *buf)
@@ -82,14 +69,26 @@ void cache_read (block_sector_t sector, void *buf)
 void cache_read_chunk (block_sector_t sector, off_t sector_ofs, void *buf,
         int chunk_size)
 {
-    lock_acquire(&cache_lock);
+    struct cache_entry *entry = cache_get(sector);
 
-    struct cache_entry *entry = cache_get(sector, false);
+    rwlock_acquire_reader(&entry->rw_lock);
+
+    /* We released the global lock before acquiring the entry lock, so the
+       entry could have changed. We need to check that it didn't, or reload
+       if it did. */
+    while (entry->sector != sector) {
+        rwlock_release_reader(&entry->rw_lock);
+
+        entry = cache_get(sector);
+
+        rwlock_acquire_reader(&entry->rw_lock);
+    }
+
     memcpy (buf, entry->data + sector_ofs, chunk_size);
 
-    /* TODO: Read-ahead */
+    rwlock_release_reader(&entry->rw_lock);
 
-    lock_release(&cache_lock);
+    /* TODO: Read-ahead */
 }
 
 /*! Write a buffer into a block sector in the cache. If it is not in the cache,
@@ -105,46 +104,86 @@ void cache_write (block_sector_t sector, const void *buf)
 void cache_write_chunk (block_sector_t sector, off_t sector_ofs,
         const void *buf, int chunk_size)
 {
-    lock_acquire(&cache_lock);
+    struct cache_entry *entry = cache_get(sector);
 
-    struct cache_entry *entry = cache_get(sector, true);
+    rwlock_acquire_writer(&entry->rw_lock);
+
+    /* We released the global lock before acquiring the entry lock, so the
+       entry could have changed. We need to check that it didn't, or reload
+       if it did. */
+    while (entry->sector != sector) {
+        rwlock_release_writer(&entry->rw_lock);
+
+        entry = cache_get(sector);
+
+        rwlock_acquire_writer(&entry->rw_lock);
+    }
+
+    entry->dirty = true;
     memcpy (entry->data + sector_ofs, buf, chunk_size);
 
-    /* TODO: Read-ahead */
+    rwlock_release_writer(&entry->rw_lock);
 
-    lock_release(&cache_lock);
+    /* TODO: Read-ahead */
 }
 
 /*! Fetches the cache entry corresponding to some sector on disk. If it is not
     in the cache, we add it to the cache.
 
     Returns the cache entry. */
-struct cache_entry * cache_get (block_sector_t sector, bool dirty)
+struct cache_entry * cache_get (block_sector_t sector)
 {
+    lock_acquire(&cache_lock);
+
     struct cache_entry *entry = cache_lookup(sector);
 
+    /* TODO: Use r/w lock here? */
     if (entry == NULL) {
         entry = cache_new_entry();
 
         block_read (fs_device, sector, entry->data);
 
-        entry->valid = true;
         entry->sector = sector;
+        entry->valid = true;
     }
 
-    entry->accessed = true;
-    entry->dirty = entry->dirty || dirty;
+    lock_release(&cache_lock);
 
     return entry;
+}
+
+/*! Looks up a disk sector in the cache and returns the entry address.
+
+    Returns NULL if the sector is not in the cache. */
+struct cache_entry * cache_lookup (block_sector_t sector)
+{
+    int i;
+
+    /* Find a valid cache entry that represents the sector. */
+    for (i = 0; i < CACHE_SIZE; i++) {
+        if (cache[i].valid && cache[i].sector == sector) {
+            cache[i].accessed = true;
+            return &cache[i];
+        }
+    }
+
+    return NULL;
 }
 
 /*! Get an unused entry in the cache we can fill, evicting if necessary. */
 struct cache_entry * cache_new_entry (void)
 {
+    /* lock_acquire(&cache_lock); */
+    ASSERT(lock_held_by_current_thread(&cache_lock));
+
     /* Look for an empty slot first. */
     int i;
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (!cache[i].valid) return &cache[i];
+        if (!cache[i].valid) {
+            /* lock_release(&cache_lock); */
+
+            return &cache[i];
+        }
     }
 
     /* If all cache entries are full, we need to evict. */
@@ -154,19 +193,23 @@ struct cache_entry * cache_new_entry (void)
 /*! Evict a cache entry using the clock algorithm. */
 struct cache_entry * cache_evict (void)
 {
+    ASSERT(lock_held_by_current_thread(&cache_lock));
+
     while (true) {
         /* Increment the clock hand, wrapping at CACHE_SIZE. We do this first
-           since the last time we evicted, we didn't increment after evicting,
-           so we want to start at the next index. */
+            since the last time we evicted, we didn't increment after evicting,
+            so we want to start at the next index. */
         clock_idx = (clock_idx + 1) % CACHE_SIZE;
 
         /* We found one to evict. */
-        if (!cache[clock_idx].accessed)
-            break;
+        if (!cache[clock_idx].accessed) break;
 
         /* Give a second chance to accessed cache entries. */
         cache[clock_idx].accessed = false;
     }
+
+    /* lock_release(&cache_lock); */
+    /* rwlock_acquire_writer(&cache[clock_idx].rw_lock); */
 
     /* If the cache entry to evict is dirty, write it back to disk. */
     if (cache[clock_idx].dirty)
@@ -174,6 +217,8 @@ struct cache_entry * cache_evict (void)
 
     /* Make it clean. */
     cache[clock_idx].valid = false;
+
+    /* rwlock_release_writer(&cache[clock_idx].rw_lock); */
 
     return &cache[clock_idx];
 }

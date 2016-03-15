@@ -117,9 +117,9 @@ static void start_process(void *file_name_) {
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
 
-    lock_acquire(&file_lock);
+    /* lock_acquire(&file_lock); */
     success = load(program_name, &if_.eip, &if_.esp, &args_str);
-    lock_release(&file_lock);
+    /* lock_release(&file_lock); */
 
 #ifdef USERPROG
     *thread_current()->load_status = success;

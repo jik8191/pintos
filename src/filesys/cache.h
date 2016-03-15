@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "devices/block.h"
+#include "threads/synch.h"
 #include "filesys/off_t.h"
 
 /*! An entry in the disk cache. */
@@ -16,6 +17,9 @@ struct cache_entry {
 
     bool valid;             /*!< True if the cache entry is actually holding
                                  any valid data; false if it's just empty. */
+
+    struct rwlock rw_lock;  /*!< Read-write lock for controlling access to the
+                                 cache entry */
 
     uint8_t data[BLOCK_SECTOR_SIZE]; /*!< The data from the disk the buffer is
                                           caching. */

@@ -382,6 +382,115 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
         cond_signal(cond, lock);
 }
 
+
+/*! Initialize a read-write lock that allows unlimited writers concurrent
+    access, but only one writer.
+
+    In order to be "fair" and not starve readers or writers, if a reader
+    releases the lock, we allow writers access and if a writer releases the
+    lock, we first offer access to any waiting readers. */
+void rwlock_init(struct rwlock *rw_lock)
+{
+    lock_init(&rw_lock->lock);
+
+    cond_init(&rw_lock->reader_cond);
+    cond_init(&rw_lock->writer_cond);
+
+    rw_lock->readers = 0;
+    rw_lock->writers = 0;
+
+    rw_lock->waiting_readers = 0;
+    rw_lock->waiting_writers = 0;
+}
+
+/*! Allows a reader to acquire the read-write lock. If there are no waiting
+    writers or current writers, we just allow access immediately. Otherwise, we
+    wait for the condition variable as long as there are any writers. */
+void rwlock_acquire_reader(struct rwlock *rw_lock)
+{
+    lock_acquire(&rw_lock->lock);
+
+    rw_lock->waiting_readers++;
+
+    /* If there are no waiting writers, we can let the reader through right
+       away. If there are waiting writers, we queue it up since we want to be
+       fair and let the writer go first. */
+    if (rw_lock->waiting_writers > 0 || rw_lock->writers > 0) {
+        /* Need to continuously check because the condition is "Mesa" style. */
+        while (rw_lock->writers > 0)
+            cond_wait(&rw_lock->reader_cond, &rw_lock->lock);
+    }
+
+    rw_lock->waiting_readers--;
+    rw_lock->readers++;
+
+    lock_release(&rw_lock->lock);
+}
+
+/*! Allows a writer to acquire the read-write lock. It waits while there are
+    any current readers or writers. */
+void rwlock_acquire_writer(struct rwlock *rw_lock)
+{
+    lock_acquire(&rw_lock->lock);
+
+    rw_lock->waiting_writers++;
+
+    /* We need to continuously check because the condition is "Mesa" style.
+       There can also only be one writer at a time. */
+    while (rw_lock->readers > 0 || rw_lock->writers > 0)
+        cond_wait(&rw_lock->reader_cond, &rw_lock->lock);
+
+    rw_lock->waiting_writers--;
+    rw_lock->writers++;
+
+    lock_release(&rw_lock->lock);
+}
+
+/*! A reader can release the read-write lock and hand over access to a single
+    writer. */
+void rwlock_release_reader(struct rwlock *rw_lock)
+{
+    lock_acquire(&rw_lock->lock);
+
+    rw_lock->readers--;
+
+    /* If we were the last reader to finish reading, we can wake up some
+       threads. */
+    if (rw_lock->readers == 0) {
+        /* If there are any waiting writers, we wake one up. */
+        if (rw_lock->waiting_writers > 0)
+            cond_signal(&rw_lock->writer_cond, &rw_lock->lock);
+
+        /* There should be no way in which we have no waiting writers, but we
+           do have waiting readers since we allow readers to start reading
+           immediately if there were no waiting writers when they locked in the
+           first place. Therefore, we should only have to broadcast to readers
+           when a writer releases the lock. */
+    }
+
+    lock_release(&rw_lock->lock);
+}
+
+/*! A writer can release the read-write lock and hand over access to all queued
+    readers, or the next queued writer if there are no queued readers. */
+void rwlock_release_writer(struct rwlock *rw_lock)
+{
+    lock_acquire(&rw_lock->lock);
+
+    rw_lock->writers--;
+
+    /* If we have any waiting readers, we let them all go first, to be fair.
+       Otherwise, if we have any waiting writers, we let one go. */
+    if (rw_lock->waiting_readers > 0)
+        cond_broadcast(&rw_lock->reader_cond, &rw_lock->lock);
+    else if (rw_lock->waiting_writers > 0)
+        cond_signal(&rw_lock->writer_cond, &rw_lock->lock);
+
+    lock_release(&rw_lock->lock);
+}
+
+
+
 /*! A function that returns if threads A's priority is less than B's */
 bool waiting_pri_higher(const struct list_elem *a, const struct list_elem *b,
         void *aux UNUSED) {
