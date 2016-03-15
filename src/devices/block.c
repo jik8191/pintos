@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "devices/ide.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 /*! A block device. */
 struct block {
@@ -13,7 +14,7 @@ struct block {
     enum block_type type;               /*!< Type of block device. */
     block_sector_t size;                /*!< Size in sectors. */
 
-    const struct block_operations *ops;  /*!< Driver operations. */
+    const struct block_operations *ops; /*!< Driver operations. */
     void *aux;                          /*!< Extra data owned by driver. */
 
     unsigned long long read_cnt;        /*!< Number of sectors read. */
