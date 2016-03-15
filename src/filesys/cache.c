@@ -87,8 +87,6 @@ void cache_read_chunk (block_sector_t sector, off_t sector_ofs, void *buf,
     memcpy (buf, entry->data + sector_ofs, chunk_size);
 
     rwlock_release_reader(&entry->rw_lock);
-
-    /* TODO: Read-ahead */
 }
 
 /*! Write a buffer into a block sector in the cache. If it is not in the cache,
@@ -123,8 +121,6 @@ void cache_write_chunk (block_sector_t sector, off_t sector_ofs,
     memcpy (entry->data + sector_ofs, buf, chunk_size);
 
     rwlock_release_writer(&entry->rw_lock);
-
-    /* TODO: Read-ahead */
 }
 
 /*! Fetches the cache entry corresponding to some sector on disk. If it is not
@@ -145,6 +141,21 @@ struct cache_entry * cache_get (block_sector_t sector)
 
         entry->sector = sector;
         entry->valid = true;
+    }
+
+    entry->accessed = true;
+
+    /* Read-ahead one sector.
+       TODO: Should we do this for both reads & writes as we are now? */
+    if (sector + 1 < block_size(fs_device)) {
+        if (cache_lookup(sector + 1) == NULL) {
+            struct cache_entry *ra_entry = cache_new_entry();
+
+            block_read (fs_device, sector + 1, ra_entry->data);
+
+            ra_entry->sector = sector + 1;
+            ra_entry->valid = true;
+        }
     }
 
     lock_release(&cache_lock);
