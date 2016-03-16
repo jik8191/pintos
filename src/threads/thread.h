@@ -114,12 +114,14 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     int64_t ticks_awake;                /*!< Tick time to wake up at. */
-
-    struct semaphore sema_wait;         /*!< Semaphore for thread while sleeping. */
-    struct list_elem semaelem;          /*!< List element for the list of semaphore waiters. */
-
-    struct list locks;                  /*!< List of locks the thread has acquired. */
-    struct lock *lock_waiton;           /*!< The lock the current thread is waiting on. */
+    struct semaphore sema_wait;         /*!< Semaphore for thread 
+                                             while sleeping. */
+    struct list_elem semaelem;          /*!< List element for the 
+                                             list of semaphore waiters. */
+    struct list locks;                  /*!< List of locks the thread has 
+                                             acquired. */
+    struct lock *lock_waiton;           /*!< The lock the current thread 
+                                             is waiting on. */
     /**@}*/
 
 #ifdef USERPROG
@@ -147,6 +149,8 @@ struct thread {
                                              spawned program. */
     /**@{*/
 #endif
+    struct dir *dir_current;            /*!< The current working directory 
+                                             of the thread. */
 
     /*! Owned by thread.c. */
     /**@{*/

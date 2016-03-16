@@ -19,6 +19,7 @@ struct dir_entry {
     bool in_use;                        /*!< In use or free? */
 };
 
+
 /*! Creates a directory with space for ENTRY_CNT entries in the
     given SECTOR.  Returns true if successful, false on failure. */
 bool dir_create(block_sector_t sector, size_t entry_cnt) {
@@ -200,5 +201,52 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
         }
     }
     return false;
+}
+
+/*! Given a path name to a file, turn it into a directory string and 
+ *  a filename string. */
+char ** convert_path (const char *path){
+    int len = strlen(path);
+    char *token, *save_ptr;
+    char *s = malloc((len+1)*sizeof(char)); // need null termination
+    memcpy(s, path, sizeof(char)*len); // manipulate the copy
+    
+    // TODO: improve this allocation, reallocate if necessary
+    char **tokens = malloc(64*sizeof(char*));
+    char *dir = malloc(len*sizeof(char));
+    char *dir_ur = dir;  // will not be manipulated
+    char *filename = malloc(len*sizeof(char));
+    char **dir_filename = malloc(2*sizeof(char*));
+    int num_tokens;
+    int i = 0;
+
+    // check we we use absolute path
+    // TODO: handle cases such as /../
+    if (s[0] == '/'){
+        *dir = '/';
+        dir++;
+    }
+    
+    for (token = strtok_r(s, "/", &save_ptr); token != NULL;
+         token = strtok_r(NULL, "/", &save_ptr)){
+        tokens[i] = token;
+        i++;
+    }
+    num_tokens = i;
+    printf("'%d tokens'\n", num_tokens);
+    for(i=0; i<num_tokens-1; i++){
+        memcpy(dir, tokens[i], sizeof(char)*strlen(tokens[i]));
+        dir += strlen(tokens[i]);
+        *dir = '/';
+        dir++;
+    }
+    *dir = '\0'; // null-termination
+    memcpy(filename, tokens[num_tokens-1],
+           sizeof(char)*strlen(tokens[num_tokens-1]));
+    dir_filename[0] = dir_ur;
+    dir_filename[1] = filename;
+
+    free(tokens);
+    return dir_filename;
 }
 

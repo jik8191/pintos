@@ -37,6 +37,12 @@ int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
+bool sys_chdir(const char *dir);
+bool sys_mkdir(const char *dir);
+bool sys_readdir(int fd, char *name);
+bool sys_isdir(int fd);
+int sys_inumber(int fd);
+
 
 /* Helper functions */
 struct fd_elem *get_file(int fd);
@@ -146,6 +152,32 @@ static void syscall_handler(struct intr_frame *f) {
                                              sizeof(int));
             sys_close(int_arg);
             break;
+        case SYS_CHDIR:
+            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
+                                                       -1);
+            sys_chdir(cchar_arg); // TODO: handle result of syscall
+            break;        
+        case SYS_MKDIR:
+            cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
+                                                       -1);
+            sys_mkdir(cchar_arg); // TODO: handle result of syscall
+            break;     
+        case SYS_READDIR:
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int));
+            cchar_arg = * (const char **) validate_arg(arg1, CONVERT_POINTER,
+                                                       -1);
+            sys_readdir(int_arg, cchar_arg); // TODO: handle result of syscall
+            break;        
+        case SYS_ISDIR:
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int));
+            sys_isdir(int_arg);
+            break;
+        case SYS_INUMBER:
+            int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
+                                             sizeof(int));
+            sys_inumber(int_arg);
         default:
             printf("Call: %d Went to default\n", call_number);
             sys_exit(-1);
@@ -513,6 +545,51 @@ void sys_close(int fd) {
 
     /* lock_release(&file_lock); */
 }
+
+/* Changes current working directory of process to dir, which 
+ * may be relative or absolute. Return true if successful, false on failure. 
+ */
+bool sys_chdir(const char *dir){
+    return false;
+}
+
+
+/* Creates the directory named dir, which may be relative or absolute. 
+ * Returns true if successful, false on failure. Fails if dir already exists 
+ * or if any directory name in dir, besides the last, does not already exist. 
+ */
+bool sys_mkdir(const char *dir){
+    // mkdir("/a/b/c") succeeds only if "/a/b" exists and "/a/b/c" doesn't. 
+    return false;
+}
+
+/* Reads a directory entry from file descriptor fd, which must represent a 
+ * directory. If successful, stores the null-terminated file name in name, 
+ * which must have room for READDIR_MAX_LEN + 1 bytes, and returns true. 
+ * If no entries are left in the directory, returns false. 
+ */
+bool sys_readdir(int fd, char *name){
+    // Do not return "." or ".."
+    // If the directory changes while it is open, then it is acceptable for 
+    // some entries not to be read at all or to be read multiple times. 
+    // Otherwise, each directory entry should be read once, in any order.
+    return false;
+}
+
+/* Return true if fd represents a directory, false if 
+ * fd represents an ordinary file. */
+bool sys_isdir(int fd){
+    return false;
+}
+
+/* Return the inode number of the inode associated with fd, which 
+ * persistently identifies a file or directory and is unique 
+ * during the file's existence. */
+int sys_inumber(int fd){
+    // the sector number of the inode will be used for the inode number.
+    return fd;
+}
+
 
 /* Returns the file struct for a given fd */
 struct fd_elem *get_file(int fd) {
