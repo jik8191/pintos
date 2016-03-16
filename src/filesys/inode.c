@@ -39,10 +39,8 @@ struct inode_disk {
     unsigned magic;                     /*!< Magic number. */
 };
 
-static struct inode_disk *freemap_disk;
-
 /* Getting an inodes disk */
-void read_disk(const struct inode *inode, struct inode_disk *disk);
+struct inode_disk *read_disk(const struct inode *inode);
 
 /* Index Block. Holds indicies of sectors that can be either other
  * index blocks or actual data. */
@@ -77,9 +75,9 @@ static bool is_single_indirect(off_t pos) {
 
 /* Returns the sector of a direct node */
 static block_sector_t get_direct(const struct inode *inode, off_t pos) {
-    struct inode_disk disk;
-    read_disk(inode, &disk);
-    block_sector_t result = disk.direct[pos];
+    struct inode_disk *disk = read_disk(inode);
+    block_sector_t result = disk->direct[pos];
+    free(disk);
     return result;
 }
 
@@ -99,13 +97,12 @@ static block_sector_t get_indirect(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
 
     /* Getting the inodes inode_disk from the cache */
-    struct inode_disk disk;
-    read_disk(inode, &disk);
+    struct inode_disk *disk = read_disk(inode);
 
     /* The sector that the indirect node points to */
     block_sector_t node_index = indirect_node_index(pos);
     /*printf("The indirect index that it points to is: %d\n", node_index);*/
-    block_sector_t indirect_node_sector = disk.indirect[node_index];
+    block_sector_t indirect_node_sector = disk->indirect[node_index];
     /*printf("It has sector: %d\n", indirect_node_sector);*/
 
     /* Casting the raw data into an index block */
@@ -124,6 +121,7 @@ static block_sector_t get_indirect(const struct inode *inode, off_t pos) {
     /*printf("The end result sector is: %d\n", indices->sectors[pos_index]);*/
     block_sector_t result = indices->sectors[pos_index];
     free(indices);
+    free(disk);
     return result;
 
 }
@@ -163,13 +161,12 @@ static block_sector_t get_double_indirect(const struct inode *inode, off_t pos) 
     }
 
     /* Getting the inodes inode_disk from the cache */
-    struct inode_disk disk;
-    read_disk(inode, &disk);
+    struct inode_disk *disk = read_disk(inode);
 
 
     /* The sector that the double indirect node points to */
     off_t first_node_index = double_node_index(pos);
-    block_sector_t first_sector = disk.double_indirect[first_node_index];
+    block_sector_t first_sector = disk->double_indirect[first_node_index];
 
     /* Getting the first indirect block */
     /* block_read(fs_device, first_sector, indices); */
@@ -188,6 +185,7 @@ static block_sector_t get_double_indirect(const struct inode *inode, off_t pos) 
     off_t result = indices->sectors[pos_index];
 
     free(indices);
+    free(disk);
     return result;
 
 }
@@ -204,6 +202,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
      * the process of extending the file, or its an invalid position according
      * to the length but its in the same sector */
     /* TODO do you need the second check */
+
     if (pos < inode_length(inode) ||
         lock_held_by_current_thread(&inode->extension_lock) ||
         inode_length(inode) / BLOCK_SECTOR_SIZE == pos / BLOCK_SECTOR_SIZE) {
@@ -219,11 +218,9 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
         off_t data_num = pos / BLOCK_SECTOR_SIZE;
 
         if (data_num < NUM_DIRECT) {
-            /*if (inode->sector == 0) {*/
-                /*printf("The data num: %d\n", data_num);*/
-                /*printf("For a regular direct\n");*/
-                /*printf("Going to return: %d\n",  get_direct(inode, data_num));*/
-            /*}*/
+            /*printf("The data num: %d\n", data_num);*/
+            /*printf("For a regular direct\n");*/
+            /*printf("Going to return: %d\n",  get_direct(inode, data_num));*/
             return get_direct(inode, data_num);
 
         } else if (is_single_indirect(data_num)) {
@@ -236,6 +233,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
 
         }
     }
+
     return -1;
 }
 
@@ -302,6 +300,7 @@ bool inode_create(block_sector_t sector, off_t length) {
 
             success = inode_add(disk_inode, sectors, 0);
         }
+
         cache_write(sector, disk_inode);
     }
     /* TODO need make all the sectors available on failure */
@@ -350,6 +349,7 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
 
         /* The case where its just a direct node. */
         if (i < NUM_DIRECT) {
+
             /* Just update the direct list to have this sector */
             disk_inode->direct[i] = data_sector.sector;
         }
@@ -400,6 +400,7 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             /* When you are writing the last instance of the indirect block */
             if (pos_index == INDEX_BLOCK_SIZE - 1 || i == end - 1) {
                 /* Writing the index block to disk */
+
                 cache_write(disk_inode->indirect[node_index], (const void *) single_block);
                 free(single_block);
                 single_freed = true;
@@ -407,6 +408,7 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
 
         }
         else if (is_double_indirect(i)) {
+
             /* This is the case where it is doubly indirect */
 
             /* Index in the double indirect list */
@@ -493,12 +495,14 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             }
         }
     }
+
     if (!single_freed) {
         free(single_block);
     }
     if (!double_freed) {
         free(double_block);
     }
+
     success = true;
 
     return success;
@@ -572,12 +576,11 @@ void inode_close(struct inode *inode) {
 
             size_t sectors = bytes_to_sectors(inode_length(inode));
             size_t i = 0;
-            struct inode_disk disk;
-            read_disk(inode, &disk);
+            struct inode_disk *disk = read_disk(inode);
             for (; i < sectors; i++) {
                 /* Freeing the direct nodes */
                 if (i < NUM_DIRECT) {
-                    free_map_release(disk.direct[i], 1);
+                    free_map_release(disk->direct[i], 1);
                 }
                 else if (is_single_indirect(i)) {
                     off_t node_index = indirect_node_index(i);
@@ -589,7 +592,7 @@ void inode_close(struct inode *inode) {
                     /* If its the last index to free, free the actual indirect
                      * sector. */
                     if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
-                        free_map_release(disk.indirect[node_index], 1);
+                        free_map_release(disk->indirect[node_index], 1);
                     }
                 }
                 else if (is_double_indirect(i)) {
@@ -604,7 +607,7 @@ void inode_close(struct inode *inode) {
                     if (pos_index == INDEX_BLOCK_SIZE - 1 || i == sectors - 1) {
                         struct index_block *indices = malloc(sizeof(struct index_block));
                         ASSERT(indices != NULL);
-                        cache_read(disk.double_indirect[first_node_index], indices);
+                        cache_read(disk->double_indirect[first_node_index], indices);
                         free_map_release(indices->sectors[second_node_index], 1);
                         free(indices);
                     }
@@ -612,10 +615,11 @@ void inode_close(struct inode *inode) {
                     /* If its the last index to free, free the double indirect
                      * sector */
                     if (i == sectors - 1) {
-                        free_map_release(disk.double_indirect[first_node_index], 1);
+                        free_map_release(disk->double_indirect[first_node_index], 1);
                     }
                 }
             }
+            free(disk);
             free_map_release(inode->sector, 1);
         }
         free(inode);
@@ -639,11 +643,17 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
     while (size > 0) {
         /* Disk sector to read, starting byte offset within sector. */
         block_sector_t sector_idx = byte_to_sector (inode, offset);
+
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
         /* Bytes left in inode, bytes left in sector, lesser of the two. */
         off_t inode_left = inode_length(inode) - offset;
         int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
+
+        if ((int) sector_idx == -1) {
+            sector_left = 0;
+        }
+
         int min_left = inode_left < sector_left ? inode_left : sector_left;
 
         /* Number of bytes to actually copy out of this sector. */
@@ -682,7 +692,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
 
     bool extended = false;
     off_t new_size;
-    struct inode_disk disk;
+    struct inode_disk *disk;
 
     /* Checking if you need to extend the file */
     volatile off_t file_len = inode_length(inode);
@@ -700,9 +710,10 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
             /* Getting how many new sectors are needed */
             size_t add_count = new_sectors - old_sectors;
 
-            read_disk(inode, &disk);
+            disk = read_disk(inode);
 
-            ASSERT(inode_add(&disk, add_count, old_sectors) == true);
+            ASSERT(inode_add(disk, add_count, old_sectors) == true);
+            cache_write(inode->sector, disk);
             new_size = offset + size;
         }
         else {
@@ -713,7 +724,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
 
     while (size > 0) {
 
-        /* Sector to write, starting byte offset within sector. */
+        /* Sector to write, starting byte offset within the file. */
         block_sector_t sector_idx = byte_to_sector(inode, offset);
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
@@ -745,12 +756,11 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
 
     if (extended) {
         /* Update file size and release lock */
-        disk.length = new_size;
+        disk->length = new_size;
         /* Writing to disk to cache */
-        if (inode->sector == 0)
-            printf("Writing the freemap to disk\n");
-        cache_write(inode->sector, &disk);
+        cache_write(inode->sector, disk);
         lock_release(&inode->extension_lock);
+        free(disk);
     }
 
     return bytes_written;
@@ -774,12 +784,15 @@ void inode_allow_write (struct inode *inode) {
 
 /*! Returns the length, in bytes, of INODE's data. */
 off_t inode_length(const struct inode *inode) {
-    struct inode_disk disk;
-    read_disk(inode, &disk);
-    return disk.length;
+    struct inode_disk *disk = read_disk(inode);
+    off_t length = disk->length;
+    free(disk);
+    return length;
 }
 
-void read_disk(const struct inode *inode, struct inode_disk *disk) {
+struct inode_disk *read_disk(const struct inode *inode) {
     /* Getting the inodes inode_disk from the cache */
+    struct inode_disk *disk = malloc(sizeof(struct inode_disk));
     cache_read(inode->sector, disk);
+    return disk;
 }

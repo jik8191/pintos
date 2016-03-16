@@ -438,7 +438,7 @@ void rwlock_acquire_writer(struct rwlock *rw_lock)
     /* We need to continuously check because the condition is "Mesa" style.
        There can also only be one writer at a time. */
     while (rw_lock->readers > 0 || rw_lock->writers > 0)
-        cond_wait(&rw_lock->reader_cond, &rw_lock->lock);
+        cond_wait(&rw_lock->writer_cond, &rw_lock->lock);
 
     rw_lock->waiting_writers--;
     rw_lock->writers++;
