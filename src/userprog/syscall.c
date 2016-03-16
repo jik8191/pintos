@@ -156,29 +156,29 @@ static void syscall_handler(struct intr_frame *f) {
         case SYS_CHDIR:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
                                                        -1);
-            sys_chdir(cchar_arg); 
+            f->eax = sys_chdir(cchar_arg); 
             break;        
         case SYS_MKDIR:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
                                                        -1);
-            sys_mkdir(cchar_arg); 
+            f->eax = sys_mkdir(cchar_arg); 
             break;     
         case SYS_READDIR:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int));
             char_arg = * (char **) validate_arg(arg1, CONVERT_POINTER,
                                                        -1);
-            sys_readdir(int_arg, cchar_arg); 
+            f->eax = sys_readdir(int_arg, char_arg); 
             break;        
         case SYS_ISDIR:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int));
-            sys_isdir(int_arg);
+            f->eax = sys_isdir(int_arg);
             break;
         case SYS_INUMBER:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int));
-            sys_inumber(int_arg);
+            f->eax = sys_inumber(int_arg);
         default:
             printf("Call: %d Went to default\n", call_number);
             sys_exit(-1);

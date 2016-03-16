@@ -7,6 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "filesys/cache.h"
+#include "threads/malloc.h"
 
 /*! Partition that contains the file system. */
 struct block *fs_device;
@@ -39,16 +40,21 @@ void filesys_done(void) {
     successful, false otherwise.  Fails if a file named NAME already exists,
     or if internal memory allocation fails. */
 bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
+    // printf("'path is %s'\n", (const char*) name);
+    char **dir_filename = convert_path(name);
     block_sector_t inode_sector = 0;
-    struct dir *dir = dir_open_root();
+    struct dir *dir = dir_open_path(dir_filename[0]);
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size, is_dir) &&
-                    dir_add(dir, name, inode_sector));
+                    dir_add(dir, dir_filename[1], inode_sector));
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
     dir_close(dir);
 
+    free(dir_filename[0]);
+    free(dir_filename[1]);
+    free(dir_filename);
     return success;
 }
 

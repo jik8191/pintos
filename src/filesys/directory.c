@@ -44,21 +44,32 @@ struct dir * dir_open(struct inode *inode) {
     }
 }
 
-/*! Opens the directory specified and returns a directory for it.
- *  Return true if successful, false on failure. */
+/*! Opens the root directory and returns a directory for it.
+    Return true if successful, false on failure. */
+struct dir * dir_open_root(void) {
+    return dir_open(inode_open(ROOT_DIR_SECTOR));
+}
+
+
+/*! Opens the directory specified and returns a dir pointer for it.
+ *  Return NULL on failure. */
 struct dir * dir_open_path(char *path){
     struct dir *wd;   // working directory
-    
+
     // make a copy of path
     int len = strlen(path);
-    char *s = malloc((len+1)*sizeof(char*)); // need null termination
+    char *s = malloc((len+1)*sizeof(char*)); // +1 for null termination
     memcpy(s, path, sizeof(char)*len);
 
-    // check if we are dealing with an absolute path
-    if (s[0] == '/'){
+    // check if we are dealing with an absolute path or NULL cwd
+    // start traversing from root directory if so
+    struct dir *cwd = thread_current()->cwd;
+    if (s[0] == '/' || cwd == NULL) {
+        // printf("Opened root directory.\n");
         wd = dir_open_root();
     } else {
-        wd = dir_reopen(thread_current()->cwd);
+        // printf("Opening path %s.\n", path);
+        wd = dir_reopen(cwd);
     }
 
     // tokenize the path and traverse it as we do so
@@ -66,24 +77,24 @@ struct dir * dir_open_path(char *path){
     struct inode *inode_wd; // inode representing wd as we traverse
     for (token = strtok_r(s, "/", &save_ptr); token != NULL;
          token = strtok_r(NULL, "/", &save_ptr)){
+        // TODO: catch this in iteration if possible
+        // handle case where string only has '/' and token now 
+        // points to null termination string
+        if (token-s == len){
+            break;
+        }
+        // search for next file/directory in path, store inode representation
+        // in inode_wd
         if(!dir_lookup(wd, token, &inode_wd)){
             return NULL;
         } else {
-            // close previous directory
             dir_close(wd);
-            // update wd
             wd = dir_open(inode_wd);
             if (!wd) return NULL;
         }
     }
     free(s);
-    return dir_open(inode_open(ROOT_DIR_SECTOR));
-}
-
-/*! Opens the root directory and returns a directory for it.
-    Return true if successful, false on failure. */
-struct dir * dir_open_root(void) {
-    return dir_open(inode_open(ROOT_DIR_SECTOR));
+    return wd;
 }
 
 /* Opens and returns a new directory for the same inode as DIR.
@@ -243,12 +254,13 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
 
 /*! Given a path name to a file, turn it into a directory string and 
  *  a filename string. */
-char ** convert_path (const char *path){
+char **convert_path (const char *path){
     int len = strlen(path);
     char *token, *save_ptr;
-    char *s = malloc((len+1)*sizeof(char)); // need null termination
+    char *s = malloc((len+1)*sizeof(char)); // +1 for null termination
     memcpy(s, path, sizeof(char)*len); // manipulate the copy
-    
+    *(s+len) = '\0';
+
     // TODO: improve this allocation, reallocate if necessary
     char **tokens = malloc(64*sizeof(char*));
     char *dir = malloc(len*sizeof(char));
@@ -268,23 +280,28 @@ char ** convert_path (const char *path){
     for (token = strtok_r(s, "/", &save_ptr); token != NULL;
          token = strtok_r(NULL, "/", &save_ptr)){
         tokens[i] = token;
+        // printf("length of token '%s' is %d\n", token, strlen(tokens[i]));
         i++;
     }
     num_tokens = i;
-    printf("'%d tokens'\n", num_tokens);
     for(i=0; i<num_tokens-1; i++){
         memcpy(dir, tokens[i], sizeof(char)*strlen(tokens[i]));
         dir += strlen(tokens[i]);
         *dir = '/';
         dir++;
     }
-    *dir = '\0'; // null-termination
+
     memcpy(filename, tokens[num_tokens-1],
            sizeof(char)*strlen(tokens[num_tokens-1]));
+    *(filename+strlen(tokens[num_tokens-1])) = '\0';
+    *dir = '\0'; // null-termination
     dir_filename[0] = dir_ur;
     dir_filename[1] = filename;
 
+    // printf("directory is %s\n", dir_filename[0]);
+    // printf("filename is %s\n", dir_filename[1]);
     free(tokens);
+    free(s);
     return dir_filename;
 }
 

@@ -25,25 +25,25 @@ static thread_func start_process NO_RETURN;
 static bool load(const char *program_name, void (**eip) (void), void **esp,
                  char **args);
 
-/*! Starts a new thread running a user program loaded from FILENAME.  The new
+/*! Starts a new thread running a user program loaded from CMD_LINE.  The new
     thread may be scheduled (and may even exit) before process_execute()
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
-tid_t process_execute(const char *file_name) {
+tid_t process_execute(const char *cmd_line) {
     char *fn_copy, *program_name;
     tid_t tid;
 
-    /* Make a copy of FILE_NAME.
+    /* Make a copy of CMD_LINE.
        Otherwise there's a race between the caller and load(). */
     fn_copy = palloc_get_page(0);
     if (fn_copy == NULL)
         return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE);
+    strlcpy(fn_copy, cmd_line, PGSIZE);
 
     /* Only take the name of the program, not all the arguments. */
     char *save_ptr;
 
-    /* Avoid race with load() by using fn_copy instead of file_name */
+    /* Avoid race with load() by using fn_copy instead of cmd_line */
     strtok_r(fn_copy, " ", &save_ptr);
 
     /* Save the program name by itself */
@@ -53,13 +53,13 @@ tid_t process_execute(const char *file_name) {
     strlcpy(program_name, fn_copy, PGSIZE);
 
     /* Recopy because we changed fn_copy in str_tok */
-    strlcpy(fn_copy, file_name, PGSIZE);
+    strlcpy(fn_copy, cmd_line, PGSIZE);
 
     /* Create a new thread to execute PROGRAM_NAME. */
     struct semaphore child_sema;
     sema_init(&child_sema, 0);
 
-    /* Create a new thread to execute FILE_NAME. */
+    /* Create a new thread to execute CMD_LINE. */
     tid = thread_create(program_name, PRI_DEFAULT, start_process, fn_copy);
 
     if (tid == TID_ERROR) {
@@ -73,7 +73,11 @@ tid_t process_execute(const char *file_name) {
         ci->return_status = -1;
         ci->t = NULL;
 
-        list_push_back(&thread_current()->children, &ci->elem);
+        struct thread *cur = thread_current();
+        list_push_back(&cur->children, &ci->elem);
+        
+        /* Record parent's working directory. */
+        struct dir *dirname = cur->cwd;
 
         struct thread *t = get_thread(tid);
 
@@ -87,6 +91,8 @@ tid_t process_execute(const char *file_name) {
             /* Set the info for the child, so it can set the return status. */
             t->info = ci;
             t->userprog = true;
+
+            t->cwd = dirname;
 
             t->child_sema = &child_sema;
             sema_down(&child_sema);
