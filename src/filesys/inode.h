@@ -8,7 +8,7 @@
 struct bitmap;
 
 void inode_init(void);
-bool inode_create(block_sector_t, off_t);
+bool inode_create(block_sector_t, off_t, bool is_dir);
 struct inode *inode_open(block_sector_t);
 struct inode *inode_reopen(struct inode *);
 block_sector_t inode_get_inumber(const struct inode *);
@@ -23,7 +23,7 @@ off_t inode_length(const struct inode *);
 /* Constants for the number of direct, indirect, and doubly indirect node in
  * the inode_disk structure. */
 #define NUM_DIRECT 100
-#define NUM_INDIRECT 25
+#define NUM_INDIRECT 24
 #define NUM_DOUBLE_INDIRECT 1
 
 /* The number of sectors an index block holds */

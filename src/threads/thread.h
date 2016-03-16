@@ -149,7 +149,7 @@ struct thread {
                                              spawned program. */
     /**@{*/
 #endif
-    struct dir *dir_current;            /*!< The current working directory 
+    struct dir *cwd;            /*!< The current working directory 
                                              of the thread. */
 
     /*! Owned by thread.c. */

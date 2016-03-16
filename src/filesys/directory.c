@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /*! A directory. */
 struct dir {
@@ -23,7 +24,8 @@ struct dir_entry {
 /*! Creates a directory with space for ENTRY_CNT entries in the
     given SECTOR.  Returns true if successful, false on failure. */
 bool dir_create(block_sector_t sector, size_t entry_cnt) {
-    return inode_create(sector, entry_cnt * sizeof(struct dir_entry));
+    bool is_dir = true;
+    return inode_create(sector, entry_cnt * sizeof(struct dir_entry), is_dir);
 }
 
 /*! Opens and returns the directory for the given INODE, of which
@@ -40,6 +42,42 @@ struct dir * dir_open(struct inode *inode) {
         free(dir);
         return NULL;
     }
+}
+
+/*! Opens the directory specified and returns a directory for it.
+ *  Return true if successful, false on failure. */
+struct dir * dir_open_path(char *path){
+    struct dir *wd;   // working directory
+    
+    // make a copy of path
+    int len = strlen(path);
+    char *s = malloc((len+1)*sizeof(char*)); // need null termination
+    memcpy(s, path, sizeof(char)*len);
+
+    // check if we are dealing with an absolute path
+    if (s[0] == '/'){
+        wd = dir_open_root();
+    } else {
+        wd = dir_reopen(thread_current()->cwd);
+    }
+
+    // tokenize the path and traverse it as we do so
+    char *token, *save_ptr;
+    struct inode *inode_wd; // inode representing wd as we traverse
+    for (token = strtok_r(s, "/", &save_ptr); token != NULL;
+         token = strtok_r(NULL, "/", &save_ptr)){
+        if(!dir_lookup(wd, token, &inode_wd)){
+            return NULL;
+        } else {
+            // close previous directory
+            dir_close(wd);
+            // update wd
+            wd = dir_open(inode_wd);
+            if (!wd) return NULL;
+        }
+    }
+    free(s);
+    return dir_open(inode_open(ROOT_DIR_SECTOR));
 }
 
 /*! Opens the root directory and returns a directory for it.

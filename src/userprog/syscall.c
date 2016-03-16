@@ -66,6 +66,7 @@ static void syscall_handler(struct intr_frame *f) {
 
     /* Some variables to put dereferenced args into. */
     int int_arg;
+    char *char_arg;
     const char *cchar_arg;
     unsigned unsigned_arg;
     void *void_arg;
@@ -155,19 +156,19 @@ static void syscall_handler(struct intr_frame *f) {
         case SYS_CHDIR:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
                                                        -1);
-            sys_chdir(cchar_arg); // TODO: handle result of syscall
+            sys_chdir(cchar_arg); 
             break;        
         case SYS_MKDIR:
             cchar_arg = * (const char **) validate_arg(arg0, CONVERT_POINTER,
                                                        -1);
-            sys_mkdir(cchar_arg); // TODO: handle result of syscall
+            sys_mkdir(cchar_arg); 
             break;     
         case SYS_READDIR:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int));
-            cchar_arg = * (const char **) validate_arg(arg1, CONVERT_POINTER,
+            char_arg = * (char **) validate_arg(arg1, CONVERT_POINTER,
                                                        -1);
-            sys_readdir(int_arg, cchar_arg); // TODO: handle result of syscall
+            sys_readdir(int_arg, cchar_arg); 
             break;        
         case SYS_ISDIR:
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
@@ -343,7 +344,8 @@ bool sys_create(const char *file, unsigned initial_size) {
         /* lock_release(&file_lock); */
         sys_exit(-1);
     }
-    return_value = filesys_create(file, initial_size);
+    bool is_dir = false;
+    return_value = filesys_create(file, initial_size, is_dir);
     /* lock_release(&file_lock); */
     return return_value;
 }
@@ -560,7 +562,11 @@ bool sys_chdir(const char *dir){
  */
 bool sys_mkdir(const char *dir){
     // mkdir("/a/b/c") succeeds only if "/a/b" exists and "/a/b/c" doesn't. 
-    return false;
+    bool success;
+    bool is_dir = false;
+    off_t initial_size = 0;
+    success = filesys_create(dir, initial_size, is_dir);
+    return success;
 }
 
 /* Reads a directory entry from file descriptor fd, which must represent a 

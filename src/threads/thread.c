@@ -209,6 +209,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Initialize thread. */
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
+    // set the thread's current working directory properly
+    // t->cwd = dir_open_root();
 
     /* Setting up the nice value if mlfqs */
     if (thread_mlfqs) {

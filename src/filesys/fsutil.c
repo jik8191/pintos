@@ -83,6 +83,7 @@ void fsutil_extract(char **argv UNUSED) {
 
     for (;;) {
         const char *file_name;
+        bool is_dir = false;
         const char *error;
         enum ustar_type type;
         int size;
@@ -106,9 +107,9 @@ void fsutil_extract(char **argv UNUSED) {
             struct file *dst;
 
             printf("Putting '%s' into the file system...\n", file_name);
-
+            
             /* Create destination file. */
-            if (!filesys_create(file_name, size))
+            if (!filesys_create(file_name, size, is_dir))
                 PANIC("%s: create failed", file_name);
             dst = filesys_open(file_name);
             if (dst == NULL)

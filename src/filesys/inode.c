@@ -37,6 +37,7 @@ struct inode_disk {
     block_sector_t indirect[NUM_INDIRECT];
     block_sector_t double_indirect[NUM_DOUBLE_INDIRECT];
 
+    bool is_dir;                        /*!< Whether file is a directory. */
     unsigned magic;                     /*!< Magic number. */
 };
 
@@ -245,7 +246,7 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start);
     device.
     Returns true if successful.
     Returns false if memory or disk allocation fails. */
-bool inode_create(block_sector_t sector, off_t length) {
+bool inode_create(block_sector_t sector, off_t length, bool is_dir) {
     /* TODO free the sectors we started to use if we fail */
     struct inode_disk *disk_inode = NULL;
     bool success = false;
@@ -266,7 +267,7 @@ bool inode_create(block_sector_t sector, off_t length) {
         /* Setting inode_disk variables */
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
-
+        disk_inode->is_dir = is_dir;
         /* A list that holds what sectors have been allocated so that we
          * can flip them back if we fail */
         struct list allocated_sectors;
