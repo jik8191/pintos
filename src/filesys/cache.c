@@ -65,7 +65,7 @@ void cache_init (void)
     sema_init(&ra_wait_sema, 0);
 
     /* Spin up the asynchronous read-ahead and write-behind jobs. */
-    thread_create ("read_ahead_daemon", PRI_MAX, &read_ahead_d, NULL);
+    thread_create ("read_ahead_daemon", PRI_DEFAULT, &read_ahead_d, NULL);
     thread_create ("write_behind_daemon", PRI_MAX, &write_behind_d, NULL);
 }
 
