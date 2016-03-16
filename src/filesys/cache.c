@@ -4,10 +4,14 @@
 #include <string.h>
 
 #include "devices/block.h"
+#include "devices/timer.h"
 #include "threads/synch.h"
+#include "threads/thread.h"
+#include "threads/malloc.h"
 #include "filesys/filesys.h"
 
 #define CACHE_SIZE (64)
+#define FLUSH_INTERVAL (500)
 
 /*! The actual cache that contains data. */
 static struct cache_entry cache[CACHE_SIZE];
@@ -17,6 +21,19 @@ static struct lock cache_lock;
 
 /*! Used for the clock-algorithm eviction. */
 static int clock_idx;
+
+/*! Used for asynchronous read-ahead. */
+struct ra_entry {
+    block_sector_t sector;  /*!< The sector to read into cache. */
+    struct list_elem elem;  /*!< To be put into the read-ahead queue. */
+};
+static struct list ra_queue;
+static struct lock ra_qlock;
+static struct semaphore ra_wait_sema;
+void read_ahead_add (block_sector_t sector);
+
+void read_ahead_d (void *);
+void write_behind_d (void *);
 
 /* Private function declarations. */
 struct cache_entry * cache_get (block_sector_t sector);
@@ -41,6 +58,15 @@ void cache_init (void)
     lock_init(&cache_lock);
 
     clock_idx = 0;
+
+    /* Initialize the data structures needed for asynchronous read-ahead. */
+    list_init(&ra_queue);
+    lock_init(&ra_qlock);
+    sema_init(&ra_wait_sema, 0);
+
+    /* Spin up the asynchronous read-ahead and write-behind jobs. */
+    thread_create ("read_ahead_daemon", PRI_DEFAULT, &read_ahead_d, NULL);
+    thread_create ("write_behind_daemon", PRI_MAX, &write_behind_d, NULL);
 }
 
 /*! Flush the entire cache back to disk. */
@@ -87,8 +113,6 @@ void cache_read_chunk (block_sector_t sector, off_t sector_ofs, void *buf,
     memcpy (buf, entry->data + sector_ofs, chunk_size);
 
     rwlock_release_reader(&entry->rw_lock);
-
-    /* TODO: Read-ahead */
 }
 
 /*! Write a buffer into a block sector in the cache. If it is not in the cache,
@@ -123,8 +147,6 @@ void cache_write_chunk (block_sector_t sector, off_t sector_ofs,
     memcpy (entry->data + sector_ofs, buf, chunk_size);
 
     rwlock_release_writer(&entry->rw_lock);
-
-    /* TODO: Read-ahead */
 }
 
 /*! Fetches the cache entry corresponding to some sector on disk. If it is not
@@ -145,11 +167,101 @@ struct cache_entry * cache_get (block_sector_t sector)
 
         entry->sector = sector;
         entry->valid = true;
+
+        /* printf("loaded sector %d\n", sector); */
     }
+
+    entry->accessed = true;
+
+    /* Read-ahead one sector.
+       TODO: Should we do this for both reads & writes as we are now?
+       TODO: We need to do this async. That is, add this sector to a queue and
+       a different thread can load it in.
+       */
+    read_ahead_add (sector + 1);
+    /* printf("this makes the test fail as well\n"); */
+        /*
+    if (sector + 1 < block_size(fs_device)) {
+        if (cache_lookup(sector + 1) == NULL) {
+            struct cache_entry *ra_entry = cache_new_entry();
+
+            block_read (fs_device, sector + 1, ra_entry->data);
+
+            ra_entry->sector = sector + 1;
+            ra_entry->valid = true;
+        }
+    }
+        */
 
     lock_release(&cache_lock);
 
     return entry;
+}
+
+/*! Add the specified sector to the read_ahead queue. */
+void read_ahead_add (block_sector_t sector)
+{
+    /* Make sure it's actually in our file system */
+    if (sector + 1 < block_size(fs_device)) {
+        struct ra_entry *ra = malloc(sizeof(struct ra_entry));
+        ra->sector = sector + 1;
+
+        lock_acquire(&ra_qlock);
+        list_push_back(&ra_queue, &ra->elem);
+        lock_release(&ra_qlock);
+
+        /* Let the daemon know we have something to read-ahead. */
+        sema_up(&ra_wait_sema);
+    }
+}
+
+/*! Thread that runs and when told that there is something to read ahead of
+    time, loads that into the cache. */
+void read_ahead_d (void *aux UNUSED)
+{
+    struct list_elem *e;
+    struct ra_entry *ra_entry = NULL;
+    struct cache_entry *entry = NULL;
+
+    while (true) {
+        /* Wait until we actually have something to pop. */
+        sema_down(&ra_wait_sema);
+
+        /* Get the next sector to read. */
+        lock_acquire(&ra_qlock);
+        e = list_pop_front(&ra_queue);
+        lock_release(&ra_qlock);
+
+        ra_entry = list_entry (e, struct ra_entry, elem);
+
+        /* If it's not already in the cache, we want to load it. */
+        if (cache_lookup(ra_entry->sector) == NULL) {
+            lock_acquire(&cache_lock);
+
+            /* Find a free cache slot and load it. */
+            entry = cache_new_entry();
+
+            block_read (fs_device, ra_entry->sector, entry->data);
+
+            entry->sector = ra_entry->sector;
+            entry->valid = true;
+
+            lock_release(&cache_lock);
+
+            /* printf("read ahead sector %d\n", ra_entry->sector); */
+        }
+
+        free(ra_entry);
+    }
+}
+
+/*! Thread that runs and flushes the cache to disk periodically. */
+void write_behind_d (void *aux UNUSED)
+{
+    while (true) {
+        timer_sleep (FLUSH_INTERVAL);
+        cache_flush();
+    }
 }
 
 /*! Looks up a disk sector in the cache and returns the entry address.
