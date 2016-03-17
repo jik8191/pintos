@@ -9,6 +9,8 @@
 #include "filesys/cache.h"
 #include "threads/malloc.h"
 
+#include "threads/thread.h"
+
 /*! Partition that contains the file system. */
 struct block *fs_device;
 
@@ -48,9 +50,18 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size, is_dir) &&
                     dir_add(dir, dir_filename[1], inode_sector));
+
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
     dir_close(dir);
+
+    /*if (is_dir) {*/
+        /*printf("Made directory %s in directory %s\n", dir_filename[1],*/
+            /*dir_filename[0]);*/
+    /*}*/
+    /*else {*/
+        /*printf("Made file %s in directory %s\n", dir_filename[1], dir_filename[0]);*/
+    /*}*/
 
     free(dir_filename[0]);
     free(dir_filename[1]);
@@ -62,7 +73,8 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     or a null pointer otherwise.  Fails if no file named NAME exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *name) {
-    struct dir *dir = dir_open_root();
+    /*struct dir *dir = dir_open_root();*/
+    struct dir *dir = dir_reopen(thread_current()->cwd);
     struct inode *inode = NULL;
 
     if (dir != NULL) {
@@ -77,7 +89,8 @@ struct file * filesys_open(const char *name) {
     Fails if no file named NAME exists, or if an internal memory allocation
     fails. */
 bool filesys_remove(const char *name) {
-    struct dir *dir = dir_open_root();
+    /*struct dir *dir = dir_open_root();*/
+    struct dir *dir = dir_reopen(thread_current()->cwd);
     bool success = dir != NULL && dir_remove(dir, name);
     dir_close(dir);
 

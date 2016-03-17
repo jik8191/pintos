@@ -17,6 +17,7 @@
 #include "userprog/process.h"
 #include "userprog/syscall.h"
 #endif
+#include "filesys/directory.h"
 
 /*! Random value for struct thread's `magic' member.
     Used to detect stack overflow.  See the big comment at the top
@@ -209,8 +210,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Initialize thread. */
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
-    // set to root by default
-    // t->cwd = dir_open_root();
+
+    t->cwd = thread_current()->cwd;
 
     /* Setting up the nice value if mlfqs */
     if (thread_mlfqs) {

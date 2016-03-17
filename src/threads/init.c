@@ -44,6 +44,7 @@
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
 #include "filesys/cache.h"
+#include "filesys/directory.h"
 
 #endif
 
@@ -133,6 +134,7 @@ int main(void) {
     locate_block_devices();
     cache_init();
     filesys_init(format_filesys);
+    thread_current()->cwd = dir_open_root();
 #endif
 
     printf("Boot complete.\n");

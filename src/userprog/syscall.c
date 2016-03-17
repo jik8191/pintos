@@ -14,6 +14,8 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 
+#include "filesys/directory.h"
+
 bool debug_mode = false;
 
 static void syscall_handler(struct intr_frame *);
@@ -552,6 +554,17 @@ void sys_close(int fd) {
  * may be relative or absolute. Return true if successful, false on failure.
  */
 bool sys_chdir(const char *dir){
+
+    /* Attempts to get the directory struct */
+    struct dir *dir_struct = dir_open_path((char *) dir);
+
+    if (dir_struct != NULL) {
+        thread_current()->cwd = dir_struct;
+        return true;
+    }
+
+    printf("The directory struct was NULL\n");
+
     return false;
 }
 
@@ -563,8 +576,9 @@ bool sys_chdir(const char *dir){
 bool sys_mkdir(const char *dir){
     // mkdir("/a/b/c") succeeds only if "/a/b" exists and "/a/b/c" doesn't.
     bool success;
-    bool is_dir = false;
+    bool is_dir = true;
     off_t initial_size = 0;
+
     success = filesys_create(dir, initial_size, is_dir);
     return success;
 }

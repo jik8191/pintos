@@ -60,6 +60,7 @@ struct dir * dir_open_path(char *path){
     int len = strlen(path);
     char *s = malloc((len+1)*sizeof(char*)); // +1 for null termination
     memcpy(s, path, sizeof(char)*len);
+    s[len] = '\0';
 
     // check if we are dealing with an absolute path or NULL cwd
     // start traversing from root directory if so
@@ -78,7 +79,7 @@ struct dir * dir_open_path(char *path){
     for (token = strtok_r(s, "/", &save_ptr); token != NULL;
          token = strtok_r(NULL, "/", &save_ptr)){
         // TODO: catch this in iteration if possible
-        // handle case where string only has '/' and token now 
+        // handle case where string only has '/' and token now
         // points to null termination string
         if (token-s == len){
             break;
@@ -252,7 +253,7 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     return false;
 }
 
-/*! Given a path name to a file, turn it into a directory string and 
+/*! Given a path name to a file, turn it into a directory string and
  *  a filename string. */
 char **convert_path (const char *path){
     int len = strlen(path);
@@ -276,7 +277,7 @@ char **convert_path (const char *path){
         *dir = '/';
         dir++;
     }
-    
+
     for (token = strtok_r(s, "/", &save_ptr); token != NULL;
          token = strtok_r(NULL, "/", &save_ptr)){
         tokens[i] = token;
@@ -284,6 +285,7 @@ char **convert_path (const char *path){
         i++;
     }
     num_tokens = i;
+
     for(i=0; i<num_tokens-1; i++){
         memcpy(dir, tokens[i], sizeof(char)*strlen(tokens[i]));
         dir += strlen(tokens[i]);
