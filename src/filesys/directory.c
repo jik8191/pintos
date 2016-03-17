@@ -359,4 +359,3 @@ void convert_path (const char *fullpath, char *path, char *file)
 
     free(fp);
 }
-

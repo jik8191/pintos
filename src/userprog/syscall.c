@@ -1,9 +1,11 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "userprog/pagedir.h"
 #include "lib/debug.h"
 #include "devices/shutdown.h"
@@ -552,6 +554,7 @@ void sys_close(int fd)
     file_close(file_info->file_struct);
     free(file_info);
 }
+
 
 /*! Changes current working directory of process to dir, which may be relative
     or absolute. Return true if successful, false on failure. */
