@@ -292,9 +292,6 @@ bool inode_create(block_sector_t sector, off_t length, bool is_dir) {
             success = inode_add(disk_inode, sectors, 0);
         }
 
-        /* Whether its a directory */
-        disk_inode->is_dir = is_dir;
-
         /* Writing the cache to disk */
         cache_write(sector, disk_inode);
     }
@@ -829,4 +826,11 @@ struct inode_disk *read_disk(const struct inode *inode) {
     struct inode_disk *disk = malloc(sizeof(struct inode_disk));
     cache_read(inode->sector, disk);
     return disk;
+}
+
+bool inode_is_dir(const struct inode *inode)
+{
+    struct inode_disk *disk = malloc(sizeof(struct inode_disk));
+    cache_read(inode->sector, disk);
+    return disk->is_dir;
 }

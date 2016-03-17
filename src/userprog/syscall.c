@@ -5,16 +5,16 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
-#include "filesys/filesys.h"
-#include "filesys/file.h"
 #include "lib/debug.h"
 #include "devices/shutdown.h"
 #include "devices/input.h"
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
 #include "threads/malloc.h"
-
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "filesys/directory.h"
+#include "filesys/inode.h"
 
 bool debug_mode = false;
 
@@ -49,11 +49,13 @@ int sys_inumber(int fd);
 /* Helper functions */
 struct fd_elem *get_file(int fd);
 
-void syscall_init(void) {
+void syscall_init(void)
+{
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void syscall_handler(struct intr_frame *f) {
+static void syscall_handler(struct intr_frame *f)
+{
 
     /* Getting the callers stack pointer */
     void *caller_esp = f->esp;
@@ -180,6 +182,7 @@ static void syscall_handler(struct intr_frame *f) {
             int_arg = * (int *) validate_arg(arg0, CONVERT_NUMERIC,
                                              sizeof(int));
             f->eax = sys_inumber(int_arg);
+            break;
         default:
             printf("Call: %d Went to default\n", call_number);
             sys_exit(-1);
@@ -187,7 +190,8 @@ static void syscall_handler(struct intr_frame *f) {
 }
 
 /* Returns true if addr to addr + size is valid */
-void *valid_pointer(void **pointer, int size) {
+void *valid_pointer(void **pointer, int size)
+{
     int i = 0;
     void *kernel_addr = NULL;
 
@@ -248,7 +252,8 @@ void *valid_pointer(void **pointer, int size) {
 }
 
 /* Returns true if addr to addr + size is valid */
-void *valid_numeric(void *addr, int size) {
+void *valid_numeric(void *addr, int size)
+{
     void *kernel_addr = NULL;
 
     /* Making sure the memory is in user space */
@@ -267,7 +272,8 @@ void *valid_numeric(void *addr, int size) {
     return kernel_addr;
 }
 
-static void *validate_arg(void *addr, enum conversion_type ct, int size) {
+static void *validate_arg(void *addr, enum conversion_type ct, int size)
+{
     void *kernel_addr;
 
     switch(ct) {
@@ -299,11 +305,13 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size) {
     return NULL;
 }
 
-void sys_halt(void) {
+void sys_halt(void)
+{
     shutdown_power_off();
 }
 
-void sys_exit(int status) {
+void sys_exit(int status)
+{
     /* Have to close all fds */
     if (debug_mode)
         printf("Status: %d\n", status);
@@ -319,7 +327,8 @@ void sys_exit(int status) {
     thread_exit();
 }
 
-pid_t sys_exec(const char *cmd_line) {
+pid_t sys_exec(const char *cmd_line)
+{
     tid_t tid = process_execute(cmd_line);
     if (tid == -1) {
         if (debug_mode)
@@ -330,12 +339,14 @@ pid_t sys_exec(const char *cmd_line) {
     return tid;
 }
 
-int sys_wait(pid_t pid) {
+int sys_wait(pid_t pid)
+{
     return process_wait(pid);
 }
 
 /* Creating a file with an initial size */
-bool sys_create(const char *file, unsigned initial_size) {
+bool sys_create(const char *file, unsigned initial_size)
+{
     if (debug_mode)
         printf("In sys_create\n");
     bool return_value;
@@ -349,14 +360,16 @@ bool sys_create(const char *file, unsigned initial_size) {
 }
 
 /* Removes a file */
-bool sys_remove(const char *file) {
+bool sys_remove(const char *file)
+{
     bool return_value;
     return_value = filesys_remove(file);
     return return_value;
 }
 
 /* Gets the size of a file in bytes */
-int sys_filesize(int fd) {
+int sys_filesize(int fd)
+{
     int size;
     /* Getting the file struct from the fd */
     struct file *file = get_file(fd)->file_struct;
@@ -373,7 +386,8 @@ int sys_filesize(int fd) {
 
 
 /* Opens a file */
-int sys_open(const char *file) {
+int sys_open(const char *file)
+{
 
     if (debug_mode) {
         printf("In sys_open\n");
@@ -412,7 +426,8 @@ int sys_open(const char *file) {
     return fd;
 }
 
-int sys_read(int fd, void *buffer, unsigned size) {
+int sys_read(int fd, void *buffer, unsigned size)
+{
 
     unsigned bytes_read = 0;
 
@@ -448,7 +463,8 @@ int sys_read(int fd, void *buffer, unsigned size) {
     return bytes_read;
 }
 
-int sys_write(int fd, const void *buffer, unsigned size) {
+int sys_write(int fd, const void *buffer, unsigned size)
+{
 
     unsigned bytes_written = 0;
 
@@ -489,7 +505,8 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 }
 
 /* Changes the next byte to be read to position */
-void sys_seek(int fd, unsigned position) {
+void sys_seek(int fd, unsigned position)
+{
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
         sys_exit(-1);
@@ -498,7 +515,8 @@ void sys_seek(int fd, unsigned position) {
 }
 
 /* Returns the position of the next byte to read */
-unsigned sys_tell(int fd) {
+unsigned sys_tell(int fd)
+{
     off_t return_value;
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
@@ -509,7 +527,8 @@ unsigned sys_tell(int fd) {
 }
 
 /* Closes a given file */
-void sys_close(int fd) {
+void sys_close(int fd)
+{
     if (debug_mode)
         printf("In sys close! Closing: %d\n", fd);
 
@@ -526,7 +545,8 @@ void sys_close(int fd) {
 
 /*! Changes current working directory of process to dir, which may be relative
     or absolute. Return true if successful, false on failure. */
-bool sys_chdir(const char *dir){
+bool sys_chdir(const char *dir)
+{
 
     /* Attempts to get the directory struct */
     struct dir *dir_struct = dir_open_path((char *) dir);
@@ -544,7 +564,8 @@ bool sys_chdir(const char *dir){
     Returns true if successful, false on failure. Fails if dir already exists
     or if any directory name in dir, besides the last, does not already exist.
     */
-bool sys_mkdir(const char *dir){
+bool sys_mkdir(const char *dir)
+{
     // mkdir("/a/b/c") succeeds only if "/a/b" exists and "/a/b/c" doesn't.
     bool success;
     bool is_dir = true;
@@ -558,7 +579,8 @@ bool sys_mkdir(const char *dir){
     directory. If successful, stores the null-terminated file name in name,
     which must have room for READDIR_MAX_LEN + 1 bytes, and returns true. If
     no entries are left in the directory, returns false. */
-bool sys_readdir(int fd, char *name){
+bool sys_readdir(int fd, char *name)
+{
     // Do not return "." or ".."
     // If the directory changes while it is open, then it is acceptable for
     // some entries not to be read at all or to be read multiple times.
@@ -568,20 +590,25 @@ bool sys_readdir(int fd, char *name){
 
 /*! Return true if fd represents a directory, false if fd represents an
     ordinary file. */
-bool sys_isdir(int fd){
+bool sys_isdir(int fd)
+{
     return false;
 }
 
 /*! Return the inode number of the inode associated with fd, which persistently
     identifies a file or directory and is unique during the file's existence. */
-int sys_inumber(int fd){
+int sys_inumber(int fd)
+{
+    struct file *file = get_file(fd)->file_struct;
+
     // the sector number of the inode will be used for the inode number.
-    return fd;
+    return file->inode->sector;
 }
 
 
 /*! Returns the file struct for a given fd */
-struct fd_elem *get_file(int fd) {
+struct fd_elem *get_file(int fd)
+{
     struct list_elem *e = list_begin(&thread_current()->fd_list);
 
     for (; e != list_end(&thread_current()->fd_list); e = list_next(e)) {

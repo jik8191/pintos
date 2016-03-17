@@ -69,13 +69,8 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     if (success && is_dir) {
         struct dir *newdir = dir_open_path(name);
 
-        char *self = malloc(2 * sizeof(char));
-        *self = ".";
-        dir_add(newdir, self, inode_sector);
-
-        char *parent = malloc(3 * sizeof(char));
-        *parent = "..";
-        dir_add(newdir, parent, dir->inode->sector);
+        dir_add(newdir, ".", inode_sector);
+        dir_add(newdir, "..", dir->inode->sector);
 
         dir_close(newdir);
     }
@@ -118,6 +113,8 @@ struct file * filesys_open(const char *name) {
 
         /* If there was no file component, we just open the directory. */
         if (file[0] == '\0') {
+            free(file);
+
             file = malloc(2 * sizeof(char));
             file[0] = '.';
             file[1] = '\0';
@@ -144,6 +141,9 @@ bool filesys_remove(const char *name) {
         dir = dir_open_path(dir_filename[0]);
         name = dir_filename[1];
     }
+
+    /* TODO: Check if files remain. */
+    /* TODO: Support rm /a/ instead of just rm /a */
 
     bool success = dir != NULL && dir_remove(dir, name);
     dir_close(dir);

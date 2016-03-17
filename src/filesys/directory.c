@@ -229,6 +229,20 @@ bool dir_remove(struct dir *dir, const char *name) {
     if (inode == NULL)
         goto done;
 
+    if (inode_is_dir(inode)) {
+        struct dir *rm_dir = dir_open_path(name);
+
+        struct dir_entry rm_e;
+        off_t rm_ofs;
+        lookup(rm_dir, ".", &rm_e, &rm_ofs);
+        rm_e.in_use = false;
+        inode_write_at(rm_dir->inode, &rm_e, sizeof(rm_e), rm_ofs);
+
+        lookup(rm_dir, "..", &rm_e, &rm_ofs);
+        rm_e.in_use = false;
+        inode_write_at(rm_dir->inode, &rm_e, sizeof(rm_e), rm_ofs);
+    }
+
     /* Erase directory entry. */
     e.in_use = false;
     if (inode_write_at(dir->inode, &e, sizeof(e), ofs) != sizeof(e))
