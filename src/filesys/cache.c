@@ -11,7 +11,7 @@
 #include "filesys/filesys.h"
 
 #define CACHE_SIZE (64)
-#define FLUSH_INTERVAL (500)
+#define FLUSH_INTERVAL (1000)
 
 /*! The actual cache that contains data. */
 static struct cache_entry cache[CACHE_SIZE];
@@ -159,7 +159,6 @@ struct cache_entry * cache_get (block_sector_t sector)
 
     struct cache_entry *entry = cache_lookup(sector);
 
-    /* TODO: Use r/w lock here? */
     if (entry == NULL) {
         entry = cache_new_entry();
 
@@ -167,31 +166,12 @@ struct cache_entry * cache_get (block_sector_t sector)
 
         entry->sector = sector;
         entry->valid = true;
-
-        /* printf("loaded sector %d\n", sector); */
     }
 
     entry->accessed = true;
 
-    /* Read-ahead one sector.
-       TODO: Should we do this for both reads & writes as we are now?
-       TODO: We need to do this async. That is, add this sector to a queue and
-       a different thread can load it in.
-       */
+    /* Read-ahead one sector. */
     read_ahead_add (sector + 1);
-    /* printf("this makes the test fail as well\n"); */
-        /*
-    if (sector + 1 < block_size(fs_device)) {
-        if (cache_lookup(sector + 1) == NULL) {
-            struct cache_entry *ra_entry = cache_new_entry();
-
-            block_read (fs_device, sector + 1, ra_entry->data);
-
-            ra_entry->sector = sector + 1;
-            ra_entry->valid = true;
-        }
-    }
-        */
 
     lock_release(&cache_lock);
 
@@ -247,8 +227,6 @@ void read_ahead_d (void *aux UNUSED)
             entry->valid = true;
 
             lock_release(&cache_lock);
-
-            /* printf("read ahead sector %d\n", ra_entry->sector); */
         }
 
         free(ra_entry);
@@ -285,17 +263,13 @@ struct cache_entry * cache_lookup (block_sector_t sector)
 /*! Get an unused entry in the cache we can fill, evicting if necessary. */
 struct cache_entry * cache_new_entry (void)
 {
-    /* lock_acquire(&cache_lock); */
     ASSERT(lock_held_by_current_thread(&cache_lock));
 
     /* Look for an empty slot first. */
     int i;
     for (i = 0; i < CACHE_SIZE; i++) {
-        if (!cache[i].valid) {
-            /* lock_release(&cache_lock); */
-
+        if (!cache[i].valid)
             return &cache[i];
-        }
     }
 
     /* If all cache entries are full, we need to evict. */
@@ -320,17 +294,12 @@ struct cache_entry * cache_evict (void)
         cache[clock_idx].accessed = false;
     }
 
-    /* lock_release(&cache_lock); */
-    /* rwlock_acquire_writer(&cache[clock_idx].rw_lock); */
-
     /* If the cache entry to evict is dirty, write it back to disk. */
     if (cache[clock_idx].dirty)
         cache_dump(clock_idx);
 
     /* Make it clean. */
     cache[clock_idx].valid = false;
-
-    /* rwlock_release_writer(&cache[clock_idx].rw_lock); */
 
     return &cache[clock_idx];
 }
