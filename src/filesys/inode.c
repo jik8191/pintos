@@ -128,7 +128,6 @@ static block_sector_t get_indirect(const struct inode *inode, off_t pos) {
     free(indices);
 
     return result;
-
 }
 
 /* Returns true if the index is for a double indirect node */
@@ -282,6 +281,7 @@ bool inode_create(block_sector_t sector, off_t length, bool is_dir) {
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
         disk_inode->is_dir = is_dir;
+
         /* A list that holds what sectors have been allocated so that we
          * can flip them back if we fail */
         struct list allocated_sectors;

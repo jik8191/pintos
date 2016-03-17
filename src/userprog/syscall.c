@@ -50,7 +50,6 @@ int sys_inumber(int fd);
 struct fd_elem *get_file(int fd);
 
 void syscall_init(void) {
-    /* lock_init(&file_lock); */
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -340,31 +339,25 @@ bool sys_create(const char *file, unsigned initial_size) {
     if (debug_mode)
         printf("In sys_create\n");
     bool return_value;
-    /* lock_acquire(&file_lock); */
 
     if (file == NULL) {
-        /* lock_release(&file_lock); */
         sys_exit(-1);
     }
     bool is_dir = false;
     return_value = filesys_create(file, initial_size, is_dir);
-    /* lock_release(&file_lock); */
     return return_value;
 }
 
 /* Removes a file */
 bool sys_remove(const char *file) {
     bool return_value;
-    /* lock_acquire(&file_lock); */
     return_value = filesys_remove(file);
-    /* lock_release(&file_lock); */
     return return_value;
 }
 
 /* Gets the size of a file in bytes */
 int sys_filesize(int fd) {
     int size;
-    /* lock_acquire(&file_lock); */
     /* Getting the file struct from the fd */
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
@@ -388,7 +381,6 @@ int sys_open(const char *file) {
     }
 
     /* Getting the file struct */
-    /* lock_acquire(&file_lock); */
     if (debug_mode)
         printf("Opening file in thread: %d\n", thread_current()->tid);
     struct file *file_struct = filesys_open(file);
@@ -397,7 +389,6 @@ int sys_open(const char *file) {
     if (file_struct == NULL) {
         if (debug_mode)
             printf("File could not be opened\n");
-        /* lock_release(&file_lock); */
         return -1;
     }
 
@@ -412,7 +403,6 @@ int sys_open(const char *file) {
     new_fd->fd = fd;
     new_fd->file_struct = file_struct;
     list_push_back(&thread_current()->fd_list, &new_fd->elem);
-    /* lock_release(&file_lock); */
 
     /* Putting the fd in eax */
     if (debug_mode) {
@@ -424,7 +414,6 @@ int sys_open(const char *file) {
 int sys_read(int fd, void *buffer, unsigned size) {
 
     unsigned bytes_read = 0;
-    /* lock_acquire(&file_lock); */
 
     if (debug_mode)
         printf("in sys_read with thread: %d\n", thread_current()->tid);
@@ -451,20 +440,16 @@ int sys_read(int fd, void *buffer, unsigned size) {
         else {
             if (debug_mode)
                 printf("The file struct was null\n");
-            /* lock_release(&file_lock); */
             sys_exit(-1);
         }
     }
 
-    /* lock_release(&file_lock); */
     return bytes_read;
 }
 
 int sys_write(int fd, const void *buffer, unsigned size) {
 
     unsigned bytes_written = 0;
-
-    /* lock_acquire(&file_lock); */
 
     if (debug_mode)
         printf("in sys_write with thread: %d\n", thread_current()->tid);
@@ -494,39 +479,31 @@ int sys_write(int fd, const void *buffer, unsigned size) {
             bytes_written = file_write(file, buffer, size);
         }
         else {
-            /* lock_release(&file_lock); */
             sys_exit(-1);
         }
     }
 
-    /* lock_release(&file_lock); */
     return bytes_written;
 
 }
 
 /* Changes the next byte to be read to position */
 void sys_seek(int fd, unsigned position) {
-    /* lock_acquire(&file_lock); */
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
-        /* lock_release(&file_lock); */
         sys_exit(-1);
     }
     file_seek(file, position);
-    /* lock_release(&file_lock); */
 }
 
 /* Returns the position of the next byte to read */
 unsigned sys_tell(int fd) {
     off_t return_value;
-    /* lock_acquire(&file_lock); */
     struct file *file = get_file(fd)->file_struct;
     if (file == NULL) {
-        /* lock_release(&file_lock); */
         sys_exit(-1);
     }
     return_value = file_tell(file);
-    /* lock_release(&file_lock); */
     return return_value;
 }
 
@@ -535,19 +512,15 @@ void sys_close(int fd) {
     if (debug_mode)
         printf("In sys close! Closing: %d\n", fd);
 
-    /* lock_acquire(&file_lock); */
 
     struct fd_elem *file_info = get_file(fd);
     if (file_info == NULL) {
-        /* lock_release(&file_lock); */
         sys_exit(-1);
     }
 
     list_remove(&file_info->elem);
     file_close(file_info->file_struct);
     free(file_info);
-
-    /* lock_release(&file_lock); */
 }
 
 /* Changes current working directory of process to dir, which

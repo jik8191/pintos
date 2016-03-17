@@ -3,8 +3,6 @@
 
 #include "threads/thread.h"
 
-struct lock file_lock;
-
 void syscall_init(void);
 
 void sys_close(int fd);
