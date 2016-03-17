@@ -30,7 +30,7 @@ bool dir_remove(struct dir *, const char *name);
 bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 
 /* Helper functions */
-char ** convert_path (const char *path);
+char ** convert_path (const char *fullpath);
 
 #endif /* filesys/directory.h */
 

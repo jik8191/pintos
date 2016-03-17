@@ -52,7 +52,7 @@ struct dir * dir_open_root(void) {
 
 
 /*! Opens the directory specified and returns a dir pointer for it.
- *  Return NULL on failure. */
+    Return NULL on failure. */
 struct dir * dir_open_path(char *path){
     struct dir *wd;   // working directory
 
@@ -253,57 +253,55 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     return false;
 }
 
-/*! Given a path name to a file, turn it into a directory string and
- *  a filename string. */
-char **convert_path (const char *path){
-    int len = strlen(path);
-    char *token, *save_ptr;
-    char *s = malloc((len+1)*sizeof(char)); // +1 for null termination
-    memcpy(s, path, sizeof(char)*len); // manipulate the copy
-    *(s+len) = '\0';
+/*! Given a path name to a file, turn it into a directory string and a filename
+    string. */
+char ** convert_path (const char *fullpath)
+{
+    size_t fp_len = strlen(fullpath) + 1;
 
-    // TODO: improve this allocation, reallocate if necessary
-    char **tokens = malloc(64*sizeof(char*));
-    char *dir = malloc(len*sizeof(char));
-    char *dir_ur = dir;  // will not be manipulated
-    char *filename = malloc(len*sizeof(char));
+    /* Make a copy of the full path. */
+    char *fp = malloc(fp_len * sizeof(char));
+    memcpy(fp, fullpath, fp_len * sizeof(char));
+
+    char *slash = fp, *next;
+
+    /* Find the last slash in the string */
+    while ((next = strpbrk(slash + 1, "\\/"))) slash = next;
+
+    /* If pf == slash, there was no directory component. */
+    if (fp != slash) {
+        *slash = '\0';
+        slash++;
+    }
+
+    /* From the beginning of the string to the character past the slash. */
+    size_t pathsize = slash - fp;
+    /* Allocate one char for a null char if there is no directory. */
+    pathsize = pathsize == 0 ? sizeof(char) : pathsize;
+
+    /* From where slash currently sits to the end of the original string. */
+    size_t filesize = (strlen(slash) + 1) * sizeof(char);
+
+    char *file = malloc(filesize);
+    char *path = malloc(pathsize);
+
+    /* Copy over the file part of the filepath */
+    strlcpy(file, slash, filesize);
+
+    /* If there was no directory, return NULL. */
+    if (pathsize != 0)
+        strlcpy(path, fp, pathsize);
+    else
+        *path = '\0';
+
+    /* We want to return an array of pointers to the two parts of the path. */
     char **dir_filename = malloc(2*sizeof(char*));
-    int num_tokens;
-    int i = 0;
 
-    // check we we use absolute path
-    // TODO: handle cases such as /../
-    if (s[0] == '/'){
-        *dir = '/';
-        dir++;
-    }
+    dir_filename[0] = path;
+    dir_filename[1] = file;
 
-    for (token = strtok_r(s, "/", &save_ptr); token != NULL;
-         token = strtok_r(NULL, "/", &save_ptr)){
-        tokens[i] = token;
-        // printf("length of token '%s' is %d\n", token, strlen(tokens[i]));
-        i++;
-    }
-    num_tokens = i;
+    free(fp);
 
-    for(i=0; i<num_tokens-1; i++){
-        memcpy(dir, tokens[i], sizeof(char)*strlen(tokens[i]));
-        dir += strlen(tokens[i]);
-        *dir = '/';
-        dir++;
-    }
-
-    memcpy(filename, tokens[num_tokens-1],
-           sizeof(char)*strlen(tokens[num_tokens-1]));
-    *(filename+strlen(tokens[num_tokens-1])) = '\0';
-    *dir = '\0'; // null-termination
-    dir_filename[0] = dir_ur;
-    dir_filename[1] = filename;
-
-    // printf("directory is %s\n", dir_filename[0]);
-    // printf("filename is %s\n", dir_filename[1]);
-    free(tokens);
-    free(s);
     return dir_filename;
 }
 
