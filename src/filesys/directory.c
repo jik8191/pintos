@@ -84,7 +84,6 @@ struct dir * dir_open_path(char *path){
         if (token-s == len){
             break;
         }
-        printf("token: %s\n", token);
         // search for next file/directory in path, store inode representation
         // in inode_wd
         if(!dir_lookup(wd, token, &inode_wd)){
