@@ -493,6 +493,9 @@ int sys_write(int fd, const void *buffer, unsigned size)
         struct fd_elem *file_info = get_file(fd);
         if (file_info != NULL) {
             struct file *file = file_info->file_struct;
+            if (inode_is_dir(file->inode)) {
+                sys_exit(-1);
+            }
             bytes_written = file_write(file, buffer, size);
         }
         else {
