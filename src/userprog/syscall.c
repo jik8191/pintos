@@ -16,7 +16,7 @@
 #include "filesys/directory.h"
 #include "filesys/inode.h"
 
-bool debug_mode = false;
+bool debug_mode = true;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -397,7 +397,7 @@ int sys_open(const char *file)
     /* Getting the file struct */
     if (debug_mode)
         printf("Opening file in thread: %d\n", thread_current()->tid);
-    printf("file: %s\n", file);
+    /* printf("file: %s\n", file); */
     struct file *file_struct = filesys_open(file);
 
     /* If the file can't be opened then put -1 in eax */

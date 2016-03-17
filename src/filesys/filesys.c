@@ -60,20 +60,20 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size, is_dir) &&
-                    dir_add(dir, dir_filename[1], inode_sector));
+                    dir_add(dir, dir_filename[1], inode_sector, is_dir));
 
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
 
     /* Add directory connections. */
-    if (success && is_dir) {
-        struct dir *newdir = dir_open_path(name);
-
-        dir_add(newdir, ".", inode_sector);
-        dir_add(newdir, "..", dir->inode->sector);
-
-        dir_close(newdir);
-    }
+    /* if (success && is_dir) { */
+    /*     struct dir *newdir = dir_open_path(name); */
+    /*  */
+    /*     dir_add(newdir, ".", inode_sector); */
+    /*     dir_add(newdir, "..", dir->inode->sector); */
+    /*  */
+    /*     dir_close(newdir); */
+    /* } */
 
     dir_close(dir);
 
@@ -99,15 +99,16 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
 struct file * filesys_open(const char *name) {
     struct inode *inode = NULL;
     struct dir *dir;
+    char *file = NULL;
 
     char **dir_filename = convert_path(name);
 
-    char *file;
-
+    /* TODO: This check doesn't work. */
     if (dir_filename[0] == NULL) {
         dir = dir_reopen(thread_current()->cwd);
     }
     else {
+        printf("dir: %s, file: %s\n", dir_filename[0], dir_filename[1]);
         dir = dir_open_path(dir_filename[0]);
         file = dir_filename[1];
 
