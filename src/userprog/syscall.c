@@ -563,8 +563,6 @@ bool sys_chdir(const char *dir){
         return true;
     }
 
-    printf("The directory struct was NULL\n");
-
     return false;
 }
 

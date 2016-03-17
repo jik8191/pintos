@@ -44,6 +44,11 @@ void filesys_done(void) {
 bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     // printf("'path is %s'\n", (const char*) name);
     char **dir_filename = convert_path(name);
+
+    if (dir_filename == NULL) {
+        return false;
+    }
+
     block_sector_t inode_sector = 0;
     struct dir *dir = dir_open_path(dir_filename[0]);
     bool success = (dir != NULL &&
