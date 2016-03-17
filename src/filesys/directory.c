@@ -66,10 +66,10 @@ struct dir * dir_open_path(char *path){
     // start traversing from root directory if so
     struct dir *cwd = thread_current()->cwd;
     if (s[0] == '/' || cwd == NULL) {
-        // printf("Opened root directory.\n");
+        /* printf("Opened root directory.\n"); */
         wd = dir_open_root();
     } else {
-        // printf("Opening path %s.\n", path);
+        /* printf("Opening path %s.\n", path); */
         wd = dir_reopen(cwd);
     }
 
@@ -84,6 +84,7 @@ struct dir * dir_open_path(char *path){
         if (token-s == len){
             break;
         }
+        printf("token: %s\n", token);
         // search for next file/directory in path, store inode representation
         // in inode_wd
         if(!dir_lookup(wd, token, &inode_wd)){
@@ -278,31 +279,27 @@ char ** convert_path (const char *fullpath)
     /* Find the last slash in the string */
     while ((next = strpbrk(slash + 1, "\\/"))) slash = next;
 
-    /* If pf == slash, there was no directory component. */
-    if (fp != slash) {
-        *slash = '\0';
+    /* If pf == slash and fp[0] != '/', there was no directory component. */
+    if (fp != slash || fp[0] == '/') {
         slash++;
     }
 
     /* From the beginning of the string to the character past the slash. */
     size_t pathsize = slash - fp;
-    /* Allocate one char for a null char if there is no directory. */
-    pathsize = pathsize == 0 ? sizeof(char) : pathsize;
 
     /* From where slash currently sits to the end of the original string. */
     size_t filesize = (strlen(slash) + 1) * sizeof(char);
 
-    char *file = malloc(filesize);
-    char *path = malloc(pathsize);
+    /* Add a space for the null terminator. */
+    char *file = malloc(filesize + sizeof(char));
+    char *path = malloc(pathsize + sizeof(char));
 
     /* Copy over the file part of the filepath */
     strlcpy(file, slash, filesize);
+    strlcpy(path, fp, pathsize + sizeof(char));
 
-    /* If there was no directory, return NULL. */
-    if (pathsize != 0)
-        strlcpy(path, fp, pathsize);
-    else
-        *path = '\0';
+    /* Add the null terminator for the directory part since it wasn't copied. */
+    *(path + pathsize) = '\0';
 
     /* We want to return an array of pointers to the two parts of the path. */
     char **dir_filename = malloc(2*sizeof(char*));
