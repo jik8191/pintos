@@ -313,7 +313,7 @@ bool dir_is_empty (struct dir *dir)
 
 /*! Given a path name to a file, turn it into a directory string and a filename
     string. */
-char ** convert_path (const char *fullpath)
+void convert_path (const char *fullpath, char *path, char *file)
 {
     size_t fp_len = strlen(fullpath) + 1;
 
@@ -337,10 +337,6 @@ char ** convert_path (const char *fullpath)
     /* From where slash currently sits to the end of the original string. */
     size_t filesize = (strlen(slash) + 1) * sizeof(char);
 
-    /* Add a space for the null terminator. */
-    char *file = malloc(filesize + sizeof(char));
-    char *path = malloc(pathsize + sizeof(char));
-
     /* Copy over the file part of the filepath */
     strlcpy(file, slash, filesize);
     strlcpy(path, fp, pathsize + sizeof(char));
@@ -348,14 +344,6 @@ char ** convert_path (const char *fullpath)
     /* Add the null terminator for the directory part since it wasn't copied. */
     *(path + pathsize) = '\0';
 
-    /* We want to return an array of pointers to the two parts of the path. */
-    char **dir_filename = malloc(2*sizeof(char*));
-
-    dir_filename[0] = path;
-    dir_filename[1] = file;
-
     free(fp);
-
-    return dir_filename;
 }
 

@@ -16,7 +16,7 @@
 #include "filesys/directory.h"
 #include "filesys/inode.h"
 
-bool debug_mode = true;
+bool debug_mode = false;
 
 static void syscall_handler(struct intr_frame *);
 

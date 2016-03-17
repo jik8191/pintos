@@ -43,53 +43,33 @@ void filesys_done(void) {
     or if internal memory allocation fails. */
 bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     // printf("'path is %s'\n", (const char*) name);
-    char **dir_filename = convert_path(name);
+    char path[strlen(name) + 1];
+    char file[strlen(name) + 1];
 
-    if (dir_filename == NULL) {
+    convert_path(name, path, file);
+
+    /* TODO: Not sure if needed
+    if (path[0] == '\0' && file[0]=='\0') {
         return false;
     }
-
-    /*printf("Directory %s\n", dir_filename[0]);*/
-    /*printf("File %s\n", dir_filename[1]);*/
+    */
 
     block_sector_t inode_sector = 0;
-    struct dir *dir = dir_open_path(dir_filename[0]);
-    if (dir == NULL) {
-        printf("The dir was null\n");
-    }
+    struct dir *dir = dir_open_path(path);
+    /* if (dir == NULL) { */
+    /*     printf("The dir was null\n"); */
+    /* } */
+
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size, is_dir) &&
-                    dir_add(dir, dir_filename[1], inode_sector, is_dir));
+                    dir_add(dir, file, inode_sector, is_dir));
 
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
 
-    /* Add directory connections. */
-    /* if (success && is_dir) { */
-    /*     struct dir *newdir = dir_open_path(name); */
-    /*  */
-    /*     dir_add(newdir, ".", inode_sector); */
-    /*     dir_add(newdir, "..", dir->inode->sector); */
-    /*  */
-    /*     dir_close(newdir); */
-    /* } */
-
     dir_close(dir);
 
-    /*
-    if (is_dir) {
-        printf("Made directory %s in directory %s\n", dir_filename[1],
-            dir_filename[0]);
-    }
-    else {
-        printf("Made file %s in directory %s\n", dir_filename[1], dir_filename[0]);
-    }
-    */
-
-    free(dir_filename[0]);
-    free(dir_filename[1]);
-    free(dir_filename);
     return success;
 }
 
@@ -99,31 +79,27 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
 struct file * filesys_open(const char *name) {
     struct inode *inode = NULL;
     struct dir *dir;
-    char *file = NULL;
 
-    char **dir_filename = convert_path(name);
+    char path[strlen(name) + 1];
+    char file[strlen(name) + 1];
 
-    /* TODO: This check doesn't work. */
-    if (dir_filename[0] == NULL) {
-        dir = dir_reopen(thread_current()->cwd);
-    }
-    else {
-        printf("dir: %s, file: %s\n", dir_filename[0], dir_filename[1]);
-        dir = dir_open_path(dir_filename[0]);
-        file = dir_filename[1];
+    convert_path(name, path, file);
+    dir = dir_open_path (path);
 
-        /* If there was no file component, we just open the directory. */
-        if (file[0] == '\0') {
-            free(file);
+    /* If the directory isn't valid, we return. */
+    if (dir == NULL) return NULL;
 
-            file = malloc(2 * sizeof(char));
-            file[0] = '.';
-            file[1] = '\0';
-        }
+    /* If we had a name terminated with a '/', so no filename, we just return
+       the directory. */
+    if (strlen(file) == 0) {
+        inode = dir_get_inode (dir);
+    } else {
+        dir_lookup(dir, file, &inode);
+        dir_close(dir);
     }
 
-    dir_lookup(dir, file, &inode);
-    dir_close(dir);
+    /* If the file/directory was removed, or nonexistent, we fail. */
+    if (inode == NULL || inode->removed) return NULL;
 
     return file_open(inode);
 }
@@ -134,19 +110,13 @@ struct file * filesys_open(const char *name) {
 bool filesys_remove(const char *name) {
     struct dir *dir;
 
-    char **dir_filename = convert_path(name);
+    char path[strlen(name) + 1];
+    char file[strlen(name) + 1];
 
-    if (dir_filename[0] == NULL) {
-        dir = dir_reopen(thread_current()->cwd);
-    } else {
-        dir = dir_open_path(dir_filename[0]);
-        name = dir_filename[1];
-    }
+    convert_path(name, path, file);
+    dir = dir_open_path (path);
 
-    /* TODO: Check if files remain. */
-    /* TODO: Support rm /a/ instead of just rm /a */
-
-    bool success = dir != NULL && dir_remove(dir, name);
+    bool success = dir != NULL && dir_remove(dir, file);
     dir_close(dir);
 
     return success;
