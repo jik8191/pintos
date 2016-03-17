@@ -7,12 +7,6 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
-/*! A directory. */
-struct dir {
-    struct inode *inode;                /*!< Backing store. */
-    off_t pos;                          /*!< Current position. */
-};
-
 /*! A single directory entry. */
 struct dir_entry {
     block_sector_t inode_sector;        /*!< Sector number of header. */
@@ -209,6 +203,7 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
     strlcpy(e.name, name, sizeof e.name);
     e.inode_sector = inode_sector;
     success = inode_write_at(dir->inode, &e, sizeof(e), ofs) == sizeof(e);
+    printf("Added %s to directory\n", name);
 
 done:
     return success;

@@ -64,6 +64,22 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
 
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
+
+    /* Add directory connections. */
+    if (success && is_dir) {
+        struct dir *newdir = dir_open_path(name);
+
+        char *self = malloc(2 * sizeof(char));
+        *self = ".";
+        dir_add(newdir, self, inode_sector);
+
+        char *parent = malloc(3 * sizeof(char));
+        *parent = "..";
+        dir_add(newdir, parent, dir->inode->sector);
+
+        dir_close(newdir);
+    }
+
     dir_close(dir);
 
     /*
@@ -91,15 +107,24 @@ struct file * filesys_open(const char *name) {
 
     char **dir_filename = convert_path(name);
 
+    char *file;
+
     if (dir_filename[0] == NULL) {
         dir = dir_reopen(thread_current()->cwd);
     }
     else {
         dir = dir_open_path(dir_filename[0]);
-        name = dir_filename[1];
+        file = dir_filename[1];
+
+        /* If there was no file component, we just open the directory. */
+        if (file[0] == '\0') {
+            file = malloc(2 * sizeof(char));
+            file[0] = '.';
+            file[1] = '\0';
+        }
     }
 
-    dir_lookup(dir, name, &inode);
+    dir_lookup(dir, file, &inode);
     dir_close(dir);
 
     return file_open(inode);
@@ -115,8 +140,7 @@ bool filesys_remove(const char *name) {
 
     if (dir_filename[0] == NULL) {
         dir = dir_reopen(thread_current()->cwd);
-    }
-    else {
+    } else {
         dir = dir_open_path(dir_filename[0]);
         name = dir_filename[1];
     }

@@ -383,6 +383,7 @@ int sys_open(const char *file) {
     /* Getting the file struct */
     if (debug_mode)
         printf("Opening file in thread: %d\n", thread_current()->tid);
+    printf("file: %s\n", file);
     struct file *file_struct = filesys_open(file);
 
     /* If the file can't be opened then put -1 in eax */
