@@ -49,8 +49,14 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
         return false;
     }
 
+    /*printf("Directory %s\n", dir_filename[0]);*/
+    /*printf("File %s\n", dir_filename[1]);*/
+
     block_sector_t inode_sector = 0;
     struct dir *dir = dir_open_path(dir_filename[0]);
+    if (dir == NULL) {
+        printf("The dir was null\n");
+    }
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size, is_dir) &&
@@ -60,13 +66,15 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
         free_map_release(inode_sector, 1);
     dir_close(dir);
 
-    /*if (is_dir) {*/
-        /*printf("Made directory %s in directory %s\n", dir_filename[1],*/
-            /*dir_filename[0]);*/
-    /*}*/
-    /*else {*/
-        /*printf("Made file %s in directory %s\n", dir_filename[1], dir_filename[0]);*/
-    /*}*/
+    /*
+    if (is_dir) {
+        printf("Made directory %s in directory %s\n", dir_filename[1],
+            dir_filename[0]);
+    }
+    else {
+        printf("Made file %s in directory %s\n", dir_filename[1], dir_filename[0]);
+    }
+    */
 
     free(dir_filename[0]);
     free(dir_filename[1]);
@@ -78,13 +86,20 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     or a null pointer otherwise.  Fails if no file named NAME exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *name) {
-    /*struct dir *dir = dir_open_root();*/
-    struct dir *dir = dir_reopen(thread_current()->cwd);
     struct inode *inode = NULL;
+    struct dir *dir;
 
-    if (dir != NULL) {
-        dir_lookup(dir, name, &inode);
+    char **dir_filename = convert_path(name);
+
+    if (dir_filename[0] == NULL) {
+        dir = dir_reopen(thread_current()->cwd);
     }
+    else {
+        dir = dir_open_path(dir_filename[0]);
+        name = dir_filename[1];
+    }
+
+    dir_lookup(dir, name, &inode);
     dir_close(dir);
 
     return file_open(inode);
@@ -94,8 +109,18 @@ struct file * filesys_open(const char *name) {
     Fails if no file named NAME exists, or if an internal memory allocation
     fails. */
 bool filesys_remove(const char *name) {
-    /*struct dir *dir = dir_open_root();*/
-    struct dir *dir = dir_reopen(thread_current()->cwd);
+    struct dir *dir;
+
+    char **dir_filename = convert_path(name);
+
+    if (dir_filename[0] == NULL) {
+        dir = dir_reopen(thread_current()->cwd);
+    }
+    else {
+        dir = dir_open_path(dir_filename[0]);
+        name = dir_filename[1];
+    }
+
     bool success = dir != NULL && dir_remove(dir, name);
     dir_close(dir);
 
