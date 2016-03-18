@@ -272,6 +272,7 @@ void *valid_numeric(void *addr, int size)
     return kernel_addr;
 }
 
+/* Validates args, exits if they are invalid */
 static void *validate_arg(void *addr, enum conversion_type ct, int size)
 {
     void *kernel_addr;
@@ -305,11 +306,13 @@ static void *validate_arg(void *addr, enum conversion_type ct, int size)
     return NULL;
 }
 
+/* Shuts down pintos */
 void sys_halt(void)
 {
     shutdown_power_off();
 }
 
+/* Exits the thread */
 void sys_exit(int status)
 {
     /* Have to close all fds */
@@ -327,6 +330,7 @@ void sys_exit(int status)
     thread_exit();
 }
 
+/* Executes cmd_line */
 pid_t sys_exec(const char *cmd_line)
 {
     tid_t tid = process_execute(cmd_line);
@@ -427,6 +431,7 @@ int sys_open(const char *file)
     return fd;
 }
 
+/* Reads size bytes from the buffer into the open file. */
 int sys_read(int fd, void *buffer, unsigned size)
 {
 
@@ -464,6 +469,7 @@ int sys_read(int fd, void *buffer, unsigned size)
     return bytes_read;
 }
 
+/* Writes size bytes from the buffer into the open file. */
 int sys_write(int fd, const void *buffer, unsigned size)
 {
 
