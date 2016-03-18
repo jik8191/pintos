@@ -51,6 +51,7 @@ void cache_init (void)
         cache[i].valid = false;
         cache[i].dirty = false;
         cache[i].accessed = false;
+        cache[i].pinned = false;
 
         rwlock_init(&cache[i].rw_lock);
     }
@@ -80,6 +81,46 @@ void cache_flush (void)
     }
 
     lock_release(&cache_lock);
+}
+
+/*! Unpin a cache entry with the given sector. */
+void cache_unpin_sector (block_sector_t sector)
+{
+    struct cache_entry *entry = cache_lookup(sector);
+
+    ASSERT (entry != NULL);
+
+    rwlock_acquire_writer(&entry->rw_lock);
+    entry->pinned = false;
+    rwlock_release_writer(&entry->rw_lock);
+}
+
+/*! Returns a pointer to the start of the data in the cache entry. The cache
+    entry is pinned before the pointer is returned, so that the data is not
+    evicted. You should call cache_unpin_sector when you are done with the
+    data. */
+void * cache_get_pinned_read_ptr (block_sector_t sector)
+{
+    struct cache_entry *entry = cache_get(sector);
+
+    rwlock_acquire_writer(&entry->rw_lock);
+
+    /* We released the global lock before acquiring the entry lock, so the
+       entry could have changed. We need to check that it didn't, or reload
+       if it did. */
+    while (entry->sector != sector) {
+        rwlock_release_writer(&entry->rw_lock);
+
+        entry = cache_get(sector);
+
+        rwlock_acquire_writer(&entry->rw_lock);
+    }
+
+    entry->pinned = true;
+
+    rwlock_release_writer(&entry->rw_lock);
+
+    return &entry->data;
 }
 
 /*! Read a block sector from cache into a buffer. If it is not in the cache,
@@ -286,6 +327,9 @@ struct cache_entry * cache_evict (void)
             since the last time we evicted, we didn't increment after evicting,
             so we want to start at the next index. */
         clock_idx = (clock_idx + 1) % CACHE_SIZE;
+
+        /* Skip pinned entries. */
+        if (cache[clock_idx].pinned) continue;
 
         /* We found one to evict. */
         if (!cache[clock_idx].accessed) break;

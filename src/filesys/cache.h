@@ -18,6 +18,8 @@ struct cache_entry {
     bool valid;             /*!< True if the cache entry is actually holding
                                  any valid data; false if it's just empty. */
 
+    bool pinned;            /*!< The cache entry can't get evicted. */
+
     struct rwlock rw_lock;  /*!< Read-write lock for controlling access to the
                                  cache entry */
 
@@ -33,6 +35,9 @@ void cache_read_chunk (block_sector_t, off_t, void *, int);
 
 void cache_write (block_sector_t, const void *);
 void cache_write_chunk (block_sector_t, off_t, const void *, int);
+
+void * cache_get_pinned_read_ptr (block_sector_t sector);
+void cache_unpin_sector (block_sector_t sector);
 
 #endif /* FILESYS_CACHE_H */
 

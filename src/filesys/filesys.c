@@ -42,23 +42,16 @@ void filesys_done(void) {
     successful, false otherwise.  Fails if a file named NAME already exists,
     or if internal memory allocation fails. */
 bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
-    // printf("'path is %s'\n", (const char*) name);
+    /* If we got an empty name, we just fail. */
+    if (strlen(name) == 0) return NULL;
+
     char path[strlen(name) + 1];
     char file[strlen(name) + 1];
 
     convert_path(name, path, file);
 
-    /* TODO: Not sure if needed
-    if (path[0] == '\0' && file[0]=='\0') {
-        return false;
-    }
-    */
-
     block_sector_t inode_sector = 0;
     struct dir *dir = dir_open_path(path);
-    /* if (dir == NULL) { */
-    /*     printf("The dir was null\n"); */
-    /* } */
 
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
@@ -77,6 +70,9 @@ bool filesys_create(const char *name, off_t initial_size, bool is_dir) {
     or a null pointer otherwise.  Fails if no file named NAME exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *name) {
+    /* If we got an empty name, we just fail. */
+    if (strlen(name) == 0) return NULL;
+
     struct inode *inode = NULL;
     struct dir *dir;
 
@@ -115,6 +111,10 @@ bool filesys_remove(const char *name) {
 
     convert_path(name, path, file);
     dir = dir_open_path (path);
+
+    /* struct inode *inode = dir_get_inode (dir); */
+    /* if (inode->removed) return false; */
+    /* printf("Removing dir: %s file: %s\n", path, file); */
 
     bool success = dir != NULL && dir_remove(dir, file);
     dir_close(dir);

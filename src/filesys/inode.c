@@ -216,7 +216,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             return get_indirect(inode, index);
 
         } else if (is_double_indirect(index)) {
-            printf("Getting a double indirect\n");
+
             return get_double_indirect(inode, index);
 
         }
