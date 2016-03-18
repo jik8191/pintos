@@ -283,18 +283,23 @@ done:
     return success;
 }
 
-/*! Reads the next directory entry in DIR and stores the name in NAME.  Returns
+/*! Reads the next directory entry in DIR and stores the name in NAME. Returns
     true if successful, false if the directory contains no more entries. */
 bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     struct dir_entry e;
 
+    /* We need to skip the first entry for the ".." parent directory. */
+    if ((unsigned) dir->pos < sizeof(e)) dir->pos = sizeof(e);
+
     while (inode_read_at(dir->inode, &e, sizeof(e), dir->pos) == sizeof(e)) {
         dir->pos += sizeof(e);
+
         if (e.in_use) {
             strlcpy(name, e.name, NAME_MAX + 1);
             return true;
         }
     }
+
     return false;
 }
 

@@ -136,9 +136,6 @@ int main(void) {
     cache_init();
     filesys_init(format_filesys);
     thread_current()->cwd = dir_open_root();
-
-    /* struct dir *root = dir_open_root(); */
-    /* dir_add(root, ".", root->inode->sector, true); */
 #endif
 
     printf("Boot complete.\n");
