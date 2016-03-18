@@ -112,10 +112,6 @@ bool filesys_remove(const char *name) {
     convert_path(name, path, file);
     dir = dir_open_path (path);
 
-    /* struct inode *inode = dir_get_inode (dir); */
-    /* if (inode->removed) return false; */
-    /* printf("Removing dir: %s file: %s\n", path, file); */
-
     bool success = dir != NULL && dir_remove(dir, file);
     dir_close(dir);
 
