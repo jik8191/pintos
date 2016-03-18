@@ -225,7 +225,11 @@ void read_ahead_add (block_sector_t sector)
     /* Make sure it's actually in our file system */
     if (sector + 1 < block_size(fs_device)) {
         struct ra_entry *ra = malloc(sizeof(struct ra_entry));
-        ASSERT(ra != NULL);
+
+        /* If, for some reason, we ran out of memory, we can just skip this
+           read-ahead. */
+        if (ra == NULL) return;
+
         ra->sector = sector + 1;
 
         lock_acquire(&ra_qlock);
@@ -339,12 +343,16 @@ struct cache_entry * cache_evict (void)
         cache[clock_idx].accessed = false;
     }
 
+    rwlock_acquire_writer(&cache[clock_idx].rw_lock);
+
     /* If the cache entry to evict is dirty, write it back to disk. */
     if (cache[clock_idx].dirty)
         cache_dump(clock_idx);
 
     /* Make it clean. */
     cache[clock_idx].valid = false;
+
+    rwlock_release_writer(&cache[clock_idx].rw_lock);
 
     return &cache[clock_idx];
 }

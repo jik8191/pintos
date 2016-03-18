@@ -99,7 +99,6 @@ struct dir * dir_open_path(const char *path){
         return NULL;
     }
 
-
     return wd;
 }
 

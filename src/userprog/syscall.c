@@ -423,6 +423,7 @@ int sys_open(const char *file)
     if (debug_mode) {
         printf("With fd: %d\n", fd);
     }
+
     return fd;
 }
 
