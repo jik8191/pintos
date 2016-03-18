@@ -353,7 +353,7 @@ struct cache_entry * cache_evict (void)
 
     rwlock_acquire_writer(&cache[clock_idx].rw_lock);
 
-    /* cache[clock_idx].pinned = true; */
+    cache[clock_idx].pinned = true;
 
     /* Make it clean. */
     cache[clock_idx].valid = false;
@@ -362,7 +362,7 @@ struct cache_entry * cache_evict (void)
     if (cache[clock_idx].dirty)
         cache_dump(clock_idx);
 
-    /* cache[clock_idx].pinned = false; */
+    cache[clock_idx].pinned = false;
 
     rwlock_release_writer(&cache[clock_idx].rw_lock);
 
