@@ -107,7 +107,7 @@ void fsutil_extract(char **argv UNUSED) {
             struct file *dst;
 
             printf("Putting '%s' into the file system...\n", file_name);
-            
+
             /* Create destination file. */
             if (!filesys_create(file_name, size, is_dir))
                 PANIC("%s: create failed", file_name);

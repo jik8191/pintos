@@ -225,6 +225,7 @@ void read_ahead_add (block_sector_t sector)
     /* Make sure it's actually in our file system */
     if (sector + 1 < block_size(fs_device)) {
         struct ra_entry *ra = malloc(sizeof(struct ra_entry));
+        ASSERT(ra != NULL);
         ra->sector = sector + 1;
 
         lock_acquire(&ra_qlock);
