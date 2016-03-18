@@ -216,7 +216,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             return get_indirect(inode, index);
 
         } else if (is_double_indirect(index)) {
-
+            printf("Getting a double indirect\n");
             return get_double_indirect(inode, index);
 
         }
@@ -835,6 +835,7 @@ off_t inode_length(const struct inode *inode) {
 struct inode_disk *read_disk(const struct inode *inode) {
     /* Getting the inodes inode_disk from the cache */
     struct inode_disk *disk = malloc(sizeof(struct inode_disk));
+    ASSERT(disk != NULL);
     cache_read(inode->sector, disk);
     return disk;
 }

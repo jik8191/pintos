@@ -588,14 +588,20 @@ bool sys_readdir(int fd, char *name)
     // If the directory changes while it is open, then it is acceptable for
     // some entries not to be read at all or to be read multiple times.
     // Otherwise, each directory entry should be read once, in any order.
-    return false;
+
+    ASSERT(sys_isdir(fd));
+    struct file *file = get_file(fd)->file_struct;
+    /* Getting the directory struct */
+    /*struct dir *dir = dir_open(file->inode);*/
+    return dir_readdir((struct dir *) file, name);
 }
 
 /*! Return true if fd represents a directory, false if fd represents an
     ordinary file. */
 bool sys_isdir(int fd)
 {
-    return false;
+    struct file *file = get_file(fd)->file_struct;
+    return inode_is_dir(file->inode);
 }
 
 /*! Return the inode number of the inode associated with fd, which persistently
