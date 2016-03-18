@@ -8,15 +8,13 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-
-Austin Liu     yliu2@caltech.edu
-Darius Simmons dsimmons@caltech.edu
-Nick Cho       ncho2@caltech.edu
+Austin Liu     yliu2@caltech.edu        25 hours
+Darius Simmons dsimmons@caltech.edu     40 hours
+Nick Cho       ncho2@caltech.edu        40 hours
 
 >> Specify how many late tokens you are using on this assignment:
+
+1 late token
 
 >> What is the Git repository and commit hash for your submission?
 
@@ -31,6 +29,8 @@ Nick Cho       ncho2@caltech.edu
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock
 
              INDEXED AND EXTENSIBLE FILES
              ============================
@@ -94,13 +94,20 @@ I did not add the updated length until after B is completly done writing.
 So once B finishes writing it will update the length and realize the
 extension lock.
 
-
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
 >> or vice versa.  That is, many processes reading from a file cannot
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+
+We use a read/write lock such that if a writer is holding the lock and it
+finishes, it will release the lock to all waiting readers, if any. Otherwise it
+will hand it off to the next writer. While there is a waiting writer, any new
+readers that ask for access to the file have to wait. Then, when all currently
+running readers release the lock, the waiting writer is allowed to run.
+Therefore, the lock will always be handed off between readers and writers and
+neither can be completely starved out by the other.
 
 ---- RATIONALE ----
 
@@ -132,6 +139,15 @@ struct dir *cwd;                    /*!< The current working directory
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
 
+We split the string into tokens split by a "/", then open each part of the path
+as the new working directory, until we finally reach the final working directory
+we want to be in to perform our operation. When we have an absolute path (starts
+with "/"), our original working directory is the root directory. When we have a
+relative path (starts with something else other than "/"), we use the threads
+current working directory as the starting working directory for the operation.
+".." is an directory entry in each directory pointing to its parent, and "." is
+a simple alias handled in dir_lookup.
+
 ---- SYNCHRONIZATION ----
 
 >> B4: How do you prevent races on directory entries?  For example,
@@ -139,15 +155,27 @@ struct dir *cwd;                    /*!< The current working directory
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
 
+We have a lock on the inode representing a directory so that any modifications
+to files in that directory are exclusive and must wait on each other.
+
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
 
+Our implementation does allow the removal of a thread's current working
+directory. Any future operations to the filesystem from that thread will then
+fail until the thread "cd"s out of the directory to a new one.
+
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
+
+We made the current directory of a process a pointer to a "dir" struct. We did
+this so that we had easy access to all the operations available on "dir" structs
+in filesys/directory.c and because it also gave us easy access to the underlying
+"inode" struct.
 
                  BUFFER CACHE
                  ============
@@ -158,14 +186,81 @@ struct dir *cwd;                    /*!< The current working directory
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* Used for each of the 64 cache slots for data about each entry. */
+struct cache_entry {
+    /* Bits used for eviction of cache entries. */
+    bool dirty;             /*!< Whether the cache entry has been written to. */
+    bool accessed;          /*!< Whether the cache entry has been accessed. */
+
+    block_sector_t sector;  /*!< The disk sector that this buffer is caching. */
+
+    bool valid;             /*!< True if the cache entry is actually holding
+                                 any valid data; false if it's just empty. */
+
+    bool pinned;            /*!< The cache entry can't get evicted. */
+
+    struct rwlock rw_lock;  /*!< Read-write lock for controlling access to the
+                                 cache entry */
+
+    uint8_t data[BLOCK_SECTOR_SIZE]; /*!< The data from the disk the buffer is
+                                          caching. */
+};
+
+/*! The cache array that contains data. */
+static struct cache_entry cache[CACHE_SIZE];
+
+/*! Used to control access to the cache. */
+static struct lock cache_lock;
+
+/*! Used for the clock-algorithm eviction. */
+static int clock_idx;
+
+/*! Used for asynchronous read-ahead. The struct contains the sector to load in
+    next. */
+struct ra_entry {
+    block_sector_t sector;  /*!< The sector to read into cache. */
+    struct list_elem elem;  /*!< To be put into the read-ahead queue. */
+};
+
+/*! The queue holding read ahead sectors to load. */
+static struct list ra_queue;
+
+/*! Lock for the access to the queue. */
+static struct lock ra_qlock;
+
+/*! Semaphore that makes the read_ahead thread sleep until it has something new
+    to read in. */
+static struct semaphore ra_wait_sema;
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
+We use a clock algorithm with second-chance for accessed cache entries. We
+maintain a static variable called clock_idx which represents the hand. When we
+want to evict, we start incrementing until we find a cache entry that has not
+been accessed, which we can evict. If an entry has been accessed, we reset its
+accessed bit to 0 so that it is up for eviction on the next go-around. The
+clock_idx is static and so is maintained between calls to the evict function.
+
 >> C3: Describe your implementation of write-behind.
 
+We have a asynchronous thread that runs a perpetual loop that does 2 things.
+First, it sleeps for an interval of 1 second. Then, it calls a function that
+goes through each of the 64 cache entries and writes it out to the filesystem,
+resetting the dirty bit of each entry in the process.
+
 >> C4: Describe your implementation of read-ahead.
+
+Whenever we load a sector into the cache (for both reads and writes), we add an
+element to the read ahead queue specifying the next sector. Then we sema_up on a
+semaphore that will wake the read-ahead thread.
+
+The read-ahead thread is spawned at the start of the program. and immediately
+sleeps on a semaphore. When it is awoken, it will take the first element of the
+read_ahead queue and load it into a cache entry (obtained as the first empty one
+or the next evicted one).
 
 ---- SYNCHRONIZATION ----
 
@@ -173,13 +268,40 @@ struct dir *cwd;                    /*!< The current working directory
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
+When we fetch data into a buffer cache block, we pin it so that it is no longer
+considered for eviction. When we are done reading from it or writing to it, we
+unpin the cache block.
+
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
+
+While the cache entry is being dumped to the filesystem after being evicted, we
+acquire the cache entry's read/write lock as a writer, meaning we have exclusive
+access to the data in the block at the time. Any other attempts to access the
+data in the cache entry will have to wait until the eviction process is
+complete. For those functions that only need to check whether the cache entry is
+valid or not, we set that the entry is no longer valid before evicting the data
+so that the other funtions don't have to wait on the lock just to check the
+valid state.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
+
+Workloads that involve reading and writing to the same parts of a file (so that
+it all fits in the cache) would benefit greatly from caching as we can read and
+write to memory rather than having to read and write to disk all the time.
+
+Any workload that involves large number of writes to the same file sectors would
+benefit from write-behind since we can avoid having to actually write to the
+disk everytime we perform a write, instead writing to the cache entry and
+writing all the cumulated changes at once at a later time.
+
+A workload that reads files in order would benefit from read-ahead since the OS
+could pre-load in the next sector asynchronously before the program even
+requests it. This would lower the amount of time the program spends waiting for
+disk I/O to complete.
 
                SURVEY QUESTIONS
                ================
