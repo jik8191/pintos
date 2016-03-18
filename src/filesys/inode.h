@@ -17,6 +17,7 @@ struct inode {
                                              false otherwise. */
     int deny_write_cnt;                 /*!< 0: writes ok, >0: deny writes. */
     struct lock extension_lock;         /*!< Lock for extending file */
+    struct lock modify_lock;
 };
 
 

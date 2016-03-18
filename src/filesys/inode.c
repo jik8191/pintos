@@ -527,6 +527,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->removed = false;
 
     lock_init(&inode->extension_lock);
+    lock_init(&inode->modify_lock);
 
     return inode;
 }
