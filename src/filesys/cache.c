@@ -77,7 +77,9 @@ void cache_flush (void)
 
     int i;
     for (i = 0; i < CACHE_SIZE; i++) {
+        rwlock_acquire_writer(&cache[i].rw_lock);
         if (cache[i].valid) cache_dump(i);
+        rwlock_release_writer(&cache[i].rw_lock);
     }
 
     lock_release(&cache_lock);
@@ -108,7 +110,7 @@ void * cache_get_pinned_read_ptr (block_sector_t sector)
     /* We released the global lock before acquiring the entry lock, so the
        entry could have changed. We need to check that it didn't, or reload
        if it did. */
-    while (entry->sector != sector) {
+    while ((volatile block_sector_t) entry->sector != sector) {
         rwlock_release_writer(&entry->rw_lock);
 
         entry = cache_get(sector);
@@ -139,20 +141,23 @@ void cache_read_chunk (block_sector_t sector, off_t sector_ofs, void *buf,
     struct cache_entry *entry = cache_get(sector);
 
     rwlock_acquire_reader(&entry->rw_lock);
+    entry->pinned = true;
 
     /* We released the global lock before acquiring the entry lock, so the
        entry could have changed. We need to check that it didn't, or reload
        if it did. */
-    while (entry->sector != sector) {
+    while ((volatile block_sector_t) entry->sector != sector) {
         rwlock_release_reader(&entry->rw_lock);
 
         entry = cache_get(sector);
 
         rwlock_acquire_reader(&entry->rw_lock);
+        entry->pinned = true;
     }
 
     memcpy (buf, entry->data + sector_ofs, chunk_size);
 
+    entry->pinned = false;
     rwlock_release_reader(&entry->rw_lock);
 }
 
@@ -172,21 +177,24 @@ void cache_write_chunk (block_sector_t sector, off_t sector_ofs,
     struct cache_entry *entry = cache_get(sector);
 
     rwlock_acquire_writer(&entry->rw_lock);
+    entry->pinned = true;
 
     /* We released the global lock before acquiring the entry lock, so the
        entry could have changed. We need to check that it didn't, or reload
        if it did. */
-    while (entry->sector != sector) {
+    while ((volatile block_sector_t) entry->sector != sector) {
         rwlock_release_writer(&entry->rw_lock);
 
         entry = cache_get(sector);
 
         rwlock_acquire_writer(&entry->rw_lock);
+        entry->pinned = true;
     }
 
     entry->dirty = true;
     memcpy (entry->data + sector_ofs, buf, chunk_size);
 
+    entry->pinned = false;
     rwlock_release_writer(&entry->rw_lock);
 }
 
@@ -345,12 +353,16 @@ struct cache_entry * cache_evict (void)
 
     rwlock_acquire_writer(&cache[clock_idx].rw_lock);
 
+    /* cache[clock_idx].pinned = true; */
+
+    /* Make it clean. */
+    cache[clock_idx].valid = false;
+
     /* If the cache entry to evict is dirty, write it back to disk. */
     if (cache[clock_idx].dirty)
         cache_dump(clock_idx);
 
-    /* Make it clean. */
-    cache[clock_idx].valid = false;
+    /* cache[clock_idx].pinned = false; */
 
     rwlock_release_writer(&cache[clock_idx].rw_lock);
 

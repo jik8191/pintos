@@ -29,7 +29,7 @@ Austin      Liu         yliu2@caltech.edu
 >> TAs, or extra credit, please give them here.
 
     Please use bochs.
-    
+
     `make check SIMULATOR=--bochs`
 
 >> Please cite any offline or online sources you consulted while

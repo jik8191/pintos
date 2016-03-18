@@ -417,7 +417,7 @@ void rwlock_acquire_reader(struct rwlock *rw_lock)
        fair and let the writer go first. */
     if (rw_lock->waiting_writers > 0 || rw_lock->writers > 0) {
         /* Need to continuously check because the condition is "Mesa" style. */
-        while (rw_lock->writers > 0)
+        while ((volatile int) rw_lock->writers > 0)
             cond_wait(&rw_lock->reader_cond, &rw_lock->lock);
     }
 
@@ -437,7 +437,8 @@ void rwlock_acquire_writer(struct rwlock *rw_lock)
 
     /* We need to continuously check because the condition is "Mesa" style.
        There can also only be one writer at a time. */
-    while (rw_lock->readers > 0 || rw_lock->writers > 0)
+    while ((volatile int) rw_lock->readers > 0 ||
+           (volatile int) rw_lock->writers > 0)
         cond_wait(&rw_lock->writer_cond, &rw_lock->lock);
 
     rw_lock->waiting_writers--;
