@@ -370,7 +370,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (pos_index == 0) {
 
                 /* Making a new indirect block */
-                struct index_block *new_indirect = malloc(sizeof(struct index_block));
+                struct index_block *new_indirect =
+                    malloc(sizeof(struct index_block));
 
                 if (new_indirect == NULL) {
                     return success;
@@ -413,7 +414,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (pos_index == INDEX_BLOCK_SIZE - 1 || i == end - 1) {
 
                 /* Writing the index block to disk */
-                cache_write(disk_inode->indirect[node_index], (const void *) single_block);
+                cache_write(disk_inode->indirect[node_index],
+                            (const void *) single_block);
 
                 /* Freeing the single block */
                 free(single_block);
@@ -439,7 +441,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (first_node_index == 0 && second_node_index == 0) {
 
                 /* Making the double block */
-                struct index_block *new_double = malloc(sizeof(struct index_block));
+                struct index_block *new_double =
+                    malloc(sizeof(struct index_block));
 
                 if (new_double == NULL) {
                     return success;
@@ -457,14 +460,16 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
                 list_push_back(&allocated_sectors, &double_sector.elem);
 
                 /* Setting the sector for the double indirect list */
-                disk_inode->double_indirect[first_node_index] = double_sector.sector;
+                disk_inode->double_indirect[first_node_index] =
+                    double_sector.sector;
                 double_loaded = true;
 
             }
             else if (double_loaded == false) {
 
                 /* Need to load the data from the cache */
-                cache_read(disk_inode->double_indirect[first_node_index], double_block);
+                cache_read(disk_inode->double_indirect[first_node_index],
+                           double_block);
                 double_loaded = true;
                 single_loaded = false;
             }
@@ -474,7 +479,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (second_node_index == 0) {
 
                 /* Making the single block */
-                struct index_block *new_indirect = malloc(sizeof(struct index_block));
+                struct index_block *new_indirect =
+                    malloc(sizeof(struct index_block));
 
                 if (new_indirect == NULL) {
                     return success;
@@ -500,7 +506,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             else if (single_loaded == false) {
 
                 /* Reading the single block from the cache */
-                cache_read(double_block->sectors[second_node_index], single_block);
+                cache_read(double_block->sectors[second_node_index],
+                           single_block);
                 single_loaded = true;
 
             }
@@ -512,7 +519,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (i == end - 1) {
 
                 /* Write the double block to disk */
-                cache_write(disk_inode->double_indirect[first_node_index], (const void *) double_block);
+                cache_write(disk_inode->double_indirect[first_node_index],
+                            (const void *) double_block);
                 free(double_block);
                 double_freed = true;
 
@@ -522,7 +530,8 @@ bool inode_add(struct inode_disk *disk_inode, size_t add_count, size_t start) {
             if (pos_index == INDEX_BLOCK_SIZE - 1 || i == end - 1) {
 
                 /* Write the single block to disk */
-                cache_write(double_block->sectors[second_node_index], (const void *) single_block);
+                cache_write(double_block->sectors[second_node_index],
+                            (const void *) single_block);
                 free(single_block);
                 single_freed = true;
 
