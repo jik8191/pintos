@@ -1,4 +1,4 @@
-       	       	     +-------------------------+
+                     +-------------------------+
                      |          CS 124         |
                      | PROJECT 6: FILE SYSTEMS |
                      |     DESIGN DOCUMENT     |
@@ -32,8 +32,8 @@ Nick Cho       ncho2@caltech.edu
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
-		     INDEXED AND EXTENSIBLE FILES
-		     ============================
+             INDEXED AND EXTENSIBLE FILES
+             ============================
 
 ---- DATA STRUCTURES ----
 
@@ -115,8 +115,8 @@ want a good number of direct nodes so most files can get it directly.
 We also want a good number of indirect nodes for bigger files. Then
 1 double indirect node for the really big files.
 
-			    SUBDIRECTORIES
-			    ==============
+                SUBDIRECTORIES
+                ==============
 
 ---- DATA STRUCTURES ----
 
@@ -149,8 +149,8 @@ struct dir *cwd;                    /*!< The current working directory
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
 
-			     BUFFER CACHE
-			     ============
+                 BUFFER CACHE
+                 ============
 
 ---- DATA STRUCTURES ----
 
@@ -181,8 +181,8 @@ struct dir *cwd;                    /*!< The current working directory
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
 
-			   SURVEY QUESTIONS
-			   ================
+               SURVEY QUESTIONS
+               ================
 
 Answering these questions is optional, but it will help us improve the
 course in future quarters.  Feel free to tell us anything you
